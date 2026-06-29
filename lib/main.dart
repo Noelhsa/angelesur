@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'models/medicamento.dart';
+import 'models/usuario.dart';
+import 'services/api_client.dart';
+import 'services/inventario_api_service.dart';
 import 'ui/interfaces/barra_lateral_izquierda.dart';
 import 'ui/interfaces/contenido_cajero.dart';
 import 'ui/interfaces/contenido_catalogo_inventario.dart';
@@ -11,6 +14,7 @@ import 'ui/interfaces/contenido_perfil.dart';
 import 'ui/interfaces/contenido_venta.dart';
 import 'ui/interfaces/menu_carta_carrito.dart';
 import 'ui/interfaces/menu_superior_catalogo.dart';
+import 'ui/login/login_screen.dart';
 
 const Color _fondoApp = Color(0xFF181A20);
 const Color _fondoContenido = Color(0xFFE2E2E2);
@@ -20,8 +24,15 @@ void main() {
   runApp(const AngelesurApp());
 }
 
-class AngelesurApp extends StatelessWidget {
+class AngelesurApp extends StatefulWidget {
   const AngelesurApp({super.key});
+
+  @override
+  State<AngelesurApp> createState() => _AngelesurAppState();
+}
+
+class _AngelesurAppState extends State<AngelesurApp> {
+  Usuario? _usuario;
 
   @override
   Widget build(BuildContext context) {
@@ -36,72 +47,42 @@ class AngelesurApp extends StatelessWidget {
           brightness: Brightness.light,
         ),
       ),
-      home: const VentaPrincipalScreen(),
+      home: _usuario == null
+          ? LoginScreen(
+              onLogin: (usuario) {
+                setState(() {
+                  _usuario = usuario;
+                });
+              },
+            )
+          : VentaPrincipalScreen(usuario: _usuario!),
     );
   }
 }
 
 class VentaPrincipalScreen extends StatefulWidget {
-  const VentaPrincipalScreen({super.key});
+  final Usuario usuario;
+
+  const VentaPrincipalScreen({
+    super.key,
+    required this.usuario,
+  });
 
   @override
   State<VentaPrincipalScreen> createState() => _VentaPrincipalScreenState();
 }
 
 class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
+  final InventarioApiService _inventarioApiService = InventarioApiService();
   final TextEditingController _busquedaController = TextEditingController();
 
   int _menuSeleccionado = 1;
   int _submenuCatalogoSeleccionado = 0;
+  bool _cargandoInventario = true;
+  String? _errorInventario;
 
-  final List<Medicamento> _medicamentos = const [
-    Medicamento(
-      id: 1,
-      nombre: 'Paracetamol 500mg',
-      detalle: 'TEMPRA - 20 TAB.',
-      categoria: 'Analgésico',
-      precio: 45.00,
-      stock: 124,
-    ),
-    Medicamento(
-      id: 2,
-      nombre: 'Amoxicilina 250mg',
-      detalle: 'SUSPENSIÓN 60ML',
-      categoria: 'Antibiótico',
-      precio: 182.50,
-      stock: 42,
-    ),
-    Medicamento(
-      id: 3,
-      nombre: 'Ibuprofeno 400mg',
-      detalle: 'ADVIL - 10 CAPS.',
-      categoria: 'Analgésico',
-      precio: 68.00,
-      stock: 89,
-    ),
-    Medicamento(
-      id: 4,
-      nombre: 'Omeprazol 20mg',
-      detalle: 'ESTOMAGAL - 7 CAPS.',
-      categoria: 'Gástrico',
-      precio: 115.00,
-      stock: 215,
-    ),
-    Medicamento(
-      id: 5,
-      nombre: 'Termómetro Digital',
-      detalle: 'PRECISION X1',
-      categoria: 'Dispositivo',
-      precio: 145.00,
-      stock: 18,
-    ),
-  ];
-
-  final Map<int, int> _carrito = {
-    2: 1,
-    4: 1,
-    5: 1,
-  };
+  List<Medicamento> _medicamentos = [];
+  final Map<int, int> _carrito = {};
 
   @override
   void initState() {
@@ -110,6 +91,8 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     _busquedaController.addListener(() {
       setState(() {});
     });
+
+    _cargarInventario();
   }
 
   @override
@@ -152,28 +135,75 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     return total;
   }
 
-  double get _descuento {
-    if (_subtotal <= 0) {
-      return 0;
-    }
-
-    return 27.25;
-  }
+  double get _descuento => 0;
 
   double get _total {
     final total = _subtotal - _descuento;
     return total < 0 ? 0 : total;
   }
 
-  void _agregarAlCarrito(Medicamento medicamento) {
+  Future<void> _cargarInventario() async {
     setState(() {
-      _carrito[medicamento.id] = (_carrito[medicamento.id] ?? 0) + 1;
+      _cargandoInventario = true;
+      _errorInventario = null;
+    });
+
+    try {
+      final medicamentos = await _inventarioApiService.listarDisponibles();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _medicamentos = medicamentos;
+        _carrito.removeWhere((id, _) {
+          return !medicamentos.any((medicamento) => medicamento.id == id);
+        });
+        _cargandoInventario = false;
+      });
+    } on ApiException catch (error) {
+      _mostrarErrorInventario(error.message);
+    } catch (_) {
+      _mostrarErrorInventario('No se pudo conectar con la API local');
+    }
+  }
+
+  void _mostrarErrorInventario(String mensaje) {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _errorInventario = mensaje;
+      _cargandoInventario = false;
+    });
+  }
+
+  void _agregarAlCarrito(Medicamento medicamento) {
+    final cantidadActual = _carrito[medicamento.id] ?? 0;
+
+    if (cantidadActual >= medicamento.stock) {
+      return;
+    }
+
+    setState(() {
+      _carrito[medicamento.id] = cantidadActual + 1;
     });
   }
 
   void _incrementarCantidad(int medicamentoId) {
+    final medicamento = _medicamentos.firstWhere(
+      (medicamento) => medicamento.id == medicamentoId,
+    );
+    final cantidadActual = _carrito[medicamentoId] ?? 0;
+
+    if (cantidadActual >= medicamento.stock) {
+      return;
+    }
+
     setState(() {
-      _carrito[medicamentoId] = (_carrito[medicamentoId] ?? 0) + 1;
+      _carrito[medicamentoId] = cantidadActual + 1;
     });
   }
 
@@ -208,34 +238,46 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     }
   }
 
+  Widget _construirContenidoVenta() {
+    if (_cargandoInventario || _errorInventario != null) {
+      return _EstadoInventario(
+        cargando: _cargandoInventario,
+        error: _errorInventario,
+        onReintentar: _cargarInventario,
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: ContenidoVenta(
+            busquedaController: _busquedaController,
+            medicamentos: _medicamentosFiltrados,
+            onAgregar: _agregarAlCarrito,
+          ),
+        ),
+        MenuCartaCarrito(
+          medicamentos: _itemsCarrito,
+          cantidades: _carrito,
+          subtotal: _subtotal,
+          descuento: _descuento,
+          total: _total,
+          onIncrementar: _incrementarCantidad,
+          onDisminuir: _disminuirCantidad,
+          onEliminar: _eliminarDelCarrito,
+        ),
+      ],
+    );
+  }
+
   Widget _construirContenidoSeleccionado() {
     switch (_menuSeleccionado) {
       case 0:
         return EditarPerfilScreen();
 
       case 1:
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: ContenidoVenta(
-                busquedaController: _busquedaController,
-                medicamentos: _medicamentosFiltrados,
-                onAgregar: _agregarAlCarrito,
-              ),
-            ),
-            MenuCartaCarrito(
-              medicamentos: _itemsCarrito,
-              cantidades: _carrito,
-              subtotal: _subtotal,
-              descuento: _descuento,
-              total: _total,
-              onIncrementar: _incrementarCantidad,
-              onDisminuir: _disminuirCantidad,
-              onEliminar: _eliminarDelCarrito,
-            ),
-          ],
-        );
+        return _construirContenidoVenta();
 
       case 2:
         return ContenidoHistorial();
@@ -296,6 +338,48 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _EstadoInventario extends StatelessWidget {
+  final bool cargando;
+  final String? error;
+  final VoidCallback onReintentar;
+
+  const _EstadoInventario({
+    required this.cargando,
+    required this.error,
+    required this.onReintentar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (cargando) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            error ?? 'No hay inventario disponible',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 14),
+          ElevatedButton.icon(
+            onPressed: onReintentar,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Reintentar'),
+          ),
+        ],
       ),
     );
   }

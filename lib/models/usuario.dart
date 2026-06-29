@@ -1,31 +1,39 @@
 class Usuario {
-  final int? id;
+  final int id;
   final String nombre;
-  final String correo;
+  final String username;
+  final String? telefono;
   final String rol;
+  final bool activo;
 
-  Usuario({
-    this.id,
+  const Usuario({
+    required this.id,
     required this.nombre,
-    required this.correo,
+    required this.username,
+    this.telefono,
     required this.rol,
+    required this.activo,
   });
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
+      'idUsuario': id,
       'nombre': nombre,
-      'correo': correo,
+      'username': username,
+      'telefono': telefono,
       'rol': rol,
+      'activo': activo,
     };
   }
 
   factory Usuario.fromMap(Map<String, dynamic> map) {
     return Usuario(
-      id: map['id'] as int?,
+      id: map['idUsuario'] as int,
       nombre: map['nombre'] as String,
-      correo: map['correo'] as String,
+      username: map['username'] as String,
+      telefono: map['telefono'] as String?,
       rol: map['rol'] as String,
+      activo: map['activo'] == true || map['activo'] == 1,
     );
   }
 }
