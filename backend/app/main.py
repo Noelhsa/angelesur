@@ -2,7 +2,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.errors import install_error_handlers
-from app.routers import cortes, health, inventario, usuarios, ventas
+from app.routers import (
+    cortes,
+    health,
+    inventario,
+    productos,
+    proveedores,
+    usuarios,
+    ventas,
+)
 
 
 app = FastAPI(
@@ -25,4 +33,6 @@ app.include_router(health.router)
 app.include_router(inventario.router)
 app.include_router(cortes.router)
 app.include_router(usuarios.router)
+app.include_router(productos.router)
+app.include_router(proveedores.router)
 app.include_router(ventas.router)

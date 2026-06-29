@@ -35,12 +35,27 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 - `GET /health/db`: confirma conexion a MariaDB.
 - `GET /inventario/disponible`: lee `vw_inventario_disponible_para_venta`.
 - `GET /inventario/actual`: lee `vw_inventario_actual`.
+- `GET /inventario/{idInventario}`: obtiene un lote de inventario.
 - `GET /inventario/caducidad`: lee `vw_productos_por_caducar`.
+- `GET /inventario/movimientos`: lista movimientos de inventario.
+- `GET /inventario/historial-precios`: lista cambios de precio.
+- `POST /inventario/ajuste`: llama `sp_ajustar_inventario`.
+- `POST /inventario/precio`: llama `sp_cambiar_precio_inventario`.
 - `GET /usuarios`: lista usuarios activos.
 - `GET /usuarios/{idUsuario}`: obtiene un usuario.
 - `POST /usuarios`: crea un usuario con contrasena hasheada.
 - `PATCH /usuarios/{idUsuario}/estado`: activa o desactiva un usuario.
 - `POST /auth/login`: valida `username` y `password`.
+- `GET /productos`: lista productos activos.
+- `GET /productos/{idProducto}`: obtiene un producto con datos de medicamento si aplica.
+- `POST /productos`: crea producto o medicamento.
+- `PATCH /productos/{idProducto}`: actualiza producto o medicamento.
+- `PATCH /productos/{idProducto}/estado`: activa o desactiva un producto.
+- `GET /proveedores`: lista proveedores activos.
+- `GET /proveedores/{idProveedor}`: obtiene un proveedor.
+- `POST /proveedores`: crea proveedor.
+- `PATCH /proveedores/{idProveedor}`: actualiza proveedor.
+- `PATCH /proveedores/{idProveedor}/estado`: activa o desactiva un proveedor.
 - `GET /cortes/actual`: lee el corte abierto desde `vw_corte_resumen`.
 - `POST /cortes/abrir`: llama `sp_abrir_corte`.
 - `POST /cortes/cerrar`: llama `sp_cerrar_corte`.
