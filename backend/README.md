@@ -56,6 +56,35 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 - `POST /proveedores`: crea proveedor.
 - `PATCH /proveedores/{idProveedor}`: actualiza proveedor.
 - `PATCH /proveedores/{idProveedor}/estado`: activa o desactiva un proveedor.
+- `GET /compras`: lista compras.
+- `GET /compras/{idCompra}`: obtiene compra con detalles.
+- `POST /compras`: llama `sp_registrar_compra`.
+- `POST /compras/{idCompra}/cancelar`: llama `sp_cancelar_compra`.
+- `GET /caja/movimientos`: lista movimientos de dinero.
+- `GET /caja/movimientos/{idMovDin}`: obtiene un movimiento de dinero.
+- `POST /caja/movimiento`: llama `sp_registrar_movimiento_caja`.
+- `GET /caja/saldo/actual`: lee el resumen del corte abierto.
+- `GET /ventas`: lista ventas.
+- `GET /ventas/{idVenta}`: obtiene venta con detalles y pagos.
+- `GET /ventas/{idVenta}/pagos`: lista pagos de una venta.
+- `POST /ventas/{idVenta}/cancelar`: llama `sp_cancelar_venta`.
+- `GET /servicios-yastas/tarifas`: lista tarifas Yastas.
+- `GET /servicios-yastas/tarifas/{idTarifa}`: obtiene una tarifa.
+- `POST /servicios-yastas/tarifas`: crea tarifa.
+- `PATCH /servicios-yastas/tarifas/{idTarifa}`: actualiza tarifa.
+- `PATCH /servicios-yastas/tarifas/{idTarifa}/estado`: activa o desactiva tarifa.
+- `GET /servicios-yastas`: lista operaciones Yastas.
+- `GET /servicios-yastas/{idServicioOperacion}`: obtiene una operacion.
+- `POST /servicios-yastas`: llama `sp_registrar_servicio_yastas`.
+- `POST /servicios-yastas/{idServicioOperacion}/cancelar`: llama `sp_cancelar_servicio_yastas`.
+- `GET /devoluciones/clientes`: lista devoluciones de clientes.
+- `GET /devoluciones/clientes/{idDevolucionCliente}`: obtiene devolucion de cliente.
+- `POST /devoluciones/clientes`: llama `sp_registrar_devolucion_cliente`.
+- `POST /devoluciones/clientes/{idDevolucionCliente}/cancelar`: llama `sp_cancelar_devolucion_cliente`.
+- `GET /devoluciones/proveedores`: lista devoluciones a proveedor.
+- `GET /devoluciones/proveedores/{idDevolucionProveedor}`: obtiene devolucion a proveedor.
+- `POST /devoluciones/proveedores`: llama `sp_registrar_devolucion_proveedor`.
+- `POST /devoluciones/proveedores/{idDevolucionProveedor}/cancelar`: llama `sp_cancelar_devolucion_proveedor`.
 - `GET /cortes/actual`: lee el corte abierto desde `vw_corte_resumen`.
 - `POST /cortes/abrir`: llama `sp_abrir_corte`.
 - `POST /cortes/cerrar`: llama `sp_cerrar_corte`.
