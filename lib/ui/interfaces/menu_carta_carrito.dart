@@ -20,6 +20,8 @@ class MenuCartaCarrito extends StatelessWidget {
   final ValueChanged<int> onIncrementar;
   final ValueChanged<int> onDisminuir;
   final ValueChanged<int> onEliminar;
+  final VoidCallback onPagar;
+  final bool procesandoPago;
 
   const MenuCartaCarrito({
     super.key,
@@ -31,6 +33,8 @@ class MenuCartaCarrito extends StatelessWidget {
     required this.onIncrementar,
     required this.onDisminuir,
     required this.onEliminar,
+    required this.onPagar,
+    this.procesandoPago = false,
   });
 
   @override
@@ -119,6 +123,8 @@ class MenuCartaCarrito extends StatelessWidget {
             subtotal: subtotal,
             descuento: descuento,
             total: total,
+            onPagar: onPagar,
+            procesandoPago: procesandoPago,
           ),
         ],
       ),
@@ -307,11 +313,15 @@ class _ResumenCarrito extends StatelessWidget {
   final double subtotal;
   final double descuento;
   final double total;
+  final VoidCallback onPagar;
+  final bool procesandoPago;
 
   const _ResumenCarrito({
     required this.subtotal,
     required this.descuento,
     required this.total,
+    required this.onPagar,
+    required this.procesandoPago,
   });
 
   @override
@@ -358,15 +368,15 @@ class _ResumenCarrito extends StatelessWidget {
             width: double.infinity,
             height: 40,
             child: ElevatedButton.icon(
-              onPressed: total <= 0 ? null : () {},
+              onPressed: total <= 0 || procesandoPago ? null : onPagar,
               icon: const Icon(
                 Icons.payments_outlined,
                 size: 15,
                 color: _verdeOscuro,
               ),
-              label: const Text(
-                'Pagar',
-                style: TextStyle(
+              label: Text(
+                procesandoPago ? 'Procesando...' : 'Pagar',
+                style: const TextStyle(
                   color: _verdeOscuro,
                   fontSize: 14,
                   fontWeight: FontWeight.w900,

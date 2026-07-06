@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../services/api_client.dart';
+import '../../services/inventario_api_service.dart';
+import '../../utils/config_moneda.dart';
+
 const Color _fondoPagina = Color(0xFFF8F6F5);
 const Color _verdeOscuro = Color(0xFF397800);
-const Color _verdeTexto = Color(0xFF4F7D35);
 const Color _azul = Color(0xFF0B63CE);
 const Color _textoPrincipal = Color(0xFF1F2933);
 const Color _textoSecundario = Color(0xFF667085);
@@ -21,56 +24,102 @@ class ContenidoCatalogoInventario extends StatefulWidget {
 
 class _ContenidoCatalogoInventarioState
     extends State<ContenidoCatalogoInventario> {
-  String _categoriaSeleccionada = 'Todas las Categorías';
-  String _estadoSeleccionado = 'Todos los estados';
+  final InventarioApiService _inventarioApiService = InventarioApiService();
+  final TextEditingController _busquedaController = TextEditingController();
 
-  final List<_ProductoInventario> _productos = const [
-    _ProductoInventario(
-      codigo: 'PHAR-00124',
-      nombre: 'Amoxicilina 500mg (Cápsulas)',
-      categoria: 'Antibióticos',
-      stockActual: 450,
-      unidad: 'Caja (30)',
-      estado: _EstadoInventario.enExistencia,
-      accionPrincipal: _AccionProducto.editar,
-    ),
-    _ProductoInventario(
-      codigo: 'PHAR-00382',
-      nombre: 'Ibuprofeno 400mg Forte',
-      categoria: 'Analgésicos',
-      stockActual: 12,
-      unidad: 'Caja (20)',
-      estado: _EstadoInventario.stockBajo,
-      accionPrincipal: _AccionProducto.comprar,
-    ),
-    _ProductoInventario(
-      codigo: 'PHAR-00912',
-      nombre: 'Insulina Humalog Mix 25',
-      categoria: 'Diabetes',
-      stockActual: 0,
-      unidad: 'Vial (10ml)',
-      estado: _EstadoInventario.agotado,
-      accionPrincipal: _AccionProducto.lista,
-    ),
-    _ProductoInventario(
-      codigo: 'PHAR-01255',
-      nombre: 'Paracetamol 1g Gotas Infantiles',
-      categoria: 'Analgésicos',
-      stockActual: 85,
-      unidad: 'Frasco (30ml)',
-      estado: _EstadoInventario.enExistencia,
-      accionPrincipal: _AccionProducto.editar,
-    ),
-    _ProductoInventario(
-      codigo: 'PHAR-00045',
-      nombre: 'Vitamina C 1000mg Efervescente',
-      categoria: 'Suplementos',
-      stockActual: 210,
-      unidad: 'Tubo (10 tab)',
-      estado: _EstadoInventario.enExistencia,
-      accionPrincipal: _AccionProducto.editar,
-    ),
-  ];
+  String _categoriaSeleccionada = 'Todas las categorias';
+  String _estadoSeleccionado = 'Todos los estados';
+  bool _cargando = true;
+  String? _error;
+  List<InventarioItem> _productos = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarInventario();
+  }
+
+  @override
+  void dispose() {
+    _busquedaController.dispose();
+    super.dispose();
+  }
+
+  List<String> get _categorias {
+    final categorias = _productos
+        .map((producto) => producto.categoria)
+        .where((categoria) => categoria.trim().isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+
+    return ['Todas las categorias', ...categorias];
+  }
+
+  List<InventarioItem> get _productosFiltrados {
+    return _productos.where((producto) {
+      final coincideCategoria =
+          _categoriaSeleccionada == 'Todas las categorias' ||
+              producto.categoria == _categoriaSeleccionada;
+
+      final coincideEstado = switch (_estadoSeleccionado) {
+        'En existencia' =>
+          producto.estadoStock == EstadoStockInventario.enExistencia,
+        'Stock bajo' => producto.estadoStock == EstadoStockInventario.stockBajo,
+        'Agotado' => producto.estadoStock == EstadoStockInventario.agotado,
+        _ => true,
+      };
+
+      return coincideCategoria && coincideEstado;
+    }).toList();
+  }
+
+  Future<void> _cargarInventario() async {
+    setState(() {
+      _cargando = true;
+      _error = null;
+    });
+
+    try {
+      final productos = await _inventarioApiService.listarActual(
+        busqueda: _busquedaController.text,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _productos = productos;
+        if (!_categorias.contains(_categoriaSeleccionada)) {
+          _categoriaSeleccionada = 'Todas las categorias';
+        }
+        _cargando = false;
+      });
+    } on ApiException catch (error) {
+      _mostrarError(error.message);
+    } catch (_) {
+      _mostrarError('No se pudo cargar el inventario');
+    }
+  }
+
+  void _mostrarError(String mensaje) {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _error = mensaje;
+      _cargando = false;
+    });
+  }
+
+  void _mostrarDetalle(InventarioItem producto) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => _DialogoDetalleInventario(producto: producto),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +131,9 @@ class _ContenidoCatalogoInventarioState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _PanelFiltrosInventario(
+              busquedaController: _busquedaController,
               categoriaSeleccionada: _categoriaSeleccionada,
+              categorias: _categorias,
               estadoSeleccionado: _estadoSeleccionado,
               onCategoriaChanged: (value) {
                 if (value == null) return;
@@ -96,24 +147,40 @@ class _ContenidoCatalogoInventarioState
                   _estadoSeleccionado = value;
                 });
               },
-              onFiltrosAvanzados: () {},
-              onExportarCsv: () {},
+              onBuscar: _cargarInventario,
+              onRefrescar: _cargarInventario,
             ),
             const SizedBox(height: 18),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final anchoTabla =
-                    constraints.maxWidth < 920 ? 920.0 : constraints.maxWidth;
+            if (_cargando)
+              const _EstadoInventarioCatalogo(mensaje: 'Cargando inventario...')
+            else if (_error != null)
+              _EstadoInventarioCatalogo(
+                mensaje: _error!,
+                onReintentar: _cargarInventario,
+              )
+            else if (_productosFiltrados.isEmpty)
+              const _EstadoInventarioCatalogo(
+                mensaje: 'No hay productos para mostrar',
+              )
+            else
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final anchoTabla = constraints.maxWidth < 1020
+                      ? 1020.0
+                      : constraints.maxWidth;
 
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: SizedBox(
-                    width: anchoTabla,
-                    child: _TablaInventario(productos: _productos),
-                  ),
-                );
-              },
-            ),
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(
+                      width: anchoTabla,
+                      child: _TablaInventario(
+                        productos: _productosFiltrados,
+                        onVerDetalle: _mostrarDetalle,
+                      ),
+                    ),
+                  );
+                },
+              ),
           ],
         ),
       ),
@@ -122,26 +189,30 @@ class _ContenidoCatalogoInventarioState
 }
 
 class _PanelFiltrosInventario extends StatelessWidget {
+  final TextEditingController busquedaController;
   final String categoriaSeleccionada;
+  final List<String> categorias;
   final String estadoSeleccionado;
   final ValueChanged<String?> onCategoriaChanged;
   final ValueChanged<String?> onEstadoChanged;
-  final VoidCallback onFiltrosAvanzados;
-  final VoidCallback onExportarCsv;
+  final VoidCallback onBuscar;
+  final VoidCallback onRefrescar;
 
   const _PanelFiltrosInventario({
+    required this.busquedaController,
     required this.categoriaSeleccionada,
+    required this.categorias,
     required this.estadoSeleccionado,
     required this.onCategoriaChanged,
     required this.onEstadoChanged,
-    required this.onFiltrosAvanzados,
-    required this.onExportarCsv,
+    required this.onBuscar,
+    required this.onRefrescar,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 82,
+      height: 88,
       padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
       decoration: BoxDecoration(
         color: _fondoPagina,
@@ -151,30 +222,32 @@ class _PanelFiltrosInventario extends StatelessWidget {
       child: Row(
         children: [
           SizedBox(
-            width: 165,
+            width: 240,
+            child: _CampoBusqueda(
+              controller: busquedaController,
+              onBuscar: onBuscar,
+            ),
+          ),
+          const SizedBox(width: 18),
+          SizedBox(
+            width: 180,
             child: _CampoDropdown(
-              etiqueta: 'Categoría',
+              etiqueta: 'Categoria',
               valor: categoriaSeleccionada,
-              opciones: const [
-                'Todas las Categorías',
-                'Antibióticos',
-                'Analgésicos',
-                'Diabetes',
-                'Suplementos',
-              ],
+              opciones: categorias,
               onChanged: onCategoriaChanged,
             ),
           ),
-          const SizedBox(width: 22),
+          const SizedBox(width: 18),
           SizedBox(
             width: 165,
             child: _CampoDropdown(
-              etiqueta: 'Estado de Stock',
+              etiqueta: 'Estado de stock',
               valor: estadoSeleccionado,
               opciones: const [
                 'Todos los estados',
-                'En Existencia',
-                'Stock Bajo',
+                'En existencia',
+                'Stock bajo',
                 'Agotado',
               ],
               onChanged: onEstadoChanged,
@@ -182,18 +255,70 @@ class _PanelFiltrosInventario extends StatelessWidget {
           ),
           const Spacer(),
           _BotonSecundarioCatalogo(
-            texto: 'Filtros Avanzados',
-            icono: Icons.filter_list,
-            onTap: onFiltrosAvanzados,
-          ),
-          const SizedBox(width: 10),
-          _BotonSecundarioCatalogo(
-            texto: 'Exportar CSV',
-            icono: Icons.download,
-            onTap: onExportarCsv,
+            texto: 'Actualizar',
+            icono: Icons.refresh,
+            onTap: onRefrescar,
           ),
         ],
       ),
+    );
+  }
+}
+
+class _CampoBusqueda extends StatelessWidget {
+  final TextEditingController controller;
+  final VoidCallback onBuscar;
+
+  const _CampoBusqueda({
+    required this.controller,
+    required this.onBuscar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Buscar',
+          style: TextStyle(
+            color: _textoSecundario,
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 6),
+        SizedBox(
+          height: 34,
+          child: TextField(
+            controller: controller,
+            onSubmitted: (_) => onBuscar(),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: _grisCampo,
+              hintText: 'Nombre, codigo o lote',
+              hintStyle: const TextStyle(fontSize: 11),
+              prefixIcon: const Icon(Icons.search, size: 16),
+              suffixIcon: IconButton(
+                onPressed: onBuscar,
+                icon: const Icon(Icons.arrow_forward, size: 16),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 7,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(5),
+                borderSide: const BorderSide(color: Color(0xFFC8D6C0)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(5),
+                borderSide: const BorderSide(color: Color(0xFFC8D6C0)),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -213,6 +338,8 @@ class _CampoDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final valorSeguro = opciones.contains(valor) ? valor : opciones.first;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -228,7 +355,7 @@ class _CampoDropdown extends StatelessWidget {
         SizedBox(
           height: 34,
           child: DropdownButtonFormField<String>(
-            value: valor,
+            initialValue: valorSeguro,
             isExpanded: true,
             icon: const Icon(
               Icons.keyboard_arrow_down,
@@ -320,10 +447,12 @@ class _BotonSecundarioCatalogo extends StatelessWidget {
 }
 
 class _TablaInventario extends StatelessWidget {
-  final List<_ProductoInventario> productos;
+  final List<InventarioItem> productos;
+  final ValueChanged<InventarioItem> onVerDetalle;
 
   const _TablaInventario({
     required this.productos,
+    required this.onVerDetalle,
   });
 
   @override
@@ -338,7 +467,10 @@ class _TablaInventario extends StatelessWidget {
         children: [
           const _HeaderTablaInventario(),
           for (final producto in productos)
-            _FilaProductoInventario(producto: producto),
+            _FilaProductoInventario(
+              producto: producto,
+              onVerDetalle: () => onVerDetalle(producto),
+            ),
         ],
       ),
     );
@@ -361,13 +493,14 @@ class _HeaderTablaInventario extends StatelessWidget {
       child: const Row(
         children: [
           SizedBox(width: 22),
-          Expanded(flex: 14, child: _TextoHeaderTabla('CÓDIGO')),
-          Expanded(flex: 30, child: _TextoHeaderTabla('NOMBRE DEL PRODUCTO')),
-          Expanded(flex: 16, child: _TextoHeaderTabla('CATEGORÍA')),
-          Expanded(flex: 15, child: _TextoHeaderTabla('STOCK ACTUAL')),
-          Expanded(flex: 15, child: _TextoHeaderTabla('UNIDAD')),
+          Expanded(flex: 14, child: _TextoHeaderTabla('CODIGO')),
+          Expanded(flex: 28, child: _TextoHeaderTabla('PRODUCTO')),
+          Expanded(flex: 15, child: _TextoHeaderTabla('CATEGORIA')),
+          Expanded(flex: 12, child: _TextoHeaderTabla('STOCK')),
+          Expanded(flex: 15, child: _TextoHeaderTabla('PRECIO')),
+          Expanded(flex: 14, child: _TextoHeaderTabla('LOTE')),
           Expanded(flex: 16, child: _TextoHeaderTabla('ESTADO')),
-          Expanded(flex: 14, child: _TextoHeaderTabla('ACCIONES')),
+          Expanded(flex: 10, child: _TextoHeaderTabla('ACCION')),
           SizedBox(width: 14),
         ],
       ),
@@ -395,10 +528,12 @@ class _TextoHeaderTabla extends StatelessWidget {
 }
 
 class _FilaProductoInventario extends StatelessWidget {
-  final _ProductoInventario producto;
+  final InventarioItem producto;
+  final VoidCallback onVerDetalle;
 
   const _FilaProductoInventario({
     required this.producto,
+    required this.onVerDetalle,
   });
 
   @override
@@ -419,16 +554,18 @@ class _FilaProductoInventario extends StatelessWidget {
           Expanded(
             flex: 14,
             child: Text(
-              producto.codigo,
+              producto.codigoVisible,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: _textoPrincipal,
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: FontWeight.w700,
               ),
             ),
           ),
           Expanded(
-            flex: 30,
+            flex: 28,
             child: Text(
               producto.nombre,
               maxLines: 1,
@@ -441,14 +578,14 @@ class _FilaProductoInventario extends StatelessWidget {
             ),
           ),
           Expanded(
-            flex: 16,
+            flex: 15,
             child: Align(
               alignment: Alignment.centerLeft,
               child: _BadgeCategoria(texto: producto.categoria),
             ),
           ),
           Expanded(
-            flex: 15,
+            flex: 12,
             child: Text(
               producto.stockActual.toString(),
               style: TextStyle(
@@ -465,7 +602,20 @@ class _FilaProductoInventario extends StatelessWidget {
           Expanded(
             flex: 15,
             child: Text(
-              producto.unidad,
+              ConfigMoneda.formato(producto.precioVenta),
+              style: const TextStyle(
+                color: _verdeOscuro,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 14,
+            child: Text(
+              producto.codigoLote.isEmpty ? '-' : producto.codigoLote,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: Color(0xFF526171),
                 fontSize: 11,
@@ -477,12 +627,19 @@ class _FilaProductoInventario extends StatelessWidget {
             flex: 16,
             child: Align(
               alignment: Alignment.centerLeft,
-              child: _BadgeEstado(estado: producto.estado),
+              child: _BadgeEstado(estado: producto.estadoStock),
             ),
           ),
           Expanded(
-            flex: 14,
-            child: _AccionesProducto(producto: producto),
+            flex: 10,
+            child: IconButton(
+              onPressed: onVerDetalle,
+              icon: const Icon(
+                Icons.visibility_outlined,
+                size: 18,
+                color: _verdeOscuro,
+              ),
+            ),
           ),
           const SizedBox(width: 14),
         ],
@@ -510,7 +667,9 @@ class _BadgeCategoria extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
-        texto,
+        texto.isEmpty ? 'General' : texto,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: const TextStyle(
           color: Color(0xFF7C817B),
           fontSize: 8,
@@ -522,7 +681,7 @@ class _BadgeCategoria extends StatelessWidget {
 }
 
 class _BadgeEstado extends StatelessWidget {
-  final _EstadoInventario estado;
+  final EstadoStockInventario estado;
 
   const _BadgeEstado({
     required this.estado,
@@ -535,20 +694,20 @@ class _BadgeEstado extends StatelessWidget {
     String label;
 
     switch (estado) {
-      case _EstadoInventario.enExistencia:
+      case EstadoStockInventario.enExistencia:
         fondo = const Color(0xFFE8F5DD);
         texto = _verdeOscuro;
-        label = '● En Existencia';
+        label = 'En existencia';
         break;
-      case _EstadoInventario.stockBajo:
+      case EstadoStockInventario.stockBajo:
         fondo = const Color(0xFFE7F0FF);
         texto = _azul;
-        label = '● Stock Bajo';
+        label = 'Stock bajo';
         break;
-      case _EstadoInventario.agotado:
+      case EstadoStockInventario.agotado:
         fondo = const Color(0xFFFFE9E9);
         texto = _rojo;
-        label = '● Agotado';
+        label = 'Agotado';
         break;
     }
 
@@ -573,94 +732,154 @@ class _BadgeEstado extends StatelessWidget {
   }
 }
 
-class _AccionesProducto extends StatelessWidget {
-  final _ProductoInventario producto;
+class _EstadoInventarioCatalogo extends StatelessWidget {
+  final String mensaje;
+  final VoidCallback? onReintentar;
 
-  const _AccionesProducto({
+  const _EstadoInventarioCatalogo({
+    required this.mensaje,
+    this.onReintentar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 42),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              mensaje,
+              style: const TextStyle(
+                color: _textoPrincipal,
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            if (onReintentar != null) ...[
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: onReintentar,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Reintentar'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DialogoDetalleInventario extends StatelessWidget {
+  final InventarioItem producto;
+
+  const _DialogoDetalleInventario({
     required this.producto,
   });
 
   @override
   Widget build(BuildContext context) {
-    IconData iconoPrincipal;
-    Color colorPrincipal;
-
-    switch (producto.accionPrincipal) {
-      case _AccionProducto.editar:
-        iconoPrincipal = Icons.edit_square;
-        colorPrincipal = _verdeOscuro;
-        break;
-      case _AccionProducto.comprar:
-        iconoPrincipal = Icons.add_shopping_cart;
-        colorPrincipal = _verdeOscuro;
-        break;
-      case _AccionProducto.lista:
-        iconoPrincipal = Icons.list;
-        colorPrincipal = _verdeOscuro;
-        break;
-    }
-
-    return Row(
-      children: [
-        IconButton(
-          onPressed: () {},
-          icon: Icon(
-            iconoPrincipal,
-            size: 17,
-            color: colorPrincipal,
-          ),
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(
-            minWidth: 26,
-            minHeight: 26,
-          ),
+    return AlertDialog(
+      title: Text(producto.nombre),
+      content: SizedBox(
+        width: 460,
+        child: Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            _DatoInventario(
+                label: 'ID inventario', value: '${producto.idInventario}'),
+            _DatoInventario(
+                label: 'ID producto', value: '${producto.idProducto ?? '-'}'),
+            _DatoInventario(label: 'Codigo', value: producto.codigoVisible),
+            _DatoInventario(label: 'Lote', value: producto.codigoLote),
+            _DatoInventario(label: 'Categoria', value: producto.categoria),
+            _DatoInventario(label: 'Unidad', value: producto.unidad),
+            _DatoInventario(label: 'Stock', value: '${producto.stockActual}'),
+            _DatoInventario(
+              label: 'Precio',
+              value: ConfigMoneda.formato(producto.precioVenta),
+            ),
+            _DatoInventario(
+              label: 'Caducidad',
+              value: _formatoFecha(producto.fechaCaducidad),
+            ),
+            _DatoInventario(
+              label: 'Inventario activo',
+              value: producto.inventarioActivo ? 'Si' : 'No',
+            ),
+            _DatoInventario(
+              label: 'Producto activo',
+              value: producto.productoActivo ? 'Si' : 'No',
+            ),
+          ],
         ),
-        IconButton(
-          onPressed: () {},
-          icon: const Icon(
-            Icons.more_vert,
-            size: 17,
-            color: Color(0xFF006778),
-          ),
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(
-            minWidth: 26,
-            minHeight: 26,
-          ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cerrar'),
         ),
       ],
     );
   }
+
+  String _formatoFecha(DateTime? fecha) {
+    if (fecha == null) {
+      return '-';
+    }
+
+    return '${fecha.day.toString().padLeft(2, '0')}/'
+        '${fecha.month.toString().padLeft(2, '0')}/'
+        '${fecha.year}';
+  }
 }
 
-class _ProductoInventario {
-  final String codigo;
-  final String nombre;
-  final String categoria;
-  final int stockActual;
-  final String unidad;
-  final _EstadoInventario estado;
-  final _AccionProducto accionPrincipal;
+class _DatoInventario extends StatelessWidget {
+  final String label;
+  final String value;
 
-  const _ProductoInventario({
-    required this.codigo,
-    required this.nombre,
-    required this.categoria,
-    required this.stockActual,
-    required this.unidad,
-    required this.estado,
-    required this.accionPrincipal,
+  const _DatoInventario({
+    required this.label,
+    required this.value,
   });
-}
 
-enum _EstadoInventario {
-  enExistencia,
-  stockBajo,
-  agotado,
-}
-
-enum _AccionProducto {
-  editar,
-  comprar,
-  lista,
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 140,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF6F4F1),
+        border: Border.all(color: _bordeSuave),
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: _textoSecundario,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value.isEmpty ? '-' : value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _textoPrincipal,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

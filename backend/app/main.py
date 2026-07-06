@@ -3,11 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.errors import install_error_handlers
 from app.routers import (
+    caja,
+    compras,
     cortes,
+    devoluciones,
     health,
     inventario,
     productos,
     proveedores,
+    servicios_yastas,
     usuarios,
     ventas,
 )
@@ -30,9 +34,13 @@ app.add_middleware(
 install_error_handlers(app)
 
 app.include_router(health.router)
+app.include_router(caja.router)
+app.include_router(devoluciones.router)
 app.include_router(inventario.router)
 app.include_router(cortes.router)
 app.include_router(usuarios.router)
 app.include_router(productos.router)
 app.include_router(proveedores.router)
+app.include_router(compras.router)
+app.include_router(servicios_yastas.router)
 app.include_router(ventas.router)
