@@ -8,11 +8,13 @@ const Color _colorRojo = Color(0xFFE53935);
 class BarraLateralIzquierda extends StatelessWidget {
   final int seleccionado;
   final ValueChanged<int> onSeleccionar;
+  final VoidCallback onLogout;
 
   const BarraLateralIzquierda({
     super.key,
     required this.seleccionado,
     required this.onSeleccionar,
+    required this.onLogout,
   });
 
   @override
@@ -23,7 +25,6 @@ class BarraLateralIzquierda extends StatelessWidget {
       child: Column(
         children: [
           const SizedBox(height: 26),
-
           _BotonMenuLateral(
             indice: 0,
             seleccionado: seleccionado,
@@ -31,9 +32,7 @@ class BarraLateralIzquierda extends StatelessWidget {
             texto: 'Perfil',
             onTap: onSeleccionar,
           ),
-
           const SizedBox(height: 18),
-
           _BotonMenuLateral(
             indice: 1,
             seleccionado: seleccionado,
@@ -41,9 +40,7 @@ class BarraLateralIzquierda extends StatelessWidget {
             texto: 'Venta',
             onTap: onSeleccionar,
           ),
-
           const SizedBox(height: 18),
-
           _BotonMenuLateral(
             indice: 2,
             seleccionado: seleccionado,
@@ -51,9 +48,7 @@ class BarraLateralIzquierda extends StatelessWidget {
             texto: 'Historial',
             onTap: onSeleccionar,
           ),
-
           const SizedBox(height: 18),
-
           _BotonMenuLateral(
             indice: 3,
             seleccionado: seleccionado,
@@ -61,9 +56,7 @@ class BarraLateralIzquierda extends StatelessWidget {
             texto: 'Pedidos',
             onTap: onSeleccionar,
           ),
-
           const SizedBox(height: 18),
-
           _BotonMenuLateral(
             indice: 4,
             seleccionado: seleccionado,
@@ -71,9 +64,7 @@ class BarraLateralIzquierda extends StatelessWidget {
             texto: 'Catálogo',
             onTap: onSeleccionar,
           ),
-
           const SizedBox(height: 18),
-
           _BotonMenuLateral(
             indice: 5,
             seleccionado: seleccionado,
@@ -81,9 +72,7 @@ class BarraLateralIzquierda extends StatelessWidget {
             texto: 'Cajero',
             onTap: onSeleccionar,
           ),
-
           const Spacer(),
-
           IconButton(
             onPressed: () {},
             icon: const Icon(
@@ -92,18 +81,15 @@ class BarraLateralIzquierda extends StatelessWidget {
               color: _colorIcono,
             ),
           ),
-
           const SizedBox(height: 8),
-
           IconButton(
-            onPressed: () {},
+            onPressed: onLogout,
             icon: const Icon(
               Icons.logout,
               size: 20,
               color: _colorRojo,
             ),
           ),
-
           const SizedBox(height: 18),
         ],
       ),

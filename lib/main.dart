@@ -4,6 +4,8 @@ import 'models/medicamento.dart';
 import 'models/usuario.dart';
 import 'services/api_client.dart';
 import 'services/inventario_api_service.dart';
+import 'services/session_service.dart';
+import 'services/ventas_api_service.dart';
 import 'ui/interfaces/barra_lateral_izquierda.dart';
 import 'ui/interfaces/contenido_cajero.dart';
 import 'ui/interfaces/contenido_catalogo_inventario.dart';
@@ -32,7 +34,53 @@ class AngelesurApp extends StatefulWidget {
 }
 
 class _AngelesurAppState extends State<AngelesurApp> {
+  final SessionService _sessionService = SessionService();
+
   Usuario? _usuario;
+  bool _cargandoSesion = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _restaurarSesion();
+  }
+
+  Future<void> _restaurarSesion() async {
+    final usuario = await _sessionService.cargarUsuario();
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _usuario = usuario;
+      _cargandoSesion = false;
+    });
+  }
+
+  Future<void> _iniciarSesion(Usuario usuario) async {
+    await _sessionService.guardarUsuario(usuario);
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _usuario = usuario;
+    });
+  }
+
+  Future<void> _cerrarSesion() async {
+    await _sessionService.cerrarSesion();
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _usuario = null;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,25 +95,42 @@ class _AngelesurAppState extends State<AngelesurApp> {
           brightness: Brightness.light,
         ),
       ),
-      home: _usuario == null
-          ? LoginScreen(
-              onLogin: (usuario) {
-                setState(() {
-                  _usuario = usuario;
-                });
-              },
-            )
-          : VentaPrincipalScreen(usuario: _usuario!),
+      home: _cargandoSesion
+          ? const _PantallaCargandoSesion()
+          : _usuario == null
+              ? LoginScreen(
+                  onLogin: _iniciarSesion,
+                )
+              : VentaPrincipalScreen(
+                  usuario: _usuario!,
+                  onLogout: _cerrarSesion,
+                ),
+    );
+  }
+}
+
+class _PantallaCargandoSesion extends StatelessWidget {
+  const _PantallaCargandoSesion();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: _fondoApp,
+      body: Center(
+        child: CircularProgressIndicator(color: _verde),
+      ),
     );
   }
 }
 
 class VentaPrincipalScreen extends StatefulWidget {
   final Usuario usuario;
+  final VoidCallback onLogout;
 
   const VentaPrincipalScreen({
     super.key,
     required this.usuario,
+    required this.onLogout,
   });
 
   @override
@@ -74,11 +139,13 @@ class VentaPrincipalScreen extends StatefulWidget {
 
 class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
   final InventarioApiService _inventarioApiService = InventarioApiService();
+  final VentasApiService _ventasApiService = VentasApiService();
   final TextEditingController _busquedaController = TextEditingController();
 
   int _menuSeleccionado = 1;
   int _submenuCatalogoSeleccionado = 0;
   bool _cargandoInventario = true;
+  bool _procesandoVenta = false;
   String? _errorInventario;
 
   List<Medicamento> _medicamentos = [];
@@ -225,6 +292,79 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     });
   }
 
+  Future<void> _pagarVenta() async {
+    if (_carrito.isEmpty || _procesandoVenta) {
+      return;
+    }
+
+    final datosPago = await showDialog<_DatosPagoVenta>(
+      context: context,
+      builder: (context) => _DialogoPagoVenta(total: _total),
+    );
+
+    if (datosPago == null) {
+      return;
+    }
+
+    setState(() {
+      _procesandoVenta = true;
+    });
+
+    try {
+      final venta = await _ventasApiService.registrarVenta(
+        idUsuario: widget.usuario.id,
+        medicamentos: _itemsCarrito,
+        cantidades: Map<int, int>.from(_carrito),
+        descuentoGeneral: _descuento,
+        medioPago: datosPago.medio,
+        total: _total,
+        montoRecibido: datosPago.montoRecibido ?? _total,
+        referencia: datosPago.referencia,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _carrito.clear();
+        _procesandoVenta = false;
+      });
+
+      await _cargarInventario();
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Venta ${venta.folio} registrada. Cambio: \$${venta.cambio.toStringAsFixed(2)}',
+          ),
+        ),
+      );
+    } on ApiException catch (error) {
+      _mostrarErrorVenta(error.message);
+    } catch (_) {
+      _mostrarErrorVenta('No se pudo registrar la venta');
+    }
+  }
+
+  void _mostrarErrorVenta(String mensaje) {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _procesandoVenta = false;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensaje)),
+    );
+  }
+
   Widget _construirContenidoCatalogo() {
     switch (_submenuCatalogoSeleccionado) {
       case 0:
@@ -266,6 +406,8 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
           onIncrementar: _incrementarCantidad,
           onDisminuir: _disminuirCantidad,
           onEliminar: _eliminarDelCarrito,
+          onPagar: _pagarVenta,
+          procesandoPago: _procesandoVenta,
         ),
       ],
     );
@@ -274,7 +416,7 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
   Widget _construirContenidoSeleccionado() {
     switch (_menuSeleccionado) {
       case 0:
-        return EditarPerfilScreen();
+        return EditarPerfilScreen(usuario: widget.usuario);
 
       case 1:
         return _construirContenidoVenta();
@@ -304,7 +446,7 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
         );
 
       case 5:
-        return ContenidoCajero();
+        return ContenidoCajero(usuario: widget.usuario);
 
       default:
         return const _InterfazNoEncontrada();
@@ -325,6 +467,7 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
               children: [
                 BarraLateralIzquierda(
                   seleccionado: _menuSeleccionado,
+                  onLogout: widget.onLogout,
                   onSeleccionar: (index) {
                     setState(() {
                       _menuSeleccionado = index;
@@ -381,6 +524,163 @@ class _EstadoInventario extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _DatosPagoVenta {
+  final String medio;
+  final double? montoRecibido;
+  final String? referencia;
+
+  const _DatosPagoVenta({
+    required this.medio,
+    required this.montoRecibido,
+    required this.referencia,
+  });
+}
+
+class _DialogoPagoVenta extends StatefulWidget {
+  final double total;
+
+  const _DialogoPagoVenta({
+    required this.total,
+  });
+
+  @override
+  State<_DialogoPagoVenta> createState() => _DialogoPagoVentaState();
+}
+
+class _DialogoPagoVentaState extends State<_DialogoPagoVenta> {
+  final TextEditingController _montoController = TextEditingController();
+  final TextEditingController _referenciaController = TextEditingController();
+
+  String _medio = 'EFECTIVO';
+  String? _error;
+
+  bool get _esEfectivo => _medio == 'EFECTIVO';
+
+  @override
+  void initState() {
+    super.initState();
+    _montoController.text = widget.total.toStringAsFixed(2);
+  }
+
+  @override
+  void dispose() {
+    _montoController.dispose();
+    _referenciaController.dispose();
+    super.dispose();
+  }
+
+  void _confirmar() {
+    final montoRecibido = double.tryParse(_montoController.text.trim());
+
+    if (_esEfectivo &&
+        (montoRecibido == null || montoRecibido < widget.total)) {
+      setState(() {
+        _error = 'El efectivo recibido debe cubrir el total';
+      });
+      return;
+    }
+
+    Navigator.of(context).pop(
+      _DatosPagoVenta(
+        medio: _medio,
+        montoRecibido: _esEfectivo ? montoRecibido : null,
+        referencia: _referenciaController.text.trim(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Registrar pago'),
+      content: SizedBox(
+        width: 360,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Total: \$${widget.total.toStringAsFixed(2)}',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              initialValue: _medio,
+              decoration: const InputDecoration(
+                labelText: 'Metodo de pago',
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem(value: 'EFECTIVO', child: Text('Efectivo')),
+                DropdownMenuItem(value: 'TARJETA', child: Text('Tarjeta')),
+                DropdownMenuItem(
+                  value: 'TRANSFERENCIA',
+                  child: Text('Transferencia'),
+                ),
+                DropdownMenuItem(
+                  value: 'ELECTRONICO',
+                  child: Text('Electronico'),
+                ),
+                DropdownMenuItem(value: 'OTRO', child: Text('Otro')),
+              ],
+              onChanged: (value) {
+                if (value == null) {
+                  return;
+                }
+
+                setState(() {
+                  _medio = value;
+                  _error = null;
+                });
+              },
+            ),
+            const SizedBox(height: 12),
+            if (_esEfectivo)
+              TextField(
+                controller: _montoController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Monto recibido',
+                  border: OutlineInputBorder(),
+                ),
+              )
+            else
+              TextField(
+                controller: _referenciaController,
+                decoration: const InputDecoration(
+                  labelText: 'Referencia',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            if (_error != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                _error!,
+                style: const TextStyle(color: Colors.red),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: _confirmar,
+          child: const Text('Confirmar'),
+        ),
+      ],
     );
   }
 }
