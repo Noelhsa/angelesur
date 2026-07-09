@@ -13,6 +13,7 @@ import 'ui/interfaces/contenido_catalogo_producto.dart';
 import 'ui/interfaces/contenido_historial.dart';
 import 'ui/interfaces/contenido_pedidos.dart';
 import 'ui/interfaces/contenido_perfil.dart';
+import 'ui/interfaces/contenido_proveedores.dart';
 import 'ui/interfaces/contenido_venta.dart';
 import 'ui/interfaces/menu_carta_carrito.dart';
 import 'ui/interfaces/menu_superior_catalogo.dart';
@@ -425,7 +426,7 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
         return ContenidoHistorial();
 
       case 3:
-        return ContenidoPedidos();
+        return ContenidoPedidos(usuario: widget.usuario);
 
       case 4:
         return Column(
@@ -447,6 +448,9 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
 
       case 5:
         return ContenidoCajero(usuario: widget.usuario);
+
+      case 6:
+        return const ContenidoProveedores();
 
       default:
         return const _InterfazNoEncontrada();

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-const Color _fondoPagina = Color(0xFFF8F6F5);
+import '../../services/productos_api_service.dart';
+
 const Color _verdeOscuro = Color(0xFF397800);
 const Color _verde = Color(0xFF64D20A);
 const Color _textoPrincipal = Color(0xFF101828);
@@ -10,7 +11,7 @@ const Color _grisCampo = Color(0xFFF8F7F4);
 
 class MenuCartaCatalogoProducto extends StatefulWidget {
   final VoidCallback onCerrar;
-  final VoidCallback onGuardarMedicamento;
+  final ValueChanged<ProductoPayload> onGuardarMedicamento;
 
   const MenuCartaCatalogoProducto({
     super.key,
@@ -23,8 +24,7 @@ class MenuCartaCatalogoProducto extends StatefulWidget {
       _MenuCartaCatalogoProductoState();
 }
 
-class _MenuCartaCatalogoProductoState
-    extends State<MenuCartaCatalogoProducto> {
+class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
   final TextEditingController _codigoController =
       TextEditingController(text: '750012345678');
 
@@ -38,6 +38,7 @@ class _MenuCartaCatalogoProductoState
       TextEditingController();
 
   String _tipoSeleccionado = 'Tableta';
+  String? _error;
   String _categoriaSeleccionada = 'Analgésicos';
 
   @override
@@ -144,11 +145,9 @@ class _MenuCartaCatalogoProductoState
                   Row(
                     children: [
                       Expanded(
-                        child: _CampoTextoCatalogo(
+                        child: _CampoFechaCatalogo(
                           etiqueta: 'Fecha de caducidad',
                           controller: _fechaController,
-                          hintText: 'dd/mm/aaaa',
-                          suffixIcon: Icons.calendar_month_outlined,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -163,15 +162,55 @@ class _MenuCartaCatalogoProductoState
                   ),
                   const SizedBox(height: 14),
                   const _AreaCargarFoto(),
+                  if (_error != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      _error!,
+                      style: const TextStyle(
+                        color: Color(0xFFE02020),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
           ),
           _AccionesNuevoMedicamento(
             onCancelar: widget.onCerrar,
-            onGuardar: widget.onGuardarMedicamento,
+            onGuardar: _guardarMedicamento,
           ),
         ],
+      ),
+    );
+  }
+
+  void _guardarMedicamento() {
+    final nombre = _nombreController.text.trim();
+    if (nombre.isEmpty) {
+      setState(() {
+        _error = 'Ingresa el nombre del medicamento';
+      });
+      return;
+    }
+
+    widget.onGuardarMedicamento(
+      ProductoPayload(
+        codigoBarras: _limpiar(_codigoController.text),
+        nombre: nombre,
+        descripcion: _limpiar(_descripcionController.text),
+        tipo: 'MEDICAMENTO',
+        categoria: _categoriaNormalizada(_categoriaSeleccionada),
+        manejaCaducidad: true,
+        infoMedicamento: {
+          'presentacion': _presentacionNormalizada(_tipoSeleccionado),
+          'viaAdministracion': _viaAdministracion(_tipoSeleccionado),
+          'edad': 'GENERAL',
+          'requiereReceta': false,
+          'sustanciaActiva': _limpiar(_principioActivoController.text),
+          'dosis': null,
+        },
       ),
     );
   }
@@ -271,6 +310,55 @@ class _CampoTextoCatalogo extends StatelessWidget {
   }
 }
 
+class _CampoFechaCatalogo extends StatelessWidget {
+  final String etiqueta;
+  final TextEditingController controller;
+
+  const _CampoFechaCatalogo({
+    required this.etiqueta,
+    required this.controller,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _ContenedorCampoCatalogo(
+      etiqueta: etiqueta,
+      child: TextField(
+        controller: controller,
+        readOnly: true,
+        onTap: () => _seleccionarFecha(context),
+        cursorColor: _verdeOscuro,
+        style: const TextStyle(
+          color: _textoPrincipal,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+        decoration: _decoracionCampo(
+          hintText: 'Seleccionar fecha',
+          suffixIcon: Icons.calendar_month_outlined,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _seleccionarFecha(BuildContext context) async {
+    final inicial = _fechaDesdeTexto(controller.text) ??
+        DateTime.now().add(const Duration(days: 365));
+    final seleccionada = await showDatePicker(
+      context: context,
+      initialDate: inicial,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      helpText: 'Selecciona caducidad',
+      cancelText: 'Cancelar',
+      confirmText: 'Aceptar',
+    );
+
+    if (seleccionada == null) return;
+    controller.text = _formatoFechaVisible(seleccionada);
+  }
+}
+
 class _CampoDropdownCatalogo extends StatelessWidget {
   final String etiqueta;
   final String valor;
@@ -289,7 +377,7 @@ class _CampoDropdownCatalogo extends StatelessWidget {
     return _ContenedorCampoCatalogo(
       etiqueta: etiqueta,
       child: DropdownButtonFormField<String>(
-        value: valor,
+        initialValue: valor,
         isExpanded: true,
         icon: const Icon(
           Icons.keyboard_arrow_down,
@@ -526,7 +614,7 @@ class _AccionesNuevoMedicamento extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _verde,
                   elevation: 4,
-                  shadowColor: _verde.withOpacity(0.35),
+                  shadowColor: _verde.withValues(alpha: 0.35),
                   padding: EdgeInsets.zero,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(6),
@@ -539,6 +627,56 @@ class _AccionesNuevoMedicamento extends StatelessWidget {
       ),
     );
   }
+}
+
+String? _limpiar(String value) {
+  final text = value.trim();
+  return text.isEmpty ? null : text;
+}
+
+String _viaAdministracion(String presentacion) {
+  final normalizada = _presentacionNormalizada(presentacion);
+  return switch (normalizada) {
+    'Tableta' => 'TABLETA',
+    'Cápsula' => 'CAPSULA',
+    'Jarabe' => 'JARABE',
+    'Suspensión' => 'SUSPENSION',
+    'Inyectable' => 'INYECCION',
+    'Crema' => 'CREMA',
+    'Spray' => 'AEROSOL',
+    _ => 'OTRO',
+  };
+}
+
+String _presentacionNormalizada(String value) {
+  if (value.toLowerCase().contains('psula')) return 'Cápsula';
+  if (value.startsWith('Suspensi')) return 'Suspensión';
+  return value;
+}
+
+String _categoriaNormalizada(String value) {
+  if (value.startsWith('Analg')) return 'Analgésicos';
+  if (value.startsWith('Antibi')) return 'Antibióticos';
+  if (value.startsWith('G')) return 'Gástrico';
+  return value;
+}
+
+DateTime? _fechaDesdeTexto(String value) {
+  final parts = value.trim().split('/');
+  if (parts.length != 3) return null;
+
+  final day = int.tryParse(parts[0]);
+  final month = int.tryParse(parts[1]);
+  final year = int.tryParse(parts[2]);
+  if (day == null || month == null || year == null) return null;
+
+  return DateTime(year, month, day);
+}
+
+String _formatoFechaVisible(DateTime fecha) {
+  final dia = fecha.day.toString().padLeft(2, '0');
+  final mes = fecha.month.toString().padLeft(2, '0');
+  return '$dia/$mes/${fecha.year}';
 }
 
 InputDecoration _decoracionCampo({

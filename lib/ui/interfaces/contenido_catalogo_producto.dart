@@ -171,6 +171,32 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
     }
   }
 
+  Future<void> _guardarMedicamentoDesdeCarta(ProductoPayload datos) async {
+    setState(() {
+      _procesando = true;
+    });
+
+    try {
+      await _productosApiService.crearProducto(datos);
+      if (!mounted) return;
+      setState(() {
+        _mostrarMenuNuevoProducto = false;
+      });
+      _mostrarMensaje('Medicamento registrado');
+      await _cargarProductos();
+    } on ApiException catch (error) {
+      _mostrarMensaje(error.message);
+    } catch (_) {
+      _mostrarMensaje('No se pudo registrar el medicamento');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _procesando = false;
+        });
+      }
+    }
+  }
+
   Future<void> _cambiarEstado(ProductoCatalogoApi producto) async {
     setState(() {
       _procesando = true;
@@ -210,22 +236,27 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _PanelFiltrosProducto(
+                    busquedaController: _busquedaController,
                     categoriaSeleccionada: _categoriaSeleccionada,
+                    categorias: _categorias,
                     estadoSeleccionado: _estadoSeleccionado,
+                    tipoSeleccionado: _tipoSeleccionado,
+                    procesando: _procesando,
                     onCategoriaChanged: (value) {
                       if (value == null) return;
-                      setState(() {
-                        _categoriaSeleccionada = value;
-                      });
+                      setState(() => _categoriaSeleccionada = value);
                     },
                     onEstadoChanged: (value) {
                       if (value == null) return;
-                      setState(() {
-                        _estadoSeleccionado = value;
-                      });
+                      setState(() => _estadoSeleccionado = value);
                     },
-                    onFiltrosAvanzados: () {},
-                    onExportarCsv: () {},
+                    onTipoChanged: (value) {
+                      if (value == null) return;
+                      setState(() => _tipoSeleccionado = value);
+                      _cargarProductos();
+                    },
+                    onBuscar: _cargarProductos,
+                    onRefrescar: _cargarProductos,
                     onNuevoProducto: () {
                       setState(() {
                         _mostrarMenuNuevoProducto = true;
@@ -233,10 +264,23 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
                     },
                   ),
                   const SizedBox(height: 18),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final anchoTabla =
-                          constraints.maxWidth < 760 ? 760.0 : constraints.maxWidth;
+                  if (_cargando)
+                    const _EstadoProductos(mensaje: 'Cargando productos...')
+                  else if (_error != null)
+                    _EstadoProductos(
+                      mensaje: _error!,
+                      onReintentar: _cargarProductos,
+                    )
+                  else if (_productosFiltrados.isEmpty)
+                    const _EstadoProductos(
+                      mensaje: 'No hay productos para mostrar',
+                    )
+                  else
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final anchoTabla = constraints.maxWidth < 1050
+                            ? 1050.0
+                            : constraints.maxWidth;
 
                         return SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
@@ -244,11 +288,11 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
                             width: anchoTabla,
                             child: _TablaProductos(
                               productos: _productosFiltrados,
-                        procesando: _procesando,
-                        onDetalle: _mostrarDetalle,
-                        onEditar: (producto) =>
-                            _guardarProducto(producto: producto),
-                        onCambiarEstado: _cambiarEstado,
+                              procesando: _procesando,
+                              onDetalle: _mostrarDetalle,
+                              onEditar: (producto) =>
+                                  _guardarProducto(producto: producto),
+                              onCambiarEstado: _cambiarEstado,
                             ),
                           ),
                         );
@@ -265,11 +309,7 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
                   _mostrarMenuNuevoProducto = false;
                 });
               },
-              onGuardarMedicamento: () {
-                setState(() {
-                  _mostrarMenuNuevoProducto = false;
-                });
-              },
+              onGuardarMedicamento: _guardarMedicamentoDesdeCarta,
             ),
         ],
       ),

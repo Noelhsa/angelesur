@@ -72,6 +72,14 @@ class BarraLateralIzquierda extends StatelessWidget {
             texto: 'Cajero',
             onTap: onSeleccionar,
           ),
+          const SizedBox(height: 18),
+          _BotonMenuLateral(
+            indice: 6,
+            seleccionado: seleccionado,
+            icono: Icons.local_shipping_outlined,
+            texto: 'Provee.',
+            onTap: onSeleccionar,
+          ),
           const Spacer(),
           IconButton(
             onPressed: () {},
