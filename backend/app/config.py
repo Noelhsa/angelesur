@@ -5,9 +5,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     db_host: str = "127.0.0.1"
-    db_port: int = 3306
+    db_port: int = 3307
     db_user: str = "root"
-    db_password: str = ""
+    db_password: str = "1234"
     db_name: str = "farmacia_angeles_v2"
     api_host: str = "127.0.0.1"
     api_port: int = 8000

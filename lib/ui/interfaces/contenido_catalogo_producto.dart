@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'menu_carta_catalogo_producto.dart';
 
 const Color _fondoPagina = Color(0xFFF8F6F5);
 const Color _verdeOscuro = Color(0xFF397800);
@@ -19,6 +20,7 @@ class ContenidoCatalogoProducto extends StatefulWidget {
 class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
   String _categoriaSeleccionada = 'Todas las Categorías';
   String _estadoSeleccionado = 'Todos los estados';
+  bool _mostrarMenuNuevoProducto = false;
 
   final List<_ProductoCatalogo> _productos = const [
     _ProductoCatalogo(
@@ -57,51 +59,72 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
   Widget build(BuildContext context) {
     return Container(
       color: _fondoPagina,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(10, 20, 10, 28),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _PanelFiltrosProducto(
-              categoriaSeleccionada: _categoriaSeleccionada,
-              estadoSeleccionado: _estadoSeleccionado,
-              onCategoriaChanged: (value) {
-                if (value == null) return;
-
-                setState(() {
-                  _categoriaSeleccionada = value;
-                });
-              },
-              onEstadoChanged: (value) {
-                if (value == null) return;
-
-                setState(() {
-                  _estadoSeleccionado = value;
-                });
-              },
-              onFiltrosAvanzados: () {},
-              onExportarCsv: () {},
-              onNuevoProducto: () {},
-            ),
-            const SizedBox(height: 18),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final anchoTabla =
-                    constraints.maxWidth < 850 ? 850.0 : constraints.maxWidth;
-
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: SizedBox(
-                    width: anchoTabla,
-                    child: _TablaProductos(
-                      productos: _productos,
-                    ),
+      child: Row(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(10, 20, 10, 28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _PanelFiltrosProducto(
+                    categoriaSeleccionada: _categoriaSeleccionada,
+                    estadoSeleccionado: _estadoSeleccionado,
+                    onCategoriaChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        _categoriaSeleccionada = value;
+                      });
+                    },
+                    onEstadoChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        _estadoSeleccionado = value;
+                      });
+                    },
+                    onFiltrosAvanzados: () {},
+                    onExportarCsv: () {},
+                    onNuevoProducto: () {
+                      setState(() {
+                        _mostrarMenuNuevoProducto = true;
+                      });
+                    },
                   ),
-                );
+                  const SizedBox(height: 18),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final anchoTabla =
+                          constraints.maxWidth < 760 ? 760.0 : constraints.maxWidth;
+
+                      return SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: SizedBox(
+                          width: anchoTabla,
+                          child: _TablaProductos(
+                            productos: _productos,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_mostrarMenuNuevoProducto)
+            MenuCartaCatalogoProducto(
+              onCerrar: () {
+                setState(() {
+                  _mostrarMenuNuevoProducto = false;
+                });
+              },
+              onGuardarMedicamento: () {
+                setState(() {
+                  _mostrarMenuNuevoProducto = false;
+                });
               },
             ),
-          ],
-        ),
+        ],
       ),
     );
   }

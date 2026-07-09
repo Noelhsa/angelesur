@@ -18,6 +18,11 @@ namespace {
 
 constexpr const wchar_t kWindowClassName[] = L"FLUTTER_RUNNER_WIN32_WINDOW";
 
+/// Tamaño mínimo permitido para la ventana.
+/// Si todavía aparece overflow, sube kMinWindowWidth a 1100 o 1150.
+constexpr int kMinWindowWidth = 1100;
+constexpr int kMinWindowHeight = 680;
+
 /// Registry key for app theme preference.
 ///
 /// A value of 0 indicates apps should use dark mode. A non-zero or missing
@@ -179,6 +184,17 @@ Win32Window::MessageHandler(HWND hwnd,
                             WPARAM const wparam,
                             LPARAM const lparam) noexcept {
   switch (message) {
+    case WM_GETMINMAXINFO: {
+      auto minmax_info = reinterpret_cast<MINMAXINFO*>(lparam);
+
+      // Evita que la ventana se haga demasiado pequeña.
+      // Esto ayuda a prevenir overflows visuales en la interfaz Flutter.
+      minmax_info->ptMinTrackSize.x = kMinWindowWidth;
+      minmax_info->ptMinTrackSize.y = kMinWindowHeight;
+
+      return 0;
+    }
+
     case WM_DESTROY:
       window_handle_ = nullptr;
       Destroy();
@@ -197,6 +213,7 @@ Win32Window::MessageHandler(HWND hwnd,
 
       return 0;
     }
+
     case WM_SIZE: {
       RECT rect = GetClientArea();
       if (child_content_ != nullptr) {

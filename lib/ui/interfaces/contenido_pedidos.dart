@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'menu_carta_pedidos.dart';
 
 const Color _fondoPagina = Color(0xFFF8F6F5);
 const Color _verdeOscuro = Color(0xFF397800);
@@ -21,6 +22,7 @@ class ContenidoPedidos extends StatefulWidget {
 class _ContenidoPedidosState extends State<ContenidoPedidos> {
   final TextEditingController _busquedaController = TextEditingController();
 
+  bool _mostrarMenuNuevaOrden = false;
   String _filtroSeleccionado = 'Todos';
 
   final List<_Pedido> _pedidos = const [
@@ -100,32 +102,55 @@ class _ContenidoPedidosState extends State<ContenidoPedidos> {
   Widget build(BuildContext context) {
     return Container(
       color: _fondoPagina,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(22, 22, 22, 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _EncabezadoPedidos(
-              onNuevaOrden: () {},
+      child: Row(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(22, 22, 22, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _EncabezadoPedidos(
+                    onNuevaOrden: () {
+                      setState(() {
+                        _mostrarMenuNuevaOrden = true;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 28),
+                  const _ResumenPedidos(),
+                  const SizedBox(height: 28),
+                  _PanelPedidos(
+                    busquedaController: _busquedaController,
+                    filtroSeleccionado: _filtroSeleccionado,
+                    onFiltroSeleccionado: (filtro) {
+                      setState(() {
+                        _filtroSeleccionado = filtro;
+                      });
+                    },
+                    onBuscar: () {
+                      setState(() {});
+                    },
+                    pedidos: _pedidosFiltrados,
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 28),
-            const _ResumenPedidos(),
-            const SizedBox(height: 28),
-            _PanelPedidos(
-              busquedaController: _busquedaController,
-              filtroSeleccionado: _filtroSeleccionado,
-              onFiltroSeleccionado: (filtro) {
+          ),
+          if (_mostrarMenuNuevaOrden)
+            MenuCartaPedidos(
+              onCerrar: () {
                 setState(() {
-                  _filtroSeleccionado = filtro;
+                  _mostrarMenuNuevaOrden = false;
                 });
               },
-              onBuscar: () {
-                setState(() {});
+              onGuardarOrden: () {
+                setState(() {
+                  _mostrarMenuNuevaOrden = false;
+                });
               },
-              pedidos: _pedidosFiltrados,
             ),
-          ],
-        ),
+        ],
       ),
     );
   }

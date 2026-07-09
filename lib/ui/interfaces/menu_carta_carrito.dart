@@ -317,7 +317,7 @@ class _ResumenCarrito extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 157,
+      height: 178,
       padding: const EdgeInsets.fromLTRB(15, 18, 15, 20),
       decoration: const BoxDecoration(
         color: _blanco,
@@ -341,22 +341,22 @@ class _ResumenCarrito extends StatelessWidget {
             valor: '-${ConfigMoneda.formato(descuento)}',
             color: _rojo,
           ),
-          const SizedBox(height: 13),
+          const SizedBox(height: 9),
           Container(
             height: 1,
             color: _grisLinea,
           ),
-          const SizedBox(height: 11),
+          const SizedBox(height: 9),
           _FilaResumen(
             texto: 'Total',
             valor: ConfigMoneda.formato(total),
             color: _verdeOscuro,
             grande: true,
           ),
-          const SizedBox(height: 9),
+          const SizedBox(height: 30),
           SizedBox(
             width: double.infinity,
-            height: 40,
+            height: 36,
             child: ElevatedButton.icon(
               onPressed: total <= 0 ? null : () {},
               icon: const Icon(
