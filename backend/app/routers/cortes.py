@@ -24,12 +24,18 @@ class CerrarCorteRequest(BaseModel):
 
 @router.get("/resumen")
 def listar_cortes():
-    return fetch_all("SELECT * FROM vw_corte_resumen ORDER BY fechaApertura DESC LIMIT 100")
+    return fetch_all(
+        _select_cortes_resumen_sql()
+        + " ORDER BY r.fechaApertura DESC LIMIT 100"
+    )
 
 
 @router.get("/actual")
 def obtener_corte_actual():
-    return fetch_one("SELECT * FROM vw_corte_resumen WHERE estado = 'ABIERTO' LIMIT 1")
+    return fetch_one(
+        _select_cortes_resumen_sql()
+        + " WHERE r.estado = 'ABIERTO' LIMIT 1"
+    )
 
 
 @router.post("/abrir")
@@ -59,3 +65,57 @@ def cerrar_corte(request: CerrarCorteRequest):
         ],
     )
     return {"status": "cerrado"}
+
+
+def _select_cortes_resumen_sql() -> str:
+    return """
+        SELECT
+            r.*,
+            COALESCE(m.ventasEfectivo, 0) AS ventasEfectivo,
+            COALESCE(m.ventasElectronico, 0) AS ventasElectronico,
+            COALESCE(m.otrosIngresos, 0) AS otrosIngresos,
+            COALESCE(m.salidas, 0) AS salidas,
+            r.efectivoSistema AS efectivoEsperado,
+            r.electronicoSistema AS electronicoEsperado,
+            r.efectivoSistema + r.electronicoSistema AS totalEsperado
+        FROM vw_corte_resumen r
+        LEFT JOIN (
+            SELECT
+                idCorte,
+                SUM(
+                    CASE
+                        WHEN medio = 'EFECTIVO'
+                            AND tipo = 'ENTRADA'
+                            AND concepto = 'VENTA_PRODUCTO'
+                        THEN monto
+                        ELSE 0
+                    END
+                ) AS ventasEfectivo,
+                SUM(
+                    CASE
+                        WHEN medio = 'ELECTRONICO'
+                            AND tipo = 'ENTRADA'
+                            AND concepto = 'VENTA_PRODUCTO'
+                        THEN monto
+                        ELSE 0
+                    END
+                ) AS ventasElectronico,
+                SUM(
+                    CASE
+                        WHEN tipo = 'ENTRADA'
+                            AND concepto <> 'VENTA_PRODUCTO'
+                        THEN monto
+                        ELSE 0
+                    END
+                ) AS otrosIngresos,
+                SUM(
+                    CASE
+                        WHEN tipo = 'SALIDA'
+                        THEN monto
+                        ELSE 0
+                    END
+                ) AS salidas
+            FROM movimiento_dinero
+            GROUP BY idCorte
+        ) m ON m.idCorte = r.idCorte
+    """

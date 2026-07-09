@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../models/usuario.dart';
+
 /// =====================================================================
 /// EditarPerfilScreen
 /// Pantalla de edición de perfil de usuario para el POS de farmacia.
@@ -7,7 +9,12 @@ import 'package:flutter/material.dart';
 /// de datos y preferencias (derecha).
 /// =====================================================================
 class EditarPerfilScreen extends StatefulWidget {
-  const EditarPerfilScreen({super.key});
+  final Usuario usuario;
+
+  const EditarPerfilScreen({
+    super.key,
+    required this.usuario,
+  });
 
   @override
   State<EditarPerfilScreen> createState() => _EditarPerfilScreenState();
@@ -15,11 +22,9 @@ class EditarPerfilScreen extends StatefulWidget {
 
 class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
   // ---- Controladores de los campos ----
-  final _nombreController =
-      TextEditingController(text: 'Carlos Rodríguez');
-  final _correoController =
-      TextEditingController(text: 'carlos.rodriguez@pharmapos.com');
-  final _passwordController = TextEditingController(text: '••••••••');
+  late final TextEditingController _nombreController;
+  late final TextEditingController _correoController;
+  final _passwordController = TextEditingController(text: '********');
 
   bool _passwordVisible = false;
   bool _notificacionesPush = true;
@@ -33,6 +38,13 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
   static const Color _bordeCampo = Color(0xFFE2E2E6);
   static const Color _azulSeguridadFondo = Color(0xFFEFF3FB);
   static const Color _azulSeguridadTexto = Color(0xFF3B5BA9);
+
+  @override
+  void initState() {
+    super.initState();
+    _nombreController = TextEditingController(text: widget.usuario.nombre);
+    _correoController = TextEditingController(text: widget.usuario.username);
+  }
 
   @override
   void dispose() {
@@ -207,10 +219,10 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
             ),
           ),
           const SizedBox(height: 14),
-          const Center(
+          Center(
             child: Text(
-              'Carlos Rodríguez',
-              style: TextStyle(
+              widget.usuario.nombre,
+              style: const TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF1F2430),
@@ -245,9 +257,9 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
           const SizedBox(height: 18),
           const Divider(height: 1, color: _bordeCampo),
           const SizedBox(height: 14),
-          _infoRow('ID de Empleado', '#PH-9921'),
+          _infoRow('ID de Empleado', '#${widget.usuario.id}'),
           const SizedBox(height: 10),
-          _infoRow('Último Acceso', 'Hoy, 08:30 AM'),
+          _infoRow('Rol', widget.usuario.rol),
           const SizedBox(height: 18),
           _buildAvisoSeguridad(),
         ],
@@ -420,8 +432,7 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
                   iconBg: _verdeClaroFondo,
                   label: 'Notificaciones\nPush',
                   value: _notificacionesPush,
-                  onChanged: (v) =>
-                      setState(() => _notificacionesPush = v),
+                  onChanged: (v) => setState(() => _notificacionesPush = v),
                 ),
               ),
               const SizedBox(width: 16),
@@ -432,8 +443,7 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
                   iconBg: const Color(0xFFE9F1FF),
                   label: 'Modo Oscuro\nAutomático',
                   value: _modoOscuroAutomatico,
-                  onChanged: (v) =>
-                      setState(() => _modoOscuroAutomatico = v),
+                  onChanged: (v) => setState(() => _modoOscuroAutomatico = v),
                 ),
               ),
             ],
@@ -451,8 +461,8 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: _bordeCampo),
                   foregroundColor: const Color(0xFF6B7280),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 22, vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -469,8 +479,8 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _verdePrincipal,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 22, vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -541,7 +551,7 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Auxiliar de Farmacia',
+              widget.usuario.rol,
               style: TextStyle(
                 fontSize: 14,
                 color: _grisTextoSecundario,
@@ -570,8 +580,7 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
             size: 18,
             color: _grisTextoSecundario,
           ),
-          onPressed: () =>
-              setState(() => _passwordVisible = !_passwordVisible),
+          onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
         ),
         filled: true,
         fillColor: Colors.white,
