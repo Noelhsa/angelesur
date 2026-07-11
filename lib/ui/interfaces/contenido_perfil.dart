@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 
 import '../../models/usuario.dart';
 
-/// =====================================================================
-/// EditarPerfilScreen
-/// Pantalla de edición de perfil de usuario para el POS de farmacia.
-/// Basada en el diseño: tarjeta de identidad (izquierda) + formulario
-/// de datos y preferencias (derecha).
-/// =====================================================================
-class EditarPerfilScreen extends StatefulWidget {
+const Color _fondoPagina = Color(0xFFE2E2E2);
+const Color _verdeOscuro = Color(0xFF397800);
+const Color _verde = Color(0xFF64D20A);
+const Color _azul = Color(0xFF0B63CE);
+const Color _textoPrincipal = Color(0xFF101828);
+const Color _textoSecundario = Color(0xFF667085);
+const Color _bordeSuave = Color(0xFFD9E6D3);
+const Color _grisCabeceraTabla = Color(0xFFE7E3E3);
+const Color _rojo = Color(0xFFE02020);
+
+class EditarPerfilScreen extends StatelessWidget {
   final Usuario usuario;
 
   const EditarPerfilScreen({
@@ -17,81 +21,166 @@ class EditarPerfilScreen extends StatefulWidget {
   });
 
   @override
-  State<EditarPerfilScreen> createState() => _EditarPerfilScreenState();
+  Widget build(BuildContext context) {
+    return ContenidoPerfil(usuario: usuario);
+  }
 }
 
-class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
-  // ---- Controladores de los campos ----
-  late final TextEditingController _nombreController;
-  late final TextEditingController _correoController;
-  final _passwordController = TextEditingController(text: '********');
+class ContenidoPerfil extends StatefulWidget {
+  final Usuario usuario;
 
-  bool _passwordVisible = false;
-  bool _notificacionesPush = true;
-  bool _modoOscuroAutomatico = false;
-
-  // ---- Colores base del diseño ----
-  static const Color _verdePrincipal = Color(0xFF2E7D32);
-  static const Color _verdeClaroFondo = Color(0xFFE8F5E9);
-  static const Color _grisFondoPagina = Color(0xFFE9E9EB);
-  static const Color _grisTextoSecundario = Color(0xFF6B7280);
-  static const Color _bordeCampo = Color(0xFFE2E2E6);
-  static const Color _azulSeguridadFondo = Color(0xFFEFF3FB);
-  static const Color _azulSeguridadTexto = Color(0xFF3B5BA9);
+  const ContenidoPerfil({
+    super.key,
+    required this.usuario,
+  });
 
   @override
-  void initState() {
-    super.initState();
-    _nombreController = TextEditingController(text: widget.usuario.nombre);
-    _correoController = TextEditingController(text: widget.usuario.username);
+  State<ContenidoPerfil> createState() => _ContenidoPerfilState();
+}
+
+class _ContenidoPerfilState extends State<ContenidoPerfil> {
+  final TextEditingController _busquedaController = TextEditingController();
+
+  String _rolSeleccionado = 'Todos los Roles';
+
+  List<_UsuarioSistema> get _usuarios {
+    return [
+      _UsuarioSistema(
+        nombre: widget.usuario.nombre,
+        telefono: 'Sin teléfono',
+        rol: widget.usuario.rol,
+        ultimoAcceso: 'Sesión actual',
+        estado: _EstadoUsuario.activo,
+        colorAvatar: const Color(0xFFE8F1FF),
+        iniciales: _obtenerIniciales(widget.usuario.nombre),
+      ),
+      const _UsuarioSistema(
+        nombre: 'Carlos Méndez',
+        telefono: '9221119323',
+        rol: 'Cajero',
+        ultimoAcceso: 'Hoy, 08:45 AM',
+        estado: _EstadoUsuario.activo,
+        colorAvatar: Color(0xFFE8F1FF),
+        iniciales: 'CM',
+      ),
+      const _UsuarioSistema(
+        nombre: 'Elena Rodríguez',
+        telefono: '9221772986',
+        rol: 'Admin',
+        ultimoAcceso: 'Ayer, 05:12 PM',
+        estado: _EstadoUsuario.activo,
+        colorAvatar: Color(0xFFEAF7DF),
+        iniciales: 'ER',
+      ),
+      const _UsuarioSistema(
+        nombre: 'Samuel Torres',
+        telefono: '9221887654',
+        rol: 'Auxiliar',
+        ultimoAcceso: '12 Oct, 2023',
+        estado: _EstadoUsuario.inactivo,
+        colorAvatar: Color(0xFFFFE8E8),
+        iniciales: 'ST',
+      ),
+      const _UsuarioSistema(
+        nombre: 'Roberto Díaz',
+        telefono: '9221555555',
+        rol: 'Cajero',
+        ultimoAcceso: 'Hoy, 10:30 AM',
+        estado: _EstadoUsuario.activo,
+        colorAvatar: Color(0xFFE8F1FF),
+        iniciales: 'RD',
+      ),
+    ];
   }
 
   @override
   void dispose() {
-    _nombreController.dispose();
-    _correoController.dispose();
-    _passwordController.dispose();
+    _busquedaController.dispose();
     super.dispose();
+  }
+
+  String _obtenerIniciales(String nombre) {
+    final partes = nombre.trim().split(RegExp(r'\s+'));
+
+    if (partes.isEmpty || partes.first.isEmpty) {
+      return 'US';
+    }
+
+    if (partes.length == 1) {
+      return partes.first.substring(0, 1).toUpperCase();
+    }
+
+    return '${partes[0][0]}${partes[1][0]}'.toUpperCase();
+  }
+
+  List<_UsuarioSistema> get _usuariosFiltrados {
+    final texto = _busquedaController.text.trim().toLowerCase();
+
+    return _usuarios.where((usuario) {
+      final coincideTexto = texto.isEmpty ||
+          usuario.nombre.toLowerCase().contains(texto) ||
+          usuario.telefono.toLowerCase().contains(texto) ||
+          usuario.rol.toLowerCase().contains(texto);
+
+      final coincideRol =
+          _rolSeleccionado == 'Todos los Roles' || usuario.rol == _rolSeleccionado;
+
+      return coincideTexto && coincideRol;
+    }).toList();
+  }
+
+  int get _usuariosActivos {
+    return _usuarios
+        .where((usuario) => usuario.estado == _EstadoUsuario.activo)
+        .length;
+  }
+
+  int get _administradores {
+    return _usuarios.where((usuario) => usuario.rol == 'Admin').length;
+  }
+
+  int get _invitacionesPendientes {
+    return 2;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _grisFondoPagina,
-      body: SafeArea(
+    return Container(
+      color: _fondoPagina,
+      child: Align(
+        alignment: Alignment.topLeft,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1100),
+          child: Container(
+            width: double.infinity,
+            color: _fondoPagina,
+            padding: const EdgeInsets.fromLTRB(26, 26, 26, 34),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(),
+                const _EncabezadoUsuarios(),
                 const SizedBox(height: 28),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isWide = constraints.maxWidth > 800;
-                    final tarjetaIdentidad = _buildTarjetaIdentidad();
-                    final tarjetaFormulario = _buildTarjetaFormulario();
-
-                    if (isWide) {
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(flex: 4, child: tarjetaIdentidad),
-                          const SizedBox(width: 24),
-                          Expanded(flex: 6, child: tarjetaFormulario),
-                        ],
-                      );
-                    }
-                    return Column(
-                      children: [
-                        tarjetaIdentidad,
-                        const SizedBox(height: 24),
-                        tarjetaFormulario,
-                      ],
-                    );
+                _ResumenUsuarios(
+                  totalUsuarios: _usuarios.length,
+                  usuariosActivos: _usuariosActivos,
+                  administradores: _administradores,
+                  invitacionesPendientes: _invitacionesPendientes,
+                ),
+                const SizedBox(height: 28),
+                _PanelUsuarios(
+                  busquedaController: _busquedaController,
+                  rolSeleccionado: _rolSeleccionado,
+                  onBuscar: () {
+                    setState(() {});
                   },
+                  onRolChanged: (value) {
+                    if (value == null) return;
+
+                    setState(() {
+                      _rolSeleccionado = value;
+                    });
+                  },
+                  usuarios: _usuariosFiltrados,
                 ),
               ],
             ),
@@ -100,599 +189,690 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
       ),
     );
   }
+}
 
-  // ---------------------------------------------------------------------
-  // ENCABEZADO
-  // ---------------------------------------------------------------------
-  Widget _buildHeader() {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+class _EncabezadoUsuarios extends StatelessWidget {
+  const _EncabezadoUsuarios();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
       children: [
-        Text(
-          'Editar Perfil',
-          style: TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF1F2430),
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Gestión de Usuarios',
+                style: TextStyle(
+                  color: _textoPrincipal,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              SizedBox(height: 6),
+              Text(
+                'Administre los accesos, roles y permisos del personal de la farmacia.',
+                style: TextStyle(
+                  color: Color(0xFF214025),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ),
-        SizedBox(height: 4),
-        Text(
-          'Actualiza tu información personal y preferencias de la cuenta.',
-          style: TextStyle(
-            fontSize: 14,
-            color: Color(0xFF8A8F98),
+        SizedBox(
+          height: 38,
+          child: ElevatedButton.icon(
+            onPressed: () {},
+            icon: const Icon(
+              Icons.person_add_alt_1,
+              color: Colors.white,
+              size: 17,
+            ),
+            label: const Text(
+              'Nuevo Usuario',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _verdeOscuro,
+              elevation: 6,
+              shadowColor: _verdeOscuro.withValues(alpha: 0.25),
+              padding: const EdgeInsets.symmetric(horizontal: 28),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(7),
+              ),
+            ),
           ),
         ),
       ],
     );
   }
+}
 
-  // ---------------------------------------------------------------------
-  // TARJETA IZQUIERDA: IDENTIDAD
-  // ---------------------------------------------------------------------
-  Widget _buildTarjetaIdentidad() {
-    return _Card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text(
-                'COLOR ',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1,
-                  color: Color(0xFF1F2430),
-                ),
-              ),
-              Text(
-                'PALETTE',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1,
-                  color: _verdePrincipal,
-                ),
-              ),
-            ],
+class _ResumenUsuarios extends StatelessWidget {
+  final int totalUsuarios;
+  final int usuariosActivos;
+  final int administradores;
+  final int invitacionesPendientes;
+
+  const _ResumenUsuarios({
+    required this.totalUsuarios,
+    required this.usuariosActivos,
+    required this.administradores,
+    required this.invitacionesPendientes,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _TarjetaResumenUsuario(
+            titulo: 'Total Usuarios',
+            valor: '$totalUsuarios',
+            icono: Icons.group_outlined,
+            fondoIcono: const Color(0xFFE8F1FF),
+            colorIcono: _azul,
           ),
-          const SizedBox(height: 16),
-          Center(
-            child: SizedBox(
-              width: 140,
-              height: 90,
-              child: Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.center,
-                children: [
-                  // Círculo negro (avatar)
-                  Positioned(
-                    left: 14,
-                    top: 0,
-                    child: _colorCircle(Colors.black, size: 70),
+        ),
+        const SizedBox(width: 22),
+        Expanded(
+          child: _TarjetaResumenUsuario(
+            titulo: 'Usuarios Activos',
+            valor: '$usuariosActivos',
+            icono: Icons.check_circle_outline,
+            fondoIcono: const Color(0xFFE5FFD9),
+            colorIcono: _verde,
+          ),
+        ),
+        const SizedBox(width: 22),
+        Expanded(
+          child: _TarjetaResumenUsuario(
+            titulo: 'Administradores',
+            valor: '$administradores',
+            icono: Icons.admin_panel_settings_outlined,
+            fondoIcono: const Color(0xFFE8E8E8),
+            colorIcono: const Color(0xFF4C555F),
+          ),
+        ),
+        const SizedBox(width: 22),
+        Expanded(
+          child: _TarjetaResumenUsuario(
+            titulo: 'Inv. Pendientes',
+            valor: '$invitacionesPendientes',
+            icono: Icons.mail_outline,
+            fondoIcono: const Color(0xFFE8F1FF),
+            colorIcono: _azul,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TarjetaResumenUsuario extends StatelessWidget {
+  final String titulo;
+  final String valor;
+  final IconData icono;
+  final Color fondoIcono;
+  final Color colorIcono;
+
+  const _TarjetaResumenUsuario({
+    required this.titulo,
+    required this.valor,
+    required this.icono,
+    required this.fondoIcono,
+    required this.colorIcono,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 86,
+      padding: const EdgeInsets.fromLTRB(18, 15, 18, 15),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: _bordeSuave),
+        borderRadius: BorderRadius.circular(9),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  titulo,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF6A736C),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
                   ),
-                  // Círculo gris claro
-                  Positioned(
-                    left: 70,
-                    top: 6,
-                    child: _colorCircle(const Color(0xFFD9D9D9), size: 58),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  valor,
+                  style: const TextStyle(
+                    color: _textoPrincipal,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
                   ),
-                  // Punto azul decorativo
-                  const Positioned(
-                    left: 6,
-                    top: 30,
-                    child: _SmallDot(color: Color(0xFF3B82F6)),
-                  ),
-                  // Punto verde decorativo
-                  const Positioned(
-                    right: 6,
-                    top: 4,
-                    child: _SmallDot(color: Color(0xFF22C55E)),
-                  ),
-                  // Botón de cámara (cambiar foto)
-                  Positioned(
-                    right: 24,
-                    bottom: 0,
-                    child: GestureDetector(
-                      onTap: () {
-                        // TODO: lógica para cambiar foto de perfil
-                      },
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: const BoxDecoration(
-                          color: _verdePrincipal,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.camera_alt,
-                          size: 16,
-                          color: Colors.white,
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: fondoIcono,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icono,
+              color: colorIcono,
+              size: 22,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PanelUsuarios extends StatelessWidget {
+  final TextEditingController busquedaController;
+  final String rolSeleccionado;
+  final VoidCallback onBuscar;
+  final ValueChanged<String?> onRolChanged;
+  final List<_UsuarioSistema> usuarios;
+
+  const _PanelUsuarios({
+    required this.busquedaController,
+    required this.rolSeleccionado,
+    required this.onBuscar,
+    required this.onRolChanged,
+    required this.usuarios,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _fondoPagina,
+        border: Border.all(color: _bordeSuave),
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 310,
+                  height: 38,
+                  child: TextField(
+                    controller: busquedaController,
+                    onChanged: (_) => onBuscar(),
+                    cursorColor: _verdeOscuro,
+                    style: const TextStyle(
+                      color: _textoPrincipal,
+                      fontSize: 12,
+                    ),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: const Color(0xFFF6F4F1),
+                      hintText: 'Buscar por nombre, teléfono o cargo...',
+                      hintStyle: const TextStyle(
+                        color: Color(0xFF7E8790),
+                        fontSize: 12,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 9,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide: const BorderSide(color: Color(0xFFC8D6C0)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide: const BorderSide(color: Color(0xFFC8D6C0)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide: const BorderSide(
+                          color: _verdeOscuro,
+                          width: 1.2,
                         ),
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Center(
-            child: Text(
-              widget.usuario.nombre,
-              style: const TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1F2430),
-              ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: _verdePrincipal,
-                    shape: BoxShape.circle,
+                ),
+                const Spacer(),
+                SizedBox(
+                  width: 140,
+                  height: 38,
+                  child: DropdownButtonFormField<String>(
+                    initialValue: rolSeleccionado,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: const Color(0xFFF6F4F1),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 9,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide: const BorderSide(color: Color(0xFFC8D6C0)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide: const BorderSide(color: Color(0xFFC8D6C0)),
+                      ),
+                    ),
+                    icon: const Icon(
+                      Icons.keyboard_arrow_down,
+                      size: 17,
+                      color: _textoSecundario,
+                    ),
+                    style: const TextStyle(
+                      color: _textoPrincipal,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'Todos los Roles',
+                        child: Text('Todos los Roles'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Admin',
+                        child: Text('Admin'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Cajero',
+                        child: Text('Cajero'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Auxiliar',
+                        child: Text('Auxiliar'),
+                      ),
+                    ],
+                    onChanged: onRolChanged,
                   ),
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  'Sesión Activa',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w500,
-                    color: _verdePrincipal,
+                const SizedBox(width: 10),
+                SizedBox(
+                  height: 38,
+                  child: OutlinedButton.icon(
+                    onPressed: () {},
+                    icon: const Icon(
+                      Icons.filter_list,
+                      size: 15,
+                      color: _textoPrincipal,
+                    ),
+                    label: const Text(
+                      'Filtros',
+                      style: TextStyle(
+                        color: _textoPrincipal,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFFC8D6C0)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 13),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 18),
-          const Divider(height: 1, color: _bordeCampo),
-          const SizedBox(height: 14),
-          _infoRow('ID de Empleado', '#${widget.usuario.id}'),
-          const SizedBox(height: 10),
-          _infoRow('Rol', widget.usuario.rol),
-          const SizedBox(height: 18),
-          _buildAvisoSeguridad(),
-        ],
-      ),
-    );
-  }
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final anchoTabla =
+                  constraints.maxWidth < 900 ? 900.0 : constraints.maxWidth;
 
-  Widget _colorCircle(Color color, {required double size}) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 3),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: anchoTabla,
+                  child: _TablaUsuarios(
+                    usuarios: usuarios,
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _infoRow(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+class _TablaUsuarios extends StatelessWidget {
+  final List<_UsuarioSistema> usuarios;
+
+  const _TablaUsuarios({
+    required this.usuarios,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 13,
-            color: _azulSeguridadTexto,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 13,
-            color: Color(0xFF1F2430),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        const _HeaderTablaUsuarios(),
+        if (usuarios.isEmpty)
+          const _EstadoUsuariosVacio()
+        else
+          for (final usuario in usuarios) _FilaUsuario(usuario: usuario),
       ],
     );
   }
+}
 
-  Widget _buildAvisoSeguridad() {
+class _HeaderTablaUsuarios extends StatelessWidget {
+  const _HeaderTablaUsuarios();
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: _azulSeguridadFondo,
-        borderRadius: BorderRadius.circular(10),
+      height: 54,
+      color: _grisCabeceraTabla,
+      child: const Row(
+        children: [
+          SizedBox(width: 22),
+          Expanded(flex: 23, child: _TextoHeaderTabla('Usuario')),
+          Expanded(flex: 22, child: _TextoHeaderTabla('Teléfono')),
+          Expanded(flex: 15, child: _TextoHeaderTabla('Rol')),
+          Expanded(flex: 18, child: _TextoHeaderTabla('Último\nAcceso')),
+          Expanded(flex: 15, child: _TextoHeaderTabla('Estado')),
+          Expanded(flex: 12, child: _TextoHeaderTabla('Acciones')),
+          SizedBox(width: 16),
+        ],
+      ),
+    );
+  }
+}
+
+class _TextoHeaderTabla extends StatelessWidget {
+  final String texto;
+
+  const _TextoHeaderTabla(this.texto);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      texto,
+      style: const TextStyle(
+        color: Color(0xFF747B65),
+        fontSize: 11,
+        fontWeight: FontWeight.w900,
+      ),
+    );
+  }
+}
+
+class _FilaUsuario extends StatelessWidget {
+  final _UsuarioSistema usuario;
+
+  const _FilaUsuario({
+    required this.usuario,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 72,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(
+            color: Color(0xFFE0E8D8),
+            width: 1,
+          ),
+        ),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.shield_outlined,
-              size: 18, color: _azulSeguridadTexto),
-          const SizedBox(width: 10),
+          const SizedBox(width: 22),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            flex: 23,
+            child: Row(
               children: [
-                Text(
-                  'Seguridad de la cuenta',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: _azulSeguridadTexto,
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: usuario.colorAvatar,
+                  child: Text(
+                    usuario.iniciales,
+                    style: const TextStyle(
+                      color: _textoPrincipal,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Tu contraseña fue actualizada hace 45 días. '
-                  'Recomendamos cambiarla periódicamente.',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    height: 1.4,
-                    color: _azulSeguridadTexto.withOpacity(0.85),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    usuario.nombre,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF56605A),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  // ---------------------------------------------------------------------
-  // TARJETA DERECHA: FORMULARIO
-  // ---------------------------------------------------------------------
-  Widget _buildTarjetaFormulario() {
-    return _Card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _fieldLabel('Nombre Completo'),
-          const SizedBox(height: 6),
-          _buildTextField(
-            controller: _nombreController,
-            icon: Icons.person_outline,
-          ),
-          const SizedBox(height: 18),
-          _fieldLabel('Correo Electrónico'),
-          const SizedBox(height: 6),
-          _buildTextField(
-            controller: _correoController,
-            icon: Icons.mail_outline,
-            borderColor: _verdePrincipal,
-            keyboardType: TextInputType.emailAddress,
-          ),
-          const SizedBox(height: 18),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _fieldLabel('Rol del Sistema'),
-                    const SizedBox(height: 6),
-                    _buildRolDropdownDeshabilitado(),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _fieldLabel('Contraseña'),
-                    const SizedBox(height: 6),
-                    _buildPasswordField(),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'El rol solo puede ser modificado por un administrador.',
-            style: TextStyle(
-              fontSize: 12,
-              color: _grisTextoSecundario,
-            ),
-          ),
-          const SizedBox(height: 22),
-          const Divider(height: 1, color: _bordeCampo),
-          const SizedBox(height: 22),
-          const Text(
-            'Preferencias de Interfaz',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF1F2430),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _buildPreferenciaToggle(
-                  icon: Icons.notifications_none,
-                  iconColor: _verdePrincipal,
-                  iconBg: _verdeClaroFondo,
-                  label: 'Notificaciones\nPush',
-                  value: _notificacionesPush,
-                  onChanged: (v) => setState(() => _notificacionesPush = v),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildPreferenciaToggle(
-                  icon: Icons.dark_mode_outlined,
-                  iconColor: const Color(0xFF3B82F6),
-                  iconBg: const Color(0xFFE9F1FF),
-                  label: 'Modo Oscuro\nAutomático',
-                  value: _modoOscuroAutomatico,
-                  onChanged: (v) => setState(() => _modoOscuroAutomatico = v),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 26),
-          const Divider(height: 1, color: _bordeCampo),
-          const SizedBox(height: 18),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              OutlinedButton(
-                onPressed: () {
-                  // TODO: descartar cambios
-                },
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: _bordeCampo),
-                  foregroundColor: const Color(0xFF6B7280),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Text('Cancelar'),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                onPressed: () {
-                  // TODO: guardar cambios del perfil
-                },
-                icon: const Icon(Icons.save_outlined, size: 18),
-                label: const Text('Guardar Cambios'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _verdePrincipal,
-                  foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  elevation: 0,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _fieldLabel(String text) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: Color(0xFF1F2430),
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required IconData icon,
-    Color borderColor = _bordeCampo,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2430)),
-      decoration: InputDecoration(
-        prefixIcon: Icon(icon, size: 18, color: _grisTextoSecundario),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _bordeCampo),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _bordeCampo),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: borderColor, width: 1.4),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRolDropdownDeshabilitado() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF2F2F4),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _bordeCampo),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.badge_outlined, size: 18, color: _grisTextoSecundario),
-          const SizedBox(width: 10),
           Expanded(
+            flex: 22,
             child: Text(
-              widget.usuario.rol,
-              style: TextStyle(
-                fontSize: 14,
-                color: _grisTextoSecundario,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          Icon(Icons.keyboard_arrow_down,
-              size: 18, color: _grisTextoSecundario),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPasswordField() {
-    return TextField(
-      controller: _passwordController,
-      obscureText: !_passwordVisible,
-      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2430)),
-      decoration: InputDecoration(
-        prefixIcon:
-            Icon(Icons.lock_outline, size: 18, color: _grisTextoSecundario),
-        suffixIcon: IconButton(
-          icon: Icon(
-            _passwordVisible ? Icons.visibility_off : Icons.visibility,
-            size: 18,
-            color: _grisTextoSecundario,
-          ),
-          onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
-        ),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _bordeCampo),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _verdePrincipal, width: 1.4),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPreferenciaToggle({
-    required IconData icon,
-    required Color iconColor,
-    required Color iconBg,
-    required String label,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _bordeCampo),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, size: 18, color: iconColor),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              label,
+              usuario.telefono,
               style: const TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF1F2430),
-                height: 1.2,
+                color: Color(0xFF6A736C),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeColor: Colors.white,
-            activeTrackColor: _verdePrincipal,
-            inactiveThumbColor: Colors.white,
-            inactiveTrackColor: const Color(0xFFD9D9D9),
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          Expanded(
+            flex: 15,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _BadgeRol(rol: usuario.rol),
+            ),
           ),
+          Expanded(
+            flex: 18,
+            child: Text(
+              usuario.ultimoAcceso,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFF6A736C),
+                fontSize: 12,
+                height: 1.3,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 15,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _BadgeEstadoUsuario(estado: usuario.estado),
+            ),
+          ),
+          Expanded(
+            flex: 12,
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: () {},
+                  icon: const Icon(Icons.edit_outlined),
+                  iconSize: 18,
+                  color: _verdeOscuro,
+                  tooltip: 'Editar',
+                ),
+                IconButton(
+                  onPressed: () {},
+                  icon: const Icon(Icons.more_vert),
+                  iconSize: 18,
+                  color: _textoSecundario,
+                  tooltip: 'Más opciones',
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
         ],
       ),
     );
   }
 }
 
-// ===========================================================================
-// WIDGETS AUXILIARES
-// ===========================================================================
+class _BadgeRol extends StatelessWidget {
+  final String rol;
 
-class _Card extends StatelessWidget {
-  final Widget child;
-  const _Card({required this.child});
+  const _BadgeRol({
+    required this.rol,
+  });
 
   @override
   Widget build(BuildContext context) {
+    Color fondo;
+    Color texto;
+
+    switch (rol) {
+      case 'Admin':
+        fondo = const Color(0xFFE8F1FF);
+        texto = _azul;
+        break;
+      case 'Cajero':
+        fondo = const Color(0xFFE4ECFF);
+        texto = const Color(0xFF102A6B);
+        break;
+      default:
+        fondo = const Color(0xFFE4E4E4);
+        texto = const Color(0xFF555D66);
+        break;
+    }
+
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: fondo,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
-      child: child,
+      child: Text(
+        rol,
+        style: TextStyle(
+          color: texto,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
     );
   }
 }
 
-class _SmallDot extends StatelessWidget {
-  final Color color;
-  const _SmallDot({required this.color});
+class _BadgeEstadoUsuario extends StatelessWidget {
+  final _EstadoUsuario estado;
+
+  const _BadgeEstadoUsuario({
+    required this.estado,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final activo = estado == _EstadoUsuario.activo;
+
     return Container(
-      width: 14,
-      height: 14,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 2),
+        color: activo ? const Color(0xFFE8F5DD) : const Color(0xFFFFE8E8),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(
+        activo ? '● Activo' : '● Inactivo',
+        style: TextStyle(
+          color: activo ? _verdeOscuro : _rojo,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+        ),
       ),
     );
   }
+}
+
+class _EstadoUsuariosVacio extends StatelessWidget {
+  const _EstadoUsuariosVacio();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      height: 90,
+      child: Center(
+        child: Text(
+          'No hay usuarios para mostrar',
+          style: TextStyle(
+            color: _textoPrincipal,
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _UsuarioSistema {
+  final String nombre;
+  final String telefono;
+  final String rol;
+  final String ultimoAcceso;
+  final _EstadoUsuario estado;
+  final Color colorAvatar;
+  final String iniciales;
+
+  const _UsuarioSistema({
+    required this.nombre,
+    required this.telefono,
+    required this.rol,
+    required this.ultimoAcceso,
+    required this.estado,
+    required this.colorAvatar,
+    required this.iniciales,
+  });
+}
+
+enum _EstadoUsuario {
+  activo,
+  inactivo,
 }
