@@ -4,7 +4,8 @@ import '../../services/api_client.dart';
 import '../../services/ventas_api_service.dart';
 import '../../utils/config_moneda.dart';
 
-const Color _fondoPagina = Color(0xFFF8F6F5);
+const Color _fondoExterior = Color(0xFFE2E2E2);
+const Color _fondoPagina = Color(0xFFE2E2E2);
 const Color _verdeOscuro = Color(0xFF397800);
 const Color _verdeTexto = Color(0xFF4E8A33);
 const Color _azul = Color(0xFF0B63CE);
@@ -48,6 +49,7 @@ class _ContenidoHistorialState extends State<ContenidoHistorial> {
 
     return _ventas.where((venta) {
       final fecha = venta.fecha;
+
       final coincidePeriodo = switch (_periodoSeleccionado) {
         'Hoy' => fecha != null &&
             fecha.year == ahora.year &&
@@ -130,64 +132,72 @@ class _ContenidoHistorialState extends State<ContenidoHistorial> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: _fondoPagina,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(26, 38, 26, 30),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _EncabezadoHistorial(
-              periodoSeleccionado: _periodoSeleccionado,
-              onPeriodoSeleccionado: (periodo) {
-                setState(() {
-                  _periodoSeleccionado = periodo;
-                });
-              },
-              onRefrescar: _cargarVentas,
-            ),
-            const SizedBox(height: 34),
-            Row(
+      color: _fondoExterior,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SingleChildScrollView(
+          child: Container(
+            width: double.infinity,
+            color: _fondoPagina,
+            padding: const EdgeInsets.fromLTRB(26, 38, 26, 30),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: _PanelFiltros(
-                    estatusSeleccionado: _estatusSeleccionado,
-                    busquedaController: _busquedaController,
-                    onEstatusChanged: (valor) {
-                      if (valor == null) return;
+                _EncabezadoHistorial(
+                  periodoSeleccionado: _periodoSeleccionado,
+                  onPeriodoSeleccionado: (periodo) {
+                    setState(() {
+                      _periodoSeleccionado = periodo;
+                    });
+                  },
+                  onRefrescar: _cargarVentas,
+                ),
+                const SizedBox(height: 34),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _PanelFiltros(
+                        estatusSeleccionado: _estatusSeleccionado,
+                        busquedaController: _busquedaController,
+                        onEstatusChanged: (valor) {
+                          if (valor == null) return;
 
-                      setState(() {
-                        _estatusSeleccionado = valor;
-                      });
-                    },
-                    onAplicarFiltros: () {
-                      setState(() {});
-                    },
+                          setState(() {
+                            _estatusSeleccionado = valor;
+                          });
+                        },
+                        onAplicarFiltros: () {
+                          setState(() {});
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    _TarjetaTotalTurno(
+                      total: _totalFiltrado,
+                      cantidadVentas: _ventasFiltradas.length,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                if (_cargando)
+                  const _EstadoHistorial(mensaje: 'Cargando historial...')
+                else if (_error != null)
+                  _EstadoHistorial(
+                    mensaje: _error!,
+                    onReintentar: _cargarVentas,
+                  )
+                else if (_ventasFiltradas.isEmpty)
+                  const _EstadoHistorial(mensaje: 'No hay ventas para mostrar')
+                else
+                  _TablaHistorialVentas(
+                    ventas: _ventasFiltradas,
+                    onVerDetalle: _mostrarDetalle,
                   ),
-                ),
-                const SizedBox(width: 20),
-                _TarjetaTotalTurno(
-                  total: _totalFiltrado,
-                  cantidadVentas: _ventasFiltradas.length,
-                ),
               ],
             ),
-            const SizedBox(height: 32),
-            if (_cargando)
-              const _EstadoHistorial(mensaje: 'Cargando historial...')
-            else if (_error != null)
-              _EstadoHistorial(
-                mensaje: _error!,
-                onReintentar: _cargarVentas,
-              )
-            else if (_ventasFiltradas.isEmpty)
-              const _EstadoHistorial(mensaje: 'No hay ventas para mostrar')
-            else
-              _TablaHistorialVentas(
-                ventas: _ventasFiltradas,
-                onVerDetalle: _mostrarDetalle,
-              ),
-          ],
+          ),
         ),
       ),
     );
@@ -536,8 +546,8 @@ class _TarjetaTotalTurno extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 310,
-      height: 110,
-      padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+      height: 122,
+      padding: const EdgeInsets.fromLTRB(22, 16, 22, 14),
       decoration: BoxDecoration(
         color: const Color(0xFFF2FAEE),
         border: Border.all(color: _bordeSuave),
@@ -555,7 +565,7 @@ class _TarjetaTotalTurno extends StatelessWidget {
               letterSpacing: 1.2,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -566,14 +576,14 @@ class _TarjetaTotalTurno extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: _textoPrincipal,
-                    fontSize: 27,
+                    fontSize: 26,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Padding(
-                padding: const EdgeInsets.only(bottom: 5),
+                padding: const EdgeInsets.only(bottom: 4),
                 child: Text(
                   '$cantidadVentas ventas',
                   style: const TextStyle(
@@ -585,7 +595,7 @@ class _TarjetaTotalTurno extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
           const Text(
             'Ventas del periodo seleccionado',
             style: TextStyle(
@@ -915,9 +925,10 @@ class _EstadoHistorial extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return Align(
+      alignment: Alignment.topCenter,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 42),
+        padding: const EdgeInsets.only(top: 42, bottom: 42),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1047,7 +1058,9 @@ class _ResumenDetalleVenta extends StatelessWidget {
         _DatoDetalle(label: 'Fecha', value: _formatoFechaHora(venta.fecha)),
         _DatoDetalle(label: 'Estatus', value: venta.estatus),
         _DatoDetalle(
-            label: 'Subtotal', value: ConfigMoneda.formato(venta.subtotal)),
+          label: 'Subtotal',
+          value: ConfigMoneda.formato(venta.subtotal),
+        ),
         _DatoDetalle(
           label: 'Descuento',
           value: ConfigMoneda.formato(venta.descuento),
@@ -1058,7 +1071,9 @@ class _ResumenDetalleVenta extends StatelessWidget {
           value: ConfigMoneda.formato(venta.montoRecibido),
         ),
         _DatoDetalle(
-            label: 'Cambio', value: ConfigMoneda.formato(venta.cambio)),
+          label: 'Cambio',
+          value: ConfigMoneda.formato(venta.cambio),
+        ),
       ],
     );
   }

@@ -6,7 +6,8 @@ import '../../services/compras_api_service.dart';
 import '../../utils/config_moneda.dart';
 import 'menu_carta_pedidos.dart';
 
-const Color _fondoPagina = Color(0xFFF8F6F5);
+const Color _fondoExterior = Color(0xFFE2E2E2);
+const Color _fondoPagina = Color(0xFFE2E2E2);
 const Color _verdeOscuro = Color(0xFF397800);
 const Color _azul = Color(0xFF0B63CE);
 const Color _textoPrincipal = Color(0xFF101828);
@@ -195,50 +196,58 @@ class _ContenidoPedidosState extends State<ContenidoPedidos> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: _fondoPagina,
+      color: _fondoExterior,
       child: Row(
         children: [
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(22, 22, 22, 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _EncabezadoPedidos(
-                    onNuevaOrden: () {
-                      setState(() {
-                        _mostrarMenuNuevaOrden = true;
-                      });
-                    },
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: SingleChildScrollView(
+                child: Container(
+                  width: double.infinity,
+                  color: _fondoPagina,
+                  padding: const EdgeInsets.fromLTRB(22, 22, 22, 32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _EncabezadoPedidos(
+                        onNuevaOrden: () {
+                          setState(() {
+                            _mostrarMenuNuevaOrden = true;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 28),
+                      _ResumenPedidos(compras: _compras),
+                      const SizedBox(height: 28),
+                      if (_cargando)
+                        const _EstadoPedidos(mensaje: 'Cargando compras...')
+                      else if (_error != null)
+                        _EstadoPedidos(
+                          mensaje: _error!,
+                          onReintentar: _cargarCompras,
+                        )
+                      else
+                        _PanelPedidos(
+                          busquedaController: _busquedaController,
+                          filtroSeleccionado: _filtroSeleccionado,
+                          onFiltroSeleccionado: (filtro) {
+                            setState(() {
+                              _filtroSeleccionado = filtro;
+                            });
+                          },
+                          onBuscar: () {
+                            setState(() {});
+                          },
+                          compras: _comprasFiltradas,
+                          procesando: _procesando,
+                          onDetalle: _mostrarDetalle,
+                          onCancelar: _cancelarCompra,
+                        ),
+                    ],
                   ),
-                  const SizedBox(height: 28),
-                  _ResumenPedidos(compras: _compras),
-                  const SizedBox(height: 28),
-                  if (_cargando)
-                    const _EstadoPedidos(mensaje: 'Cargando compras...')
-                  else if (_error != null)
-                    _EstadoPedidos(
-                      mensaje: _error!,
-                      onReintentar: _cargarCompras,
-                    )
-                  else
-                    _PanelPedidos(
-                      busquedaController: _busquedaController,
-                      filtroSeleccionado: _filtroSeleccionado,
-                      onFiltroSeleccionado: (filtro) {
-                        setState(() {
-                          _filtroSeleccionado = filtro;
-                        });
-                      },
-                      onBuscar: () {
-                        setState(() {});
-                      },
-                      compras: _comprasFiltradas,
-                      procesando: _procesando,
-                      onDetalle: _mostrarDetalle,
-                      onCancelar: _cancelarCompra,
-                    ),
-                ],
+                ),
               ),
             ),
           ),
@@ -910,9 +919,10 @@ class _EstadoPedidos extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return Align(
+      alignment: Alignment.topCenter,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 34),
+        padding: const EdgeInsets.only(top: 34, bottom: 34),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
