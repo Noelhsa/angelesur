@@ -1,224 +1,293 @@
 import 'package:flutter/material.dart';
 
+import '../../models/usuario.dart';
+import '../../services/api_client.dart';
+import '../../services/compras_api_service.dart';
+import '../../services/devoluciones_api_service.dart';
+import '../../services/ventas_api_service.dart';
 import '../../utils/config_moneda.dart';
-import 'menu_carta_devolucion_cliente.dart';
-import 'menu_carta_devolucion_proveedor.dart';
 
 const Color _fondoPagina = Color(0xFFE2E2E2);
 const Color _verdeOscuro = Color(0xFF397800);
-const Color _verde = Color(0xFF64D20A);
 const Color _azul = Color(0xFF0B63CE);
 const Color _textoPrincipal = Color(0xFF101828);
 const Color _textoSecundario = Color(0xFF667085);
 const Color _bordeSuave = Color(0xFFD9E6D3);
 const Color _grisCabeceraTabla = Color(0xFFE7E3E3);
 const Color _rojo = Color(0xFFE02020);
-const Color _naranja = Color(0xFFFF8A00);
 
 class ContenidoDevolucion extends StatefulWidget {
-  const ContenidoDevolucion({super.key});
+  final Usuario usuario;
+
+  const ContenidoDevolucion({
+    super.key,
+    required this.usuario,
+  });
 
   @override
   State<ContenidoDevolucion> createState() => _ContenidoDevolucionState();
 }
 
 class _ContenidoDevolucionState extends State<ContenidoDevolucion> {
+  final DevolucionesApiService _devolucionesApiService =
+      DevolucionesApiService();
+  final VentasApiService _ventasApiService = VentasApiService();
+  final ComprasApiService _comprasApiService = ComprasApiService();
+
   String _filtroSeleccionado = 'Todos';
-  bool _mostrarMenuDevolucionCliente = false;
-  bool _mostrarMenuDevolucionProveedor = false;
+  bool _cargando = true;
+  bool _procesando = false;
+  String? _error;
+  List<DevolucionClienteResumen> _clientes = [];
+  List<DevolucionProveedorResumen> _proveedores = [];
 
-  final List<_Devolucion> _devoluciones = const [
-    _Devolucion(
-      id: '#RET-8842',
-      fecha: '12 Oct 2023',
-      tipo: _TipoDevolucion.cliente,
-      observaciones: 'Caducidad próxima',
-      estado: _EstadoDevolucion.procesado,
-      total: 450.00,
-    ),
-    _Devolucion(
-      id: '#RET-8843',
-      fecha: '12 Oct 2023',
-      tipo: _TipoDevolucion.proveedor,
-      observaciones: 'Producto dañado',
-      estado: _EstadoDevolucion.pendiente,
-      total: 1200.50,
-    ),
-    _Devolucion(
-      id: '#RET-8844',
-      fecha: '11 Oct 2023',
-      tipo: _TipoDevolucion.cliente,
-      observaciones: 'Error en despacho',
-      estado: _EstadoDevolucion.procesado,
-      total: 85.00,
-    ),
-    _Devolucion(
-      id: '#RET-8845',
-      fecha: '11 Oct 2023',
-      tipo: _TipoDevolucion.cliente,
-      observaciones: 'Caducidad',
-      estado: _EstadoDevolucion.pendiente,
-      total: 120.00,
-    ),
-    _Devolucion(
-      id: '#RET-8846',
-      fecha: '10 Oct 2023',
-      tipo: _TipoDevolucion.proveedor,
-      observaciones: 'Sobrestock / Acuerdo',
-      estado: _EstadoDevolucion.procesado,
-      total: 3400.00,
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _cargarDevoluciones();
+  }
 
-  List<_Devolucion> get _devolucionesFiltradas {
-    return _devoluciones.where((devolucion) {
-      if (_filtroSeleccionado == 'Clientes') {
-        return devolucion.tipo == _TipoDevolucion.cliente;
+  List<_DevolucionFila> get _devoluciones {
+    final items = <_DevolucionFila>[
+      ..._clientes.map(_DevolucionFila.cliente),
+      ..._proveedores.map(_DevolucionFila.proveedor),
+    ];
+
+    items.sort((a, b) {
+      final fechaA = a.fecha ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final fechaB = b.fecha ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return fechaB.compareTo(fechaA);
+    });
+
+    return items.where((item) {
+      if (_filtroSeleccionado == 'Clientes') return item.esCliente;
+      if (_filtroSeleccionado == 'Proveedores') return item.esProveedor;
+      if (_filtroSeleccionado == 'Canceladas') {
+        return item.estatus == 'CANCELADA';
       }
-
-      if (_filtroSeleccionado == 'Proveedores') {
-        return devolucion.tipo == _TipoDevolucion.proveedor;
-      }
-
       return true;
     }).toList();
   }
 
   double get _totalRetornos {
-    return _devoluciones.fold<double>(
-      0,
-      (total, devolucion) => total + devolucion.total,
+    return _clientes.fold<double>(
+          0,
+          (total, item) => total + item.totalDevuelto,
+        ) +
+        _proveedores.fold<double>(
+          0,
+          (total, item) => total + item.totalDevolucion,
+        );
+  }
+
+  Future<void> _cargarDevoluciones() async {
+    setState(() {
+      _cargando = true;
+      _error = null;
+    });
+
+    try {
+      final results = await Future.wait([
+        _devolucionesApiService.listarClientes(limite: 300),
+        _devolucionesApiService.listarProveedores(limite: 300),
+      ]);
+
+      if (!mounted) return;
+      setState(() {
+        _clientes = results[0] as List<DevolucionClienteResumen>;
+        _proveedores = results[1] as List<DevolucionProveedorResumen>;
+        _cargando = false;
+      });
+    } on ApiException catch (error) {
+      _mostrarError(error.message);
+    } catch (_) {
+      _mostrarError('No se pudieron cargar las devoluciones');
+    }
+  }
+
+  void _mostrarError(String mensaje) {
+    if (!mounted) return;
+    setState(() {
+      _error = mensaje;
+      _cargando = false;
+      _procesando = false;
+    });
+  }
+
+  void _mostrarMensaje(String mensaje) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensaje)),
     );
   }
 
-  int get _devolucionesClientes {
-    return _devoluciones
-        .where((devolucion) => devolucion.tipo == _TipoDevolucion.cliente)
-        .length;
-  }
-
-  int get _devolucionesProveedores {
-    return _devoluciones
-        .where((devolucion) => devolucion.tipo == _TipoDevolucion.proveedor)
-        .length;
-  }
-
-  void _abrirMenuDevolucionCliente() {
-    setState(() {
-      _mostrarMenuDevolucionProveedor = false;
-      _mostrarMenuDevolucionCliente = true;
-    });
-  }
-
-  void _cerrarMenuDevolucionCliente() {
-    setState(() {
-      _mostrarMenuDevolucionCliente = false;
-    });
-  }
-
-  void _guardarDevolucionCliente() {
-    setState(() {
-      _mostrarMenuDevolucionCliente = false;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Devolución a cliente guardada localmente. Falta conectar endpoint.',
-        ),
+  Future<void> _registrarCliente() async {
+    final payload = await showDialog<RegistrarDevolucionClientePayload>(
+      context: context,
+      builder: (context) => _DialogoNuevaDevolucionCliente(
+        idUsuario: widget.usuario.id,
+        ventasApiService: _ventasApiService,
       ),
     );
+
+    if (payload == null) return;
+
+    setState(() => _procesando = true);
+    try {
+      final devolucion =
+          await _devolucionesApiService.registrarCliente(payload);
+      _mostrarMensaje('Devolucion ${devolucion.folio} registrada');
+      await _cargarDevoluciones();
+    } on ApiException catch (error) {
+      _mostrarMensaje(error.message);
+    } catch (_) {
+      _mostrarMensaje('No se pudo registrar la devolucion de cliente');
+    } finally {
+      if (mounted) setState(() => _procesando = false);
+    }
   }
 
-  void _abrirMenuDevolucionProveedor() {
-    setState(() {
-      _mostrarMenuDevolucionCliente = false;
-      _mostrarMenuDevolucionProveedor = true;
-    });
-  }
-
-  void _cerrarMenuDevolucionProveedor() {
-    setState(() {
-      _mostrarMenuDevolucionProveedor = false;
-    });
-  }
-
-  void _guardarDevolucionProveedor() {
-    setState(() {
-      _mostrarMenuDevolucionProveedor = false;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Devolución a proveedor guardada localmente. Falta conectar endpoint.',
-        ),
+  Future<void> _registrarProveedor() async {
+    final payload = await showDialog<RegistrarDevolucionProveedorPayload>(
+      context: context,
+      builder: (context) => _DialogoNuevaDevolucionProveedor(
+        idUsuario: widget.usuario.id,
+        comprasApiService: _comprasApiService,
       ),
     );
+
+    if (payload == null) return;
+
+    setState(() => _procesando = true);
+    try {
+      final devolucion =
+          await _devolucionesApiService.registrarProveedor(payload);
+      _mostrarMensaje('Devolucion ${devolucion.folio} registrada');
+      await _cargarDevoluciones();
+    } on ApiException catch (error) {
+      _mostrarMensaje(error.message);
+    } catch (_) {
+      _mostrarMensaje('No se pudo registrar la devolucion a proveedor');
+    } finally {
+      if (mounted) setState(() => _procesando = false);
+    }
+  }
+
+  Future<void> _verDetalle(_DevolucionFila item) async {
+    showDialog<void>(
+      context: context,
+      builder: (context) => item.esCliente
+          ? _DialogoDetalleCliente(
+              future: _devolucionesApiService.obtenerCliente(item.id),
+            )
+          : _DialogoDetalleProveedor(
+              future: _devolucionesApiService.obtenerProveedor(item.id),
+            ),
+    );
+  }
+
+  Future<void> _cancelar(_DevolucionFila item) async {
+    if (item.estatus == 'CANCELADA' || _procesando) return;
+
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancelar devolucion'),
+        content: Text('Se cancelara la devolucion ${item.folio}.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Volver'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Cancelar devolucion'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true) return;
+
+    setState(() => _procesando = true);
+    try {
+      if (item.esCliente) {
+        await _devolucionesApiService.cancelarCliente(
+          idDevolucion: item.id,
+          idUsuario: widget.usuario.id,
+          observaciones: 'Cancelada desde interfaz',
+        );
+      } else {
+        await _devolucionesApiService.cancelarProveedor(
+          idDevolucion: item.id,
+          idUsuario: widget.usuario.id,
+          observaciones: 'Cancelada desde interfaz',
+        );
+      }
+      _mostrarMensaje('Devolucion cancelada');
+      await _cargarDevoluciones();
+    } on ApiException catch (error) {
+      _mostrarMensaje(error.message);
+    } catch (_) {
+      _mostrarMensaje('No se pudo cancelar la devolucion');
+    } finally {
+      if (mounted) setState(() => _procesando = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
       color: _fondoPagina,
-      child: Row(
-        children: [
-          Expanded(
-            child: Align(
-              alignment: Alignment.topLeft,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(26, 26, 26, 34),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _EncabezadoDevoluciones(
-                      onDevolucionProveedor: _abrirMenuDevolucionProveedor,
-                      onDevolucionCliente: _abrirMenuDevolucionCliente,
-                    ),
-                    const SizedBox(height: 28),
-                    _ResumenDevoluciones(
-                      devolucionesClientes: _devolucionesClientes,
-                      devolucionesProveedores: _devolucionesProveedores,
-                      totalRetornos: _totalRetornos,
-                    ),
-                    const SizedBox(height: 28),
-                    _PanelDevoluciones(
-                      filtroSeleccionado: _filtroSeleccionado,
-                      onFiltroSeleccionado: (filtro) {
-                        setState(() {
-                          _filtroSeleccionado = filtro;
-                        });
-                      },
-                      devoluciones: _devolucionesFiltradas,
-                    ),
-                    const SizedBox(height: 28),
-                    const _MotivosDevolucion(),
-                  ],
-                ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(26, 26, 26, 34),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _EncabezadoDevoluciones(
+              procesando: _procesando,
+              onDevolucionProveedor: _registrarProveedor,
+              onDevolucionCliente: _registrarCliente,
+            ),
+            const SizedBox(height: 28),
+            _ResumenDevoluciones(
+              devolucionesClientes: _clientes.length,
+              devolucionesProveedores: _proveedores.length,
+              totalRetornos: _totalRetornos,
+            ),
+            const SizedBox(height: 28),
+            if (_cargando)
+              const _EstadoDevoluciones(mensaje: 'Cargando devoluciones...')
+            else if (_error != null)
+              _EstadoDevoluciones(
+                mensaje: _error!,
+                onReintentar: _cargarDevoluciones,
+              )
+            else
+              _PanelDevoluciones(
+                filtroSeleccionado: _filtroSeleccionado,
+                onFiltroSeleccionado: (filtro) {
+                  setState(() => _filtroSeleccionado = filtro);
+                },
+                devoluciones: _devoluciones,
+                onDetalle: _verDetalle,
+                onCancelar: _cancelar,
+                procesando: _procesando,
               ),
-            ),
-          ),
-          if (_mostrarMenuDevolucionCliente)
-            MenuCartaDevolucionCliente(
-              onCerrar: _cerrarMenuDevolucionCliente,
-              onGuardarDevolucion: _guardarDevolucionCliente,
-            ),
-          if (_mostrarMenuDevolucionProveedor)
-            MenuCartaDevolucionProveedor(
-              onCerrar: _cerrarMenuDevolucionProveedor,
-              onGuardarDevolucion: _guardarDevolucionProveedor,
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
 class _EncabezadoDevoluciones extends StatelessWidget {
+  final bool procesando;
   final VoidCallback onDevolucionProveedor;
   final VoidCallback onDevolucionCliente;
 
   const _EncabezadoDevoluciones({
+    required this.procesando,
     required this.onDevolucionProveedor,
     required this.onDevolucionCliente,
   });
@@ -232,7 +301,7 @@ class _EncabezadoDevoluciones extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Gestión de Devoluciones',
+                'Gestion de Devoluciones',
                 style: TextStyle(
                   color: _textoPrincipal,
                   fontSize: 28,
@@ -241,7 +310,7 @@ class _EncabezadoDevoluciones extends StatelessWidget {
               ),
               SizedBox(height: 6),
               Text(
-                'Monitoreo y procesamiento de retornos de inventario en tiempo real.',
+                'Retornos de clientes y devoluciones a proveedores desde la base de datos.',
                 style: TextStyle(
                   color: Color(0xFF214025),
                   fontSize: 13,
@@ -254,57 +323,24 @@ class _EncabezadoDevoluciones extends StatelessWidget {
         SizedBox(
           height: 38,
           child: OutlinedButton.icon(
-            onPressed: onDevolucionProveedor,
-            icon: const Icon(
-              Icons.local_shipping_outlined,
-              color: _textoPrincipal,
-              size: 16,
-            ),
-            label: const Text(
-              'Devolución a Proveedor',
-              style: TextStyle(
-                color: _textoPrincipal,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            style: OutlinedButton.styleFrom(
-              backgroundColor: const Color(0xFFF6F4F1),
-              side: const BorderSide(color: Color(0xFFC8D6C0)),
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6),
-              ),
-            ),
+            onPressed: procesando ? null : onDevolucionProveedor,
+            icon: const Icon(Icons.local_shipping_outlined, size: 16),
+            label: const Text('Devolucion a Proveedor'),
           ),
         ),
         const SizedBox(width: 12),
         SizedBox(
           height: 38,
           child: ElevatedButton.icon(
-            onPressed: onDevolucionCliente,
-            icon: const Icon(
-              Icons.person_outline,
-              color: Colors.white,
-              size: 17,
-            ),
+            onPressed: procesando ? null : onDevolucionCliente,
+            icon:
+                const Icon(Icons.person_outline, color: Colors.white, size: 17),
             label: const Text(
-              'Devolución a Cliente',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-              ),
+              'Devolucion a Cliente',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
             ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _verdeOscuro,
-              elevation: 6,
-              shadowColor: _verdeOscuro.withOpacity(0.25),
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(7),
-              ),
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: _verdeOscuro),
           ),
         ),
       ],
@@ -331,10 +367,7 @@ class _ResumenDevoluciones extends StatelessWidget {
           child: _TarjetaResumenDevolucion(
             titulo: 'Devoluciones de Clientes',
             valor: '$devolucionesClientes',
-            extra: '+12%',
-            extraColor: _verdeOscuro,
             icono: Icons.manage_accounts_outlined,
-            fondoIcono: const Color(0xFFEAF7DF),
             colorIcono: _verdeOscuro,
           ),
         ),
@@ -343,10 +376,7 @@ class _ResumenDevoluciones extends StatelessWidget {
           child: _TarjetaResumenDevolucion(
             titulo: 'Devoluciones a Proveedores',
             valor: '$devolucionesProveedores',
-            extra: '-5%',
-            extraColor: _rojo,
             icono: Icons.local_shipping_outlined,
-            fondoIcono: const Color(0xFFE8F1FF),
             colorIcono: _azul,
           ),
         ),
@@ -355,10 +385,7 @@ class _ResumenDevoluciones extends StatelessWidget {
           child: _TarjetaResumenDevolucion(
             titulo: 'Total en Retornos',
             valor: ConfigMoneda.formato(totalRetornos),
-            extra: '',
-            extraColor: _verdeOscuro,
             icono: Icons.inventory_2_outlined,
-            fondoIcono: const Color(0xFFE8F8EE),
             colorIcono: _verdeOscuro,
           ),
         ),
@@ -370,19 +397,13 @@ class _ResumenDevoluciones extends StatelessWidget {
 class _TarjetaResumenDevolucion extends StatelessWidget {
   final String titulo;
   final String valor;
-  final String extra;
-  final Color extraColor;
   final IconData icono;
-  final Color fondoIcono;
   final Color colorIcono;
 
   const _TarjetaResumenDevolucion({
     required this.titulo,
     required this.valor,
-    required this.extra,
-    required this.extraColor,
     required this.icono,
-    required this.fondoIcono,
     required this.colorIcono,
   });
 
@@ -395,13 +416,6 @@ class _TarjetaResumenDevolucion extends StatelessWidget {
         color: Colors.white,
         border: Border.all(color: _bordeSuave),
         borderRadius: BorderRadius.circular(9),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
       ),
       child: Row(
         children: [
@@ -409,14 +423,10 @@ class _TarjetaResumenDevolucion extends StatelessWidget {
             width: 43,
             height: 43,
             decoration: BoxDecoration(
-              color: fondoIcono,
+              color: const Color(0xFFEAF7DF),
               borderRadius: BorderRadius.circular(7),
             ),
-            child: Icon(
-              icono,
-              color: colorIcono,
-              size: 23,
-            ),
+            child: Icon(icono, color: colorIcono, size: 23),
           ),
           const SizedBox(width: 18),
           Expanded(
@@ -435,32 +445,15 @@ class _TarjetaResumenDevolucion extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 5),
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        valor,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: _textoPrincipal,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                    if (extra.isNotEmpty) ...[
-                      const SizedBox(width: 6),
-                      Text(
-                        extra,
-                        style: TextStyle(
-                          color: extraColor,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ],
+                Text(
+                  valor,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _textoPrincipal,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ],
             ),
@@ -474,12 +467,18 @@ class _TarjetaResumenDevolucion extends StatelessWidget {
 class _PanelDevoluciones extends StatelessWidget {
   final String filtroSeleccionado;
   final ValueChanged<String> onFiltroSeleccionado;
-  final List<_Devolucion> devoluciones;
+  final List<_DevolucionFila> devoluciones;
+  final ValueChanged<_DevolucionFila> onDetalle;
+  final ValueChanged<_DevolucionFila> onCancelar;
+  final bool procesando;
 
   const _PanelDevoluciones({
     required this.filtroSeleccionado,
     required this.onFiltroSeleccionado,
     required this.devoluciones,
+    required this.onDetalle,
+    required this.onCancelar,
+    required this.procesando,
   });
 
   @override
@@ -494,43 +493,34 @@ class _PanelDevoluciones extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
-            child: Row(
-              children: [
-                _TabsDevoluciones(
-                  filtroSeleccionado: filtroSeleccionado,
-                  onFiltroSeleccionado: onFiltroSeleccionado,
-                ),
-                const Spacer(),
-                _BotonSecundario(
-                  texto: 'Filtros',
-                  icono: Icons.filter_list,
-                  onTap: () {},
-                ),
-                const SizedBox(width: 8),
-                _BotonSecundario(
-                  texto: 'Ordenar',
-                  icono: Icons.sort,
-                  onTap: () {},
-                ),
-              ],
+            child: _TabsDevoluciones(
+              filtroSeleccionado: filtroSeleccionado,
+              onFiltroSeleccionado: onFiltroSeleccionado,
             ),
           ),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final anchoTabla =
-                  constraints.maxWidth < 900 ? 900.0 : constraints.maxWidth;
-
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: anchoTabla,
-                  child: _TablaDevoluciones(
-                    devoluciones: devoluciones,
+          if (devoluciones.isEmpty)
+            const _EstadoDevoluciones(
+              mensaje: 'No hay devoluciones para mostrar',
+            )
+          else
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final anchoTabla =
+                    constraints.maxWidth < 980 ? 980.0 : constraints.maxWidth;
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: anchoTabla,
+                    child: _TablaDevoluciones(
+                      devoluciones: devoluciones,
+                      onDetalle: onDetalle,
+                      onCancelar: onCancelar,
+                      procesando: procesando,
+                    ),
                   ),
-                ),
-              );
-            },
-          ),
+                );
+              },
+            ),
         ],
       ),
     );
@@ -550,21 +540,17 @@ class _TabsDevoluciones extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _TabDevolucion(
-          texto: 'Todos',
-          activo: filtroSeleccionado == 'Todos',
-          onTap: () => onFiltroSeleccionado('Todos'),
-        ),
-        _TabDevolucion(
-          texto: 'Clientes',
-          activo: filtroSeleccionado == 'Clientes',
-          onTap: () => onFiltroSeleccionado('Clientes'),
-        ),
-        _TabDevolucion(
-          texto: 'Proveedores',
-          activo: filtroSeleccionado == 'Proveedores',
-          onTap: () => onFiltroSeleccionado('Proveedores'),
-        ),
+        for (final tab in const [
+          'Todos',
+          'Clientes',
+          'Proveedores',
+          'Canceladas'
+        ])
+          _TabDevolucion(
+            texto: tab,
+            activo: filtroSeleccionado == tab,
+            onTap: () => onFiltroSeleccionado(tab),
+          ),
       ],
     );
   }
@@ -585,7 +571,6 @@ class _TabDevolucion extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
       child: Container(
         padding: const EdgeInsets.fromLTRB(0, 5, 22, 8),
         decoration: BoxDecoration(
@@ -609,54 +594,17 @@ class _TabDevolucion extends StatelessWidget {
   }
 }
 
-class _BotonSecundario extends StatelessWidget {
-  final String texto;
-  final IconData icono;
-  final VoidCallback onTap;
-
-  const _BotonSecundario({
-    required this.texto,
-    required this.icono,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 32,
-      child: OutlinedButton.icon(
-        onPressed: onTap,
-        icon: Icon(
-          icono,
-          color: _textoPrincipal,
-          size: 14,
-        ),
-        label: Text(
-          texto,
-          style: const TextStyle(
-            color: _textoPrincipal,
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        style: OutlinedButton.styleFrom(
-          backgroundColor: const Color(0xFFF6F4F1),
-          side: const BorderSide(color: Color(0xFFC8D6C0)),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(5),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _TablaDevoluciones extends StatelessWidget {
-  final List<_Devolucion> devoluciones;
+  final List<_DevolucionFila> devoluciones;
+  final ValueChanged<_DevolucionFila> onDetalle;
+  final ValueChanged<_DevolucionFila> onCancelar;
+  final bool procesando;
 
   const _TablaDevoluciones({
     required this.devoluciones,
+    required this.onDetalle,
+    required this.onCancelar,
+    required this.procesando,
   });
 
   @override
@@ -665,7 +613,12 @@ class _TablaDevoluciones extends StatelessWidget {
       children: [
         const _HeaderTablaDevoluciones(),
         for (final devolucion in devoluciones)
-          _FilaDevolucion(devolucion: devolucion),
+          _FilaDevolucion(
+            devolucion: devolucion,
+            onDetalle: onDetalle,
+            onCancelar: onCancelar,
+            procesando: procesando,
+          ),
       ],
     );
   }
@@ -682,12 +635,13 @@ class _HeaderTablaDevoluciones extends StatelessWidget {
       child: const Row(
         children: [
           SizedBox(width: 22),
-          Expanded(flex: 15, child: _TextoHeaderTabla('ID Devolución')),
-          Expanded(flex: 16, child: _TextoHeaderTabla('Fecha')),
-          Expanded(flex: 14, child: _TextoHeaderTabla('Tipo')),
-          Expanded(flex: 24, child: _TextoHeaderTabla('Observaciones')),
-          Expanded(flex: 16, child: _TextoHeaderTabla('Estado')),
-          Expanded(flex: 15, child: _TextoHeaderTabla('Total')),
+          Expanded(flex: 14, child: _TextoHeaderTabla('Folio')),
+          Expanded(flex: 14, child: _TextoHeaderTabla('Fecha')),
+          Expanded(flex: 13, child: _TextoHeaderTabla('Tipo')),
+          Expanded(flex: 20, child: _TextoHeaderTabla('Origen')),
+          Expanded(flex: 18, child: _TextoHeaderTabla('Motivo')),
+          Expanded(flex: 14, child: _TextoHeaderTabla('Estado')),
+          Expanded(flex: 13, child: _TextoHeaderTabla('Total')),
           Expanded(flex: 12, child: _TextoHeaderTabla('Acciones')),
           SizedBox(width: 16),
         ],
@@ -715,10 +669,16 @@ class _TextoHeaderTabla extends StatelessWidget {
 }
 
 class _FilaDevolucion extends StatelessWidget {
-  final _Devolucion devolucion;
+  final _DevolucionFila devolucion;
+  final ValueChanged<_DevolucionFila> onDetalle;
+  final ValueChanged<_DevolucionFila> onCancelar;
+  final bool procesando;
 
   const _FilaDevolucion({
     required this.devolucion,
+    required this.onDetalle,
+    required this.onCancelar,
+    required this.procesando,
   });
 
   @override
@@ -727,85 +687,53 @@ class _FilaDevolucion extends StatelessWidget {
       height: 58,
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(
-          top: BorderSide(
-            color: Color(0xFFE0E8D8),
-            width: 1,
-          ),
-        ),
+        border: Border(top: BorderSide(color: Color(0xFFE0E8D8))),
       ),
       child: Row(
         children: [
           const SizedBox(width: 22),
           Expanded(
-            flex: 15,
-            child: Text(
-              devolucion.id,
-              style: const TextStyle(
-                color: _textoPrincipal,
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
+              flex: 14, child: _TextoCelda(devolucion.folio, fuerte: true)),
           Expanded(
-            flex: 16,
-            child: Text(
-              devolucion.fecha,
-              style: const TextStyle(
-                color: Color(0xFF56605A),
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
+              flex: 14, child: _TextoCelda(_formatoFecha(devolucion.fecha))),
+          Expanded(
+            flex: 13,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _BadgeTipo(esCliente: devolucion.esCliente),
             ),
           ),
+          Expanded(flex: 20, child: _TextoCelda(devolucion.origen)),
+          Expanded(flex: 18, child: _TextoCelda(_textoEnum(devolucion.motivo))),
           Expanded(
             flex: 14,
             child: Align(
               alignment: Alignment.centerLeft,
-              child: _BadgeTipo(tipo: devolucion.tipo),
+              child: _BadgeEstado(estatus: devolucion.estatus),
             ),
           ),
           Expanded(
-            flex: 24,
-            child: Text(
-              devolucion.observaciones,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFF56605A),
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 16,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: _BadgeEstado(estado: devolucion.estado),
-            ),
-          ),
-          Expanded(
-            flex: 15,
-            child: Text(
-              ConfigMoneda.formato(devolucion.total),
-              style: const TextStyle(
-                color: _textoPrincipal,
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
+            flex: 13,
+            child: _TextoCelda(ConfigMoneda.formato(devolucion.total),
+                fuerte: true),
           ),
           Expanded(
             flex: 12,
-            child: IconButton(
-              onPressed: () {},
-              icon: const Icon(
-                Icons.remove_red_eye_outlined,
-                color: Color(0xFF667085),
-                size: 18,
-              ),
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: () => onDetalle(devolucion),
+                  icon: const Icon(Icons.remove_red_eye_outlined, size: 18),
+                  tooltip: 'Ver detalle',
+                ),
+                IconButton(
+                  onPressed: devolucion.estatus == 'CANCELADA' || procesando
+                      ? null
+                      : () => onCancelar(devolucion),
+                  icon: const Icon(Icons.cancel_outlined, size: 18),
+                  tooltip: 'Cancelar',
+                ),
+              ],
             ),
           ),
           const SizedBox(width: 16),
@@ -815,17 +743,34 @@ class _FilaDevolucion extends StatelessWidget {
   }
 }
 
-class _BadgeTipo extends StatelessWidget {
-  final _TipoDevolucion tipo;
+class _TextoCelda extends StatelessWidget {
+  final String texto;
+  final bool fuerte;
 
-  const _BadgeTipo({
-    required this.tipo,
-  });
+  const _TextoCelda(this.texto, {this.fuerte = false});
 
   @override
   Widget build(BuildContext context) {
-    final esCliente = tipo == _TipoDevolucion.cliente;
+    return Text(
+      texto,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        color: _textoPrincipal,
+        fontSize: 11,
+        fontWeight: fuerte ? FontWeight.w900 : FontWeight.w700,
+      ),
+    );
+  }
+}
 
+class _BadgeTipo extends StatelessWidget {
+  final bool esCliente;
+
+  const _BadgeTipo({required this.esCliente});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
@@ -845,26 +790,23 @@ class _BadgeTipo extends StatelessWidget {
 }
 
 class _BadgeEstado extends StatelessWidget {
-  final _EstadoDevolucion estado;
+  final String estatus;
 
-  const _BadgeEstado({
-    required this.estado,
-  });
+  const _BadgeEstado({required this.estatus});
 
   @override
   Widget build(BuildContext context) {
-    final procesado = estado == _EstadoDevolucion.procesado;
-
+    final cancelada = estatus == 'CANCELADA';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
-        color: procesado ? const Color(0xFFE8F1FF) : const Color(0xFFFFF0DE),
+        color: cancelada ? const Color(0xFFFFE8E8) : const Color(0xFFE8F1FF),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
-        procesado ? 'PROCESADO' : 'PENDIENTE',
+        cancelada ? 'CANCELADA' : 'REGISTRADA',
         style: TextStyle(
-          color: procesado ? _azul : _naranja,
+          color: cancelada ? _rojo : _azul,
           fontSize: 9,
           fontWeight: FontWeight.w900,
         ),
@@ -873,169 +815,950 @@ class _BadgeEstado extends StatelessWidget {
   }
 }
 
-class _MotivosDevolucion extends StatelessWidget {
-  const _MotivosDevolucion();
+class _EstadoDevoluciones extends StatelessWidget {
+  final String mensaje;
+  final VoidCallback? onReintentar;
+
+  const _EstadoDevoluciones({
+    required this.mensaje,
+    this.onReintentar,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 380,
-      padding: const EdgeInsets.fromLTRB(22, 22, 22, 24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: _bordeSuave),
-        borderRadius: BorderRadius.circular(9),
-      ),
+      height: 180,
+      alignment: Alignment.center,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'Motivos de Devolución',
-            style: TextStyle(
-              color: _textoPrincipal,
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Distribución porcentual de las causas más frecuentes este trimestre.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
+          Text(
+            mensaje,
+            style: const TextStyle(
               color: _textoSecundario,
-              fontSize: 11,
-              height: 1.3,
-              fontWeight: FontWeight.w500,
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 22),
-          SizedBox(
-            width: 140,
-            height: 140,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  width: 125,
-                  height: 125,
-                  child: CircularProgressIndicator(
-                    value: 1,
-                    strokeWidth: 20,
-                    backgroundColor: const Color(0xFFE8E8E8),
-                    color: _verde,
-                  ),
-                ),
-                const Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '100%',
-                      style: TextStyle(
-                        color: _textoPrincipal,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                      ),
+          if (onReintentar != null) ...[
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: onReintentar,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Reintentar'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DialogoNuevaDevolucionCliente extends StatefulWidget {
+  final int idUsuario;
+  final VentasApiService ventasApiService;
+
+  const _DialogoNuevaDevolucionCliente({
+    required this.idUsuario,
+    required this.ventasApiService,
+  });
+
+  @override
+  State<_DialogoNuevaDevolucionCliente> createState() =>
+      _DialogoNuevaDevolucionClienteState();
+}
+
+class _DialogoNuevaDevolucionClienteState
+    extends State<_DialogoNuevaDevolucionCliente> {
+  final TextEditingController _cantidadController =
+      TextEditingController(text: '1');
+  final TextEditingController _observacionesController =
+      TextEditingController();
+
+  bool _cargando = true;
+  bool _cargandoDetalle = false;
+  bool _regresaAInventario = true;
+  String? _error;
+  String _motivo = 'OTRO';
+  String _metodo = 'EFECTIVO';
+  List<VentaResumen> _ventas = [];
+  VentaDetalleCompleta? _ventaDetalle;
+  int? _idVenta;
+  int? _idVentaDetalle;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarVentas();
+  }
+
+  @override
+  void dispose() {
+    _cantidadController.dispose();
+    _observacionesController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _cargarVentas() async {
+    try {
+      final ventas = await widget.ventasApiService.listarVentas(
+        estatus: 'REGISTRADA',
+        limite: 300,
+      );
+      if (!mounted) return;
+      setState(() {
+        _ventas = ventas;
+        _cargando = false;
+      });
+    } catch (_) {
+      setState(() {
+        _error = 'No se pudieron cargar ventas registradas';
+        _cargando = false;
+      });
+    }
+  }
+
+  Future<void> _seleccionarVenta(int? idVenta) async {
+    if (idVenta == null) return;
+    setState(() {
+      _idVenta = idVenta;
+      _idVentaDetalle = null;
+      _ventaDetalle = null;
+      _cargandoDetalle = true;
+    });
+
+    try {
+      final detalle = await widget.ventasApiService.obtenerVenta(idVenta);
+      if (!mounted) return;
+      setState(() {
+        _ventaDetalle = detalle;
+        _idVentaDetalle = detalle.detalles.isNotEmpty
+            ? detalle.detalles.first.idVentaDetalle
+            : null;
+        _cargandoDetalle = false;
+      });
+    } catch (_) {
+      setState(() {
+        _error = 'No se pudo cargar el detalle de la venta';
+        _cargandoDetalle = false;
+      });
+    }
+  }
+
+  void _guardar() {
+    final venta = _ventaDetalle;
+    final idDetalle = _idVentaDetalle;
+    final cantidad = int.tryParse(_cantidadController.text.trim()) ?? 0;
+    final detalle = venta?.detalles
+        .where((item) => item.idVentaDetalle == idDetalle)
+        .firstOrNull;
+
+    if (venta == null || idDetalle == null || detalle == null) {
+      setState(() => _error = 'Selecciona una venta y un producto');
+      return;
+    }
+
+    if (cantidad <= 0 || cantidad > detalle.cantidad) {
+      setState(() {
+        _error = 'La cantidad debe estar entre 1 y ${detalle.cantidad}';
+      });
+      return;
+    }
+
+    Navigator.of(context).pop(
+      RegistrarDevolucionClientePayload(
+        idUsuario: widget.idUsuario,
+        idVenta: venta.idVenta,
+        metodoDevolucion: _metodo,
+        motivo: _motivo,
+        observaciones: _textoONulo(_observacionesController.text),
+        detalles: [
+          DevolucionClienteDetallePayload(
+            idVentaDetalle: idDetalle,
+            cantidad: cantidad,
+            regresaAInventario: _regresaAInventario,
+            motivoDetalle: _motivo,
+            observaciones: _textoONulo(_observacionesController.text),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Devolucion de cliente'),
+      content: SizedBox(
+        width: 520,
+        child: _cargando
+            ? const SizedBox(
+                height: 160,
+                child: Center(child: CircularProgressIndicator()),
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<int>(
+                    initialValue: _idVenta,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Venta origen',
+                      border: OutlineInputBorder(),
                     ),
-                    Text(
-                      'Total Causas',
-                      style: TextStyle(
-                        color: _textoSecundario,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
+                    items: [
+                      for (final venta in _ventas)
+                        DropdownMenuItem(
+                          value: venta.idVenta,
+                          child: Text(
+                              '${venta.folio} - ${ConfigMoneda.formato(venta.total)}'),
+                        ),
+                    ],
+                    onChanged: _seleccionarVenta,
+                  ),
+                  const SizedBox(height: 12),
+                  if (_cargandoDetalle)
+                    const LinearProgressIndicator()
+                  else if (_ventaDetalle != null)
+                    DropdownButtonFormField<int>(
+                      initialValue: _idVentaDetalle,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Producto devuelto',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: [
+                        for (final detalle in _ventaDetalle!.detalles)
+                          DropdownMenuItem(
+                            value: detalle.idVentaDetalle,
+                            child: Text(
+                                '${detalle.producto} - cant. ${detalle.cantidad}'),
+                          ),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => _idVentaDetalle = value),
+                    ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _cantidadController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Cantidad',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _metodo,
+                          decoration: const InputDecoration(
+                            labelText: 'Metodo',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                                value: 'EFECTIVO', child: Text('Efectivo')),
+                            DropdownMenuItem(
+                                value: 'ELECTRONICO',
+                                child: Text('Electronico')),
+                            DropdownMenuItem(
+                                value: 'CAMBIO_PRODUCTO',
+                                child: Text('Cambio')),
+                            DropdownMenuItem(
+                              value: 'SIN_DEVOLUCION_DINERO',
+                              child: Text('Sin dinero'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _metodo = value);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: _motivo,
+                    decoration: const InputDecoration(
+                      labelText: 'Motivo',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'PRODUCTO_EQUIVOCADO',
+                          child: Text('Producto equivocado')),
+                      DropdownMenuItem(
+                          value: 'PRODUCTO_DANADO',
+                          child: Text('Producto danado')),
+                      DropdownMenuItem(
+                          value: 'CADUCADO', child: Text('Caducado')),
+                      DropdownMenuItem(
+                          value: 'ERROR_VENTA', child: Text('Error de venta')),
+                      DropdownMenuItem(
+                          value: 'CLIENTE_SE_ARREPINTIO',
+                          child: Text('Cliente se arrepintio')),
+                      DropdownMenuItem(value: 'OTRO', child: Text('Otro')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _motivo = value);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  CheckboxListTile(
+                    value: _regresaAInventario,
+                    onChanged: (value) {
+                      setState(() => _regresaAInventario = value ?? true);
+                    },
+                    title: const Text('Regresa a inventario'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  TextField(
+                    controller: _observacionesController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Observaciones',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 10),
+                    Text(_error!, style: const TextStyle(color: _rojo)),
+                  ],
+                ],
+              ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: _guardar,
+          child: const Text('Guardar'),
+        ),
+      ],
+    );
+  }
+}
+
+class _DialogoNuevaDevolucionProveedor extends StatefulWidget {
+  final int idUsuario;
+  final ComprasApiService comprasApiService;
+
+  const _DialogoNuevaDevolucionProveedor({
+    required this.idUsuario,
+    required this.comprasApiService,
+  });
+
+  @override
+  State<_DialogoNuevaDevolucionProveedor> createState() =>
+      _DialogoNuevaDevolucionProveedorState();
+}
+
+class _DialogoNuevaDevolucionProveedorState
+    extends State<_DialogoNuevaDevolucionProveedor> {
+  final TextEditingController _cantidadController =
+      TextEditingController(text: '1');
+  final TextEditingController _observacionesController =
+      TextEditingController();
+  final TextEditingController _reposicionLoteController =
+      TextEditingController();
+  final TextEditingController _reposicionCaducidadController =
+      TextEditingController();
+  final TextEditingController _reposicionPrecioController =
+      TextEditingController();
+
+  bool _cargando = true;
+  bool _cargandoDetalle = false;
+  String? _error;
+  String _motivo = 'OTRO';
+  String _compensacion = 'SIN_COMPENSACION';
+  List<CompraResumen> _compras = [];
+  CompraDetalle? _compraDetalle;
+  int? _idCompra;
+  int? _idCompraDetalle;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarCompras();
+  }
+
+  @override
+  void dispose() {
+    _cantidadController.dispose();
+    _observacionesController.dispose();
+    _reposicionLoteController.dispose();
+    _reposicionCaducidadController.dispose();
+    _reposicionPrecioController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _cargarCompras() async {
+    try {
+      final compras = await widget.comprasApiService.listarCompras(
+        estatus: 'REGISTRADA',
+        limite: 300,
+      );
+      if (!mounted) return;
+      setState(() {
+        _compras = compras;
+        _cargando = false;
+      });
+    } catch (_) {
+      setState(() {
+        _error = 'No se pudieron cargar compras registradas';
+        _cargando = false;
+      });
+    }
+  }
+
+  Future<void> _seleccionarCompra(int? idCompra) async {
+    if (idCompra == null) return;
+    setState(() {
+      _idCompra = idCompra;
+      _idCompraDetalle = null;
+      _compraDetalle = null;
+      _cargandoDetalle = true;
+    });
+
+    try {
+      final detalle = await widget.comprasApiService.obtenerCompra(idCompra);
+      if (!mounted) return;
+      setState(() {
+        _compraDetalle = detalle;
+        _idCompraDetalle = detalle.detalles.isNotEmpty
+            ? detalle.detalles.first.idCompraDetalle
+            : null;
+        _actualizarDatosReposicion();
+        _cargandoDetalle = false;
+      });
+    } catch (_) {
+      setState(() {
+        _error = 'No se pudo cargar el detalle de la compra';
+        _cargandoDetalle = false;
+      });
+    }
+  }
+
+  void _guardar() {
+    final compra = _compraDetalle;
+    final idDetalle = _idCompraDetalle;
+    final cantidad = int.tryParse(_cantidadController.text.trim()) ?? 0;
+    final detalle = compra?.detalles
+        .where((item) => item.idCompraDetalle == idDetalle)
+        .firstOrNull;
+
+    if (compra == null || idDetalle == null || detalle == null) {
+      setState(() => _error = 'Selecciona una compra y un producto');
+      return;
+    }
+
+    if (detalle.idInventario == null) {
+      setState(
+          () => _error = 'El renglon seleccionado no tiene inventario ligado');
+      return;
+    }
+
+    if (cantidad <= 0 || cantidad > detalle.cantidad) {
+      setState(() {
+        _error = 'La cantidad debe estar entre 1 y ${detalle.cantidad}';
+      });
+      return;
+    }
+
+    List<ReposicionProveedorDetallePayload>? reposicionDetalles;
+    if (_compensacion == 'REPOSICION_PRODUCTO') {
+      final precioVenta =
+          double.tryParse(_reposicionPrecioController.text.trim()) ?? -1;
+
+      if (precioVenta < 0) {
+        setState(() => _error = 'Ingresa el precio de venta de la reposicion');
+        return;
+      }
+
+      reposicionDetalles = [
+        ReposicionProveedorDetallePayload(
+          idProducto: detalle.idProducto,
+          cantidad: cantidad,
+          costoUnitario: detalle.costoUnitario,
+          precioVenta: precioVenta,
+          codigoLote: _textoONulo(_reposicionLoteController.text) ??
+              'REPOSICION-${compra.idCompra}',
+          fechaCaducidad: _textoONulo(_reposicionCaducidadController.text),
+        ),
+      ];
+    }
+
+    Navigator.of(context).pop(
+      RegistrarDevolucionProveedorPayload(
+        idUsuario: widget.idUsuario,
+        idCompra: compra.idCompra,
+        idProveedor: compra.idProveedor,
+        tipoCompensacion: _compensacion,
+        motivo: _motivo,
+        observaciones: _textoONulo(_observacionesController.text),
+        detalles: [
+          DevolucionProveedorDetallePayload(
+            idCompraDetalle: idDetalle,
+            idInventario: detalle.idInventario!,
+            cantidad: cantidad,
+            motivoDetalle: _motivo,
+            observaciones: _textoONulo(_observacionesController.text),
+          ),
+        ],
+        reposicionDetalles: reposicionDetalles,
+      ),
+    );
+  }
+
+  void _actualizarDatosReposicion() {
+    final detalle = _compraDetalle?.detalles
+        .where((item) => item.idCompraDetalle == _idCompraDetalle)
+        .firstOrNull;
+    if (detalle == null) return;
+
+    _reposicionPrecioController.text =
+        detalle.precioVentaSugerido.toStringAsFixed(2);
+    _reposicionLoteController.text = 'REP-${detalle.codigoLote}';
+    _reposicionCaducidadController.text =
+        _formatoFechaApi(detalle.fechaCaducidad);
+  }
+
+  Future<void> _seleccionarCaducidadReposicion() async {
+    final inicial = DateTime.tryParse(_reposicionCaducidadController.text) ??
+        DateTime.now().add(const Duration(days: 365));
+    final seleccionada = await showDatePicker(
+      context: context,
+      initialDate: inicial,
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+      helpText: 'Selecciona caducidad de reposicion',
+      cancelText: 'Cancelar',
+      confirmText: 'Aceptar',
+    );
+
+    if (seleccionada == null) return;
+    setState(() {
+      _reposicionCaducidadController.text = _formatoFechaApi(seleccionada);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Devolucion a proveedor'),
+      content: SizedBox(
+        width: 540,
+        child: _cargando
+            ? const SizedBox(
+                height: 160,
+                child: Center(child: CircularProgressIndicator()),
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<int>(
+                    initialValue: _idCompra,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Compra origen',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      for (final compra in _compras)
+                        DropdownMenuItem(
+                          value: compra.idCompra,
+                          child: Text(
+                              'CMP-${compra.idCompra} - ${compra.proveedor}'),
+                        ),
+                    ],
+                    onChanged: _seleccionarCompra,
+                  ),
+                  const SizedBox(height: 12),
+                  if (_cargandoDetalle)
+                    const LinearProgressIndicator()
+                  else if (_compraDetalle != null)
+                    DropdownButtonFormField<int>(
+                      initialValue: _idCompraDetalle,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Producto devuelto',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: [
+                        for (final detalle in _compraDetalle!.detalles)
+                          DropdownMenuItem(
+                            value: detalle.idCompraDetalle,
+                            child: Text(
+                                '${detalle.producto} - cant. ${detalle.cantidad}'),
+                          ),
+                      ],
+                      onChanged: (value) => setState(() {
+                        _idCompraDetalle = value;
+                        _actualizarDatosReposicion();
+                      }),
+                    ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _cantidadController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Cantidad',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _compensacion,
+                          decoration: const InputDecoration(
+                            labelText: 'Compensacion',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                                value: 'EFECTIVO', child: Text('Efectivo')),
+                            DropdownMenuItem(
+                                value: 'ELECTRONICO',
+                                child: Text('Electronico')),
+                            DropdownMenuItem(
+                                value: 'NOTA_CREDITO',
+                                child: Text('Nota credito')),
+                            DropdownMenuItem(
+                                value: 'REPOSICION_PRODUCTO',
+                                child: Text('Reposicion')),
+                            DropdownMenuItem(
+                                value: 'SIN_COMPENSACION',
+                                child: Text('Sin compensacion')),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() {
+                                _compensacion = value;
+                                if (value == 'REPOSICION_PRODUCTO') {
+                                  _actualizarDatosReposicion();
+                                }
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: _motivo,
+                    decoration: const InputDecoration(
+                      labelText: 'Motivo',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'PRODUCTO_DANADO',
+                          child: Text('Producto danado')),
+                      DropdownMenuItem(
+                          value: 'CADUCADO', child: Text('Caducado')),
+                      DropdownMenuItem(
+                          value: 'ERROR_COMPRA',
+                          child: Text('Error de compra')),
+                      DropdownMenuItem(
+                          value: 'EXCEDENTE', child: Text('Excedente')),
+                      DropdownMenuItem(
+                          value: 'CAMBIO_PRECIO',
+                          child: Text('Cambio de precio')),
+                      DropdownMenuItem(value: 'OTRO', child: Text('Otro')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _motivo = value);
+                      }
+                    },
+                  ),
+                  if (_compensacion == 'REPOSICION_PRODUCTO') ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEAF7DF),
+                        border: Border.all(color: _bordeSuave),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Entrada de producto repuesto',
+                            style: TextStyle(
+                              color: _verdeOscuro,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _reposicionLoteController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Lote repuesto',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextField(
+                                  controller: _reposicionCaducidadController,
+                                  readOnly: true,
+                                  onTap: _seleccionarCaducidadReposicion,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Caducidad',
+                                    border: OutlineInputBorder(),
+                                    suffixIcon:
+                                        Icon(Icons.calendar_month_outlined),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: _reposicionPrecioController,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'Precio de venta del repuesto',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 22),
-          const Row(
-            children: [
-              Expanded(
-                child: _LeyendaMotivo(
-                  texto: 'Caducidad (45%)',
-                  color: _verde,
-                  fondo: Color(0xFFEAF7DF),
-                ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _observacionesController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Observaciones',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 10),
+                    Text(_error!, style: const TextStyle(color: _rojo)),
+                  ],
+                ],
               ),
-              SizedBox(width: 8),
-              Expanded(
-                child: _LeyendaMotivo(
-                  texto: 'Daño (22%)',
-                  color: _azul,
-                  fondo: Color(0xFFE8F1FF),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          const Row(
-            children: [
-              Expanded(
-                child: _LeyendaMotivo(
-                  texto: 'Error Pedido (18%)',
-                  color: Color(0xFF9CA3AF),
-                  fondo: Color(0xFFF3F4F6),
-                ),
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: _LeyendaMotivo(
-                  texto: 'Otros (15%)',
-                  color: _rojo,
-                  fondo: Color(0xFFFFE8E8),
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: _guardar,
+          child: const Text('Guardar'),
+        ),
+      ],
     );
   }
 }
 
-class _LeyendaMotivo extends StatelessWidget {
-  final String texto;
-  final Color color;
-  final Color fondo;
+class _DialogoDetalleCliente extends StatelessWidget {
+  final Future<DevolucionClienteDetalle> future;
 
-  const _LeyendaMotivo({
-    required this.texto,
-    required this.color,
-    required this.fondo,
+  const _DialogoDetalleCliente({required this.future});
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Detalle devolucion cliente'),
+      content: SizedBox(
+        width: 680,
+        child: FutureBuilder<DevolucionClienteDetalle>(
+          future: future,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 140,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (!snapshot.hasData) {
+              return const Text('No se pudo cargar el detalle');
+            }
+            final devolucion = snapshot.data!;
+            return _DetalleContenido(
+              datos: [
+                _DatoDetalle('Folio', devolucion.folio),
+                _DatoDetalle('Venta', devolucion.folioVenta),
+                _DatoDetalle('Metodo', _textoEnum(devolucion.metodoDevolucion)),
+                _DatoDetalle('Motivo', _textoEnum(devolucion.motivo)),
+                _DatoDetalle(
+                    'Total', ConfigMoneda.formato(devolucion.totalDevuelto)),
+                _DatoDetalle('Estado', devolucion.estatus),
+              ],
+              renglones: [
+                for (final detalle in devolucion.detalles)
+                  '${detalle.producto} | lote ${detalle.codigoLote} | cant. ${detalle.cantidad} | ${ConfigMoneda.formato(detalle.subtotalDevuelto)}',
+              ],
+              observaciones: devolucion.observaciones,
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cerrar'),
+        ),
+      ],
+    );
+  }
+}
+
+class _DialogoDetalleProveedor extends StatelessWidget {
+  final Future<DevolucionProveedorDetalle> future;
+
+  const _DialogoDetalleProveedor({required this.future});
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Detalle devolucion proveedor'),
+      content: SizedBox(
+        width: 680,
+        child: FutureBuilder<DevolucionProveedorDetalle>(
+          future: future,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 140,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (!snapshot.hasData) {
+              return const Text('No se pudo cargar el detalle');
+            }
+            final devolucion = snapshot.data!;
+            return _DetalleContenido(
+              datos: [
+                _DatoDetalle('Folio', devolucion.folio),
+                _DatoDetalle('Proveedor', devolucion.proveedor),
+                _DatoDetalle(
+                    'Compensacion', _textoEnum(devolucion.tipoCompensacion)),
+                _DatoDetalle('Motivo', _textoEnum(devolucion.motivo)),
+                _DatoDetalle(
+                    'Total', ConfigMoneda.formato(devolucion.totalDevolucion)),
+                _DatoDetalle('Estado', devolucion.estatus),
+              ],
+              renglones: [
+                for (final detalle in devolucion.detalles)
+                  '${detalle.producto} | lote ${detalle.codigoLote} | cant. ${detalle.cantidad} | ${ConfigMoneda.formato(detalle.subtotal)}',
+              ],
+              observaciones: devolucion.observaciones,
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cerrar'),
+        ),
+      ],
+    );
+  }
+}
+
+class _DetalleContenido extends StatelessWidget {
+  final List<_DatoDetalle> datos;
+  final List<String> renglones;
+  final String observaciones;
+
+  const _DetalleContenido({
+    required this.datos,
+    required this.renglones,
+    required this.observaciones,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 30,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: fondo,
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: color.withOpacity(0.25)),
-      ),
-      child: Row(
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: datos,
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'Productos',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 8),
+          for (final renglon in renglones)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Text(renglon),
+            ),
+          if (observaciones.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text(observaciones),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DatoDetalle extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _DatoDetalle(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 150,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: _textoSecundario,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              texto,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: _textoPrincipal,
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-              ),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            style: const TextStyle(
+              color: _textoPrincipal,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
             ),
           ),
         ],
@@ -1044,30 +1767,76 @@ class _LeyendaMotivo extends StatelessWidget {
   }
 }
 
-class _Devolucion {
-  final String id;
-  final String fecha;
-  final _TipoDevolucion tipo;
-  final String observaciones;
-  final _EstadoDevolucion estado;
+class _DevolucionFila {
+  final int id;
+  final String folio;
+  final DateTime? fecha;
+  final bool esCliente;
+  final String origen;
+  final String motivo;
+  final String estatus;
   final double total;
 
-  const _Devolucion({
+  const _DevolucionFila({
     required this.id,
+    required this.folio,
     required this.fecha,
-    required this.tipo,
-    required this.observaciones,
-    required this.estado,
+    required this.esCliente,
+    required this.origen,
+    required this.motivo,
+    required this.estatus,
     required this.total,
   });
+
+  factory _DevolucionFila.cliente(DevolucionClienteResumen item) {
+    return _DevolucionFila(
+      id: item.idDevolucionCliente,
+      folio: item.folio,
+      fecha: item.fecha,
+      esCliente: true,
+      origen: item.folioVenta,
+      motivo: item.motivo,
+      estatus: item.estatus,
+      total: item.totalDevuelto,
+    );
+  }
+
+  factory _DevolucionFila.proveedor(DevolucionProveedorResumen item) {
+    return _DevolucionFila(
+      id: item.idDevolucionProveedor,
+      folio: item.folio,
+      fecha: item.fecha,
+      esCliente: false,
+      origen: item.proveedor,
+      motivo: item.motivo,
+      estatus: item.estatus,
+      total: item.totalDevolucion,
+    );
+  }
+
+  bool get esProveedor => !esCliente;
 }
 
-enum _TipoDevolucion {
-  cliente,
-  proveedor,
+String _formatoFecha(DateTime? fecha) {
+  if (fecha == null) return 'Sin fecha';
+  final dia = fecha.day.toString().padLeft(2, '0');
+  final mes = fecha.month.toString().padLeft(2, '0');
+  return '$dia/$mes/${fecha.year}';
 }
 
-enum _EstadoDevolucion {
-  procesado,
-  pendiente,
+String _formatoFechaApi(DateTime? fecha) {
+  if (fecha == null) return '';
+  final mes = fecha.month.toString().padLeft(2, '0');
+  final dia = fecha.day.toString().padLeft(2, '0');
+  return '${fecha.year}-$mes-$dia';
+}
+
+String _textoEnum(String value) {
+  if (value.isEmpty) return 'Sin dato';
+  return value.replaceAll('_', ' ').toLowerCase();
+}
+
+String? _textoONulo(String value) {
+  final text = value.trim();
+  return text.isEmpty ? null : text;
 }

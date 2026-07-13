@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/medicamento.dart';
+import '../../services/servicios_yastas_api_service.dart';
 import '../../utils/config_moneda.dart';
 import 'contenido_venta_yastas.dart';
 
@@ -13,12 +14,14 @@ class ContenidoVenta extends StatefulWidget {
   final TextEditingController busquedaController;
   final List<Medicamento> medicamentos;
   final ValueChanged<Medicamento> onAgregar;
+  final ValueChanged<TarifaServicioYastas> onAgregarYastas;
 
   const ContenidoVenta({
     super.key,
     required this.busquedaController,
     required this.medicamentos,
     required this.onAgregar,
+    required this.onAgregarYastas,
   });
 
   @override
@@ -45,7 +48,7 @@ class _ContenidoVentaState extends State<ContenidoVenta> {
           child: _seccionSeleccionada == 'Yastas'
               ? ContenidoVentaYastas(
                   busquedaController: widget.busquedaController,
-                  onAgregar: widget.onAgregar,
+                  onAgregar: widget.onAgregarYastas,
                 )
               : _CatalogoMedicamentos(
                   medicamentos: widget.medicamentos,
@@ -118,8 +121,9 @@ class _BarraSuperiorVenta extends StatelessWidget {
                         fontWeight: FontWeight.w500,
                       ),
                       decoration: InputDecoration(
-                        hintText:
-                            esYastas ? 'Buscar servicio...' : 'Buscar medicamento...',
+                        hintText: esYastas
+                            ? 'Buscar servicio...'
+                            : 'Buscar medicamento...',
                         hintStyle: const TextStyle(
                           color: Color(0xFF9A9A9A),
                           fontSize: 9,

@@ -5,6 +5,7 @@ import 'models/usuario.dart';
 import 'services/api_client.dart';
 import 'services/inventario_api_service.dart';
 import 'services/session_service.dart';
+import 'services/servicios_yastas_api_service.dart';
 import 'services/ventas_api_service.dart';
 import 'ui/interfaces/barra_lateral_izquierda.dart';
 import 'ui/interfaces/contenido_cajero.dart';
@@ -15,11 +16,12 @@ import 'ui/interfaces/contenido_pedidos.dart';
 import 'ui/interfaces/contenido_perfil.dart';
 import 'ui/interfaces/contenido_proveedores.dart';
 import 'ui/interfaces/contenido_venta.dart';
-import 'ui/interfaces/contenido_venta_yastas.dart';
+import 'ui/interfaces/contenido_yastas.dart';
 import 'ui/interfaces/menu_carta_carrito.dart';
 import 'ui/interfaces/menu_superior_catalogo.dart';
 import 'ui/login/login_screen.dart';
 import 'ui/interfaces/contenido_devolucion.dart';
+import 'utils/config_moneda.dart';
 
 const Color _fondoApp = Color(0xFF181A20);
 const Color _fondoContenido = Color(0xFFE2E2E2);
@@ -143,6 +145,8 @@ class VentaPrincipalScreen extends StatefulWidget {
 class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
   final InventarioApiService _inventarioApiService = InventarioApiService();
   final VentasApiService _ventasApiService = VentasApiService();
+  final ServiciosYastasApiService _serviciosYastasApiService =
+      ServiciosYastasApiService();
   final TextEditingController _busquedaController = TextEditingController();
 
   int _menuSeleccionado = 1;
@@ -153,6 +157,8 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
 
   List<Medicamento> _medicamentos = [];
   final Map<int, int> _carrito = {};
+  final Map<int, _ServicioYastasCarrito> _serviciosYastasCarrito = {};
+  int _siguienteIdYastasCarrito = -100000;
 
   @override
   void initState() {
@@ -188,7 +194,7 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
   List<Medicamento> get _productosDisponiblesParaCarrito {
     return [
       ..._medicamentos,
-      ...serviciosYastas,
+      ..._serviciosYastasCarrito.values.map((item) => item.medicamento),
     ];
   }
 
@@ -207,6 +213,12 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
         .map(_productoCarritoPorId)
         .whereType<Medicamento>()
         .toList();
+  }
+
+  bool get _carritoTieneYastas => _serviciosYastasCarrito.isNotEmpty;
+
+  bool get _carritoTieneProductos {
+    return _carrito.keys.any((id) => !_serviciosYastasCarrito.containsKey(id));
   }
 
   double get _subtotal {
@@ -273,6 +285,17 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
   }
 
   void _agregarAlCarrito(Medicamento producto) {
+    if (_carritoTieneYastas) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Termina o elimina los servicios Yastas antes de agregar productos.',
+          ),
+        ),
+      );
+      return;
+    }
+
     final cantidadActual = _carrito[producto.id] ?? 0;
 
     if (cantidadActual >= producto.stock) {
@@ -281,6 +304,42 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
 
     setState(() {
       _carrito[producto.id] = cantidadActual + 1;
+    });
+  }
+
+  Future<void> _agregarServicioYastas(TarifaServicioYastas tarifa) async {
+    if (_carritoTieneProductos) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Termina o elimina los productos antes de agregar servicios Yastas.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final datos = await showDialog<_DatosServicioYastas>(
+      context: context,
+      builder: (context) => _DialogoServicioYastas(tarifa: tarifa),
+    );
+
+    if (datos == null) {
+      return;
+    }
+
+    final idCarrito = _siguienteIdYastasCarrito--;
+    final servicio = _ServicioYastasCarrito(
+      idCarrito: idCarrito,
+      tarifa: tarifa,
+      montoServicio: datos.montoServicio,
+      referenciaOperacion: datos.referenciaOperacion,
+      observaciones: datos.observaciones,
+    );
+
+    setState(() {
+      _serviciosYastasCarrito[idCarrito] = servicio;
+      _carrito[idCarrito] = 1;
     });
   }
 
@@ -308,6 +367,7 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
 
       if (cantidadActual <= 1) {
         _carrito.remove(productoId);
+        _serviciosYastasCarrito.remove(productoId);
       } else {
         _carrito[productoId] = cantidadActual - 1;
       }
@@ -317,6 +377,7 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
   void _eliminarDelCarrito(int productoId) {
     setState(() {
       _carrito.remove(productoId);
+      _serviciosYastasCarrito.remove(productoId);
     });
   }
 
@@ -325,18 +386,8 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
       return;
     }
 
-    final tieneServiciosYastas = _itemsCarrito.any(
-      (item) => item.categoria == 'Yastas',
-    );
-
-    if (tieneServiciosYastas) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Los servicios Yastas ya se pueden agregar al carrito, pero falta conectar su endpoint para cobrarlos.',
-          ),
-        ),
-      );
+    if (_carritoTieneYastas) {
+      await _registrarServiciosYastas();
       return;
     }
 
@@ -394,6 +445,50 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     }
   }
 
+  Future<void> _registrarServiciosYastas() async {
+    setState(() {
+      _procesandoVenta = true;
+    });
+
+    try {
+      final servicios = _serviciosYastasCarrito.values.toList();
+
+      for (final servicio in servicios) {
+        await _serviciosYastasApiService.registrarServicio(
+          idUsuario: widget.usuario.id,
+          idTarifa: servicio.tarifa.idTarifa,
+          montoServicio: servicio.montoServicio,
+          referenciaOperacion: servicio.referenciaOperacion,
+          observaciones: servicio.observaciones,
+        );
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _carrito.clear();
+        _serviciosYastasCarrito.clear();
+        _procesandoVenta = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            servicios.length == 1
+                ? 'Servicio Yastas registrado.'
+                : '${servicios.length} servicios Yastas registrados.',
+          ),
+        ),
+      );
+    } on ApiException catch (error) {
+      _mostrarErrorVenta(error.message);
+    } catch (_) {
+      _mostrarErrorVenta('No se pudieron registrar los servicios Yastas');
+    }
+  }
+
   void _mostrarErrorVenta(String mensaje) {
     if (!mounted) {
       return;
@@ -438,6 +533,7 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
             busquedaController: _busquedaController,
             medicamentos: _medicamentosFiltrados,
             onAgregar: _agregarAlCarrito,
+            onAgregarYastas: _agregarServicioYastas,
           ),
         ),
         MenuCartaCarrito(
@@ -493,9 +589,12 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
 
       case 6:
         return const ContenidoProveedores();
-      
+
       case 7:
-        return const ContenidoDevolucion();
+        return ContenidoDevolucion(usuario: widget.usuario);
+
+      case 8:
+        return const ContenidoYastas();
 
       default:
         return const _InterfazNoEncontrada();
@@ -570,6 +669,303 @@ class _EstadoInventario extends StatelessWidget {
             onPressed: onReintentar,
             icon: const Icon(Icons.refresh),
             label: const Text('Reintentar'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ServicioYastasCarrito {
+  final int idCarrito;
+  final TarifaServicioYastas tarifa;
+  final double montoServicio;
+  final String? referenciaOperacion;
+  final String? observaciones;
+
+  const _ServicioYastasCarrito({
+    required this.idCarrito,
+    required this.tarifa,
+    required this.montoServicio,
+    required this.referenciaOperacion,
+    required this.observaciones,
+  });
+
+  double get totalCobrado => tarifa.totalCobrado(montoServicio);
+
+  Medicamento get medicamento {
+    return Medicamento(
+      id: idCarrito,
+      nombre: tarifa.nombreServicio,
+      detalle: [
+        tarifa.tipoVisible,
+        if (referenciaOperacion != null && referenciaOperacion!.isNotEmpty)
+          'Ref. $referenciaOperacion',
+      ].join(' - '),
+      categoria: 'Yastas',
+      precio: totalCobrado,
+      stock: 1,
+    );
+  }
+}
+
+class _DatosServicioYastas {
+  final double montoServicio;
+  final String? referenciaOperacion;
+  final String? observaciones;
+
+  const _DatosServicioYastas({
+    required this.montoServicio,
+    required this.referenciaOperacion,
+    required this.observaciones,
+  });
+}
+
+class _DialogoServicioYastas extends StatefulWidget {
+  final TarifaServicioYastas tarifa;
+
+  const _DialogoServicioYastas({
+    required this.tarifa,
+  });
+
+  @override
+  State<_DialogoServicioYastas> createState() => _DialogoServicioYastasState();
+}
+
+class _DialogoServicioYastasState extends State<_DialogoServicioYastas> {
+  final TextEditingController _montoController = TextEditingController();
+  final TextEditingController _referenciaController = TextEditingController();
+  final TextEditingController _observacionesController =
+      TextEditingController();
+
+  String? _error;
+
+  double get _montoServicio {
+    return double.tryParse(_montoController.text.trim()) ?? 0;
+  }
+
+  double get _totalCobrado {
+    return widget.tarifa.totalCobrado(_montoServicio);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _montoController.text = widget.tarifa.montoBase > 0
+        ? widget.tarifa.montoBase.toStringAsFixed(2)
+        : '';
+    _montoController.addListener(() {
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _montoController.dispose();
+    _referenciaController.dispose();
+    _observacionesController.dispose();
+    super.dispose();
+  }
+
+  void _confirmar() {
+    final montoServicio = double.tryParse(_montoController.text.trim());
+
+    if (montoServicio == null || montoServicio <= 0) {
+      setState(() {
+        _error = 'El monto del servicio debe ser mayor que cero';
+      });
+      return;
+    }
+
+    Navigator.of(context).pop(
+      _DatosServicioYastas(
+        montoServicio: montoServicio,
+        referenciaOperacion: _cleanOptional(_referenciaController.text),
+        observaciones: _cleanOptional(_observacionesController.text),
+      ),
+    );
+  }
+
+  String? _cleanOptional(String value) {
+    final text = value.trim();
+    return text.isEmpty ? null : text;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.tarifa.nombreServicio),
+      content: SizedBox(
+        width: 390,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.tarifa.tipoVisible,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _montoController,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'Monto del servicio',
+                border: OutlineInputBorder(),
+                prefixText: '\$',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _referenciaController,
+              decoration: const InputDecoration(
+                labelText: 'Referencia / telefono / contrato',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _observacionesController,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                labelText: 'Observaciones',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 14),
+            _ResumenYastas(
+              montoServicio: _montoServicio,
+              comisionCliente: widget.tarifa.comisionCliente,
+              comisionYastas: widget.tarifa.comisionYastas,
+              regaliaYastas: widget.tarifa.regaliaYastas,
+              gananciaFarmacia: widget.tarifa.gananciaFarmacia,
+              totalCobrado: _totalCobrado,
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                _error!,
+                style: const TextStyle(
+                  color: Color(0xFFE21F1F),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: _confirmar,
+          child: const Text('Agregar'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ResumenYastas extends StatelessWidget {
+  final double montoServicio;
+  final double comisionCliente;
+  final double comisionYastas;
+  final double regaliaYastas;
+  final double gananciaFarmacia;
+  final double totalCobrado;
+
+  const _ResumenYastas({
+    required this.montoServicio,
+    required this.comisionCliente,
+    required this.comisionYastas,
+    required this.regaliaYastas,
+    required this.gananciaFarmacia,
+    required this.totalCobrado,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F7F4),
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: const Color(0xFFD9E3D0)),
+      ),
+      child: Column(
+        children: [
+          _FilaResumenYastas(
+            etiqueta: 'Monto servicio',
+            valor: ConfigMoneda.formato(montoServicio),
+          ),
+          _FilaResumenYastas(
+            etiqueta: 'Comision cliente',
+            valor: ConfigMoneda.formato(comisionCliente),
+          ),
+          _FilaResumenYastas(
+            etiqueta: 'Comision Yastas',
+            valor: ConfigMoneda.formato(comisionYastas),
+          ),
+          _FilaResumenYastas(
+            etiqueta: 'Regalia',
+            valor: ConfigMoneda.formato(regaliaYastas),
+          ),
+          _FilaResumenYastas(
+            etiqueta: 'Ganancia farmacia',
+            valor: ConfigMoneda.formato(gananciaFarmacia),
+          ),
+          const Divider(height: 18),
+          _FilaResumenYastas(
+            etiqueta: 'Total al cliente',
+            valor: ConfigMoneda.formato(totalCobrado),
+            destacado: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilaResumenYastas extends StatelessWidget {
+  final String etiqueta;
+  final String valor;
+  final bool destacado;
+
+  const _FilaResumenYastas({
+    required this.etiqueta,
+    required this.valor,
+    this.destacado = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              etiqueta,
+              style: TextStyle(
+                fontSize: destacado ? 13 : 11,
+                fontWeight: destacado ? FontWeight.w900 : FontWeight.w600,
+              ),
+            ),
+          ),
+          Text(
+            valor,
+            style: TextStyle(
+              fontSize: destacado ? 13 : 11,
+              fontWeight: destacado ? FontWeight.w900 : FontWeight.w700,
+            ),
           ),
         ],
       ),

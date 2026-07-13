@@ -1,4 +1,6 @@
 import json
+from datetime import date
+from decimal import Decimal
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
@@ -65,6 +67,15 @@ class DevolucionProveedorDetalleRequest(BaseModel):
     observaciones: str | None = Field(default=None, max_length=255)
 
 
+class ReposicionProveedorDetalleRequest(BaseModel):
+    idProducto: int
+    cantidad: int = Field(gt=0)
+    costoUnitario: Decimal = Field(ge=0)
+    precioVenta: Decimal = Field(ge=0)
+    codigoLote: str | None = Field(default="REPOSICION", max_length=80)
+    fechaCaducidad: str | None = None
+
+
 class RegistrarDevolucionProveedorRequest(BaseModel):
     idUsuario: int
     idCompra: int | None = None
@@ -73,6 +84,7 @@ class RegistrarDevolucionProveedorRequest(BaseModel):
     motivo: MotivoDevolucionProveedor = "OTRO"
     observaciones: str | None = Field(default=None, max_length=255)
     detalles: list[DevolucionProveedorDetalleRequest] = Field(min_length=1)
+    reposicionDetalles: list[ReposicionProveedorDetalleRequest] | None = None
 
 
 class CancelarDevolucionRequest(BaseModel):
@@ -263,6 +275,14 @@ def obtener_devolucion_proveedor(id_devolucion_proveedor: int):
 
 @router.post("/proveedores", status_code=201)
 def registrar_devolucion_proveedor(request: RegistrarDevolucionProveedorRequest):
+    if request.tipoCompensacion == "REPOSICION_PRODUCTO" and not request.reposicionDetalles:
+        raise HTTPException(
+            status_code=422,
+            detail="La reposicion de producto debe incluir los datos del inventario repuesto.",
+        )
+    if request.tipoCompensacion == "REPOSICION_PRODUCTO":
+        _validar_reposicion_proveedor(request.reposicionDetalles or [])
+
     detalles_json = json.dumps(
         [
             {
@@ -289,7 +309,87 @@ def registrar_devolucion_proveedor(request: RegistrarDevolucionProveedorRequest)
         ],
         out_count=2,
     )
-    return obtener_devolucion_proveedor(result.get("out_0"))
+    id_devolucion = result.get("out_0")
+    folio_devolucion = result.get("out_1")
+
+    if request.tipoCompensacion == "REPOSICION_PRODUCTO":
+        reposicion_json = json.dumps(
+            [
+                {
+                    "idProducto": detalle.idProducto,
+                    "cantidad": detalle.cantidad,
+                    "costoUnitario": str(detalle.costoUnitario),
+                    "precioVenta": str(detalle.precioVenta),
+                    "codigoLote": detalle.codigoLote or "REPOSICION",
+                    "fechaCaducidad": detalle.fechaCaducidad,
+                }
+                for detalle in request.reposicionDetalles or []
+            ]
+        )
+
+        call_procedure(
+            "sp_registrar_compra",
+            [
+                request.idUsuario,
+                request.idProveedor,
+                f"REPOSICION-{folio_devolucion}",
+                Decimal("0.00"),
+                f"Reposicion por devolucion a proveedor {folio_devolucion}",
+                reposicion_json,
+                None,
+                Decimal("0.00"),
+            ],
+            out_count=1,
+        )
+
+    return obtener_devolucion_proveedor(id_devolucion)
+
+
+def _validar_reposicion_proveedor(detalles: list[ReposicionProveedorDetalleRequest]):
+    today = date.today()
+
+    for detalle in detalles:
+        producto = fetch_one(
+            """
+            SELECT idProducto, nombre, manejaCaducidad, activo
+            FROM producto
+            WHERE idProducto = %s
+            """,
+            [detalle.idProducto],
+        )
+
+        if not producto:
+            raise HTTPException(
+                status_code=422,
+                detail=f"El producto repuesto {detalle.idProducto} no existe.",
+            )
+
+        if not producto["activo"]:
+            raise HTTPException(
+                status_code=422,
+                detail=f"El producto repuesto {producto['nombre']} esta inactivo.",
+            )
+
+        if producto["manejaCaducidad"] and not detalle.fechaCaducidad:
+            raise HTTPException(
+                status_code=422,
+                detail=f"El producto repuesto {producto['nombre']} requiere fecha de caducidad.",
+            )
+
+        if detalle.fechaCaducidad:
+            try:
+                fecha_caducidad = date.fromisoformat(detalle.fechaCaducidad)
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=422,
+                    detail="La fecha de caducidad debe usar el formato YYYY-MM-DD.",
+                ) from exc
+
+            if fecha_caducidad < today:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"La caducidad de {producto['nombre']} no puede estar vencida.",
+                )
 
 
 @router.post("/proveedores/{id_devolucion_proveedor}/cancelar")
