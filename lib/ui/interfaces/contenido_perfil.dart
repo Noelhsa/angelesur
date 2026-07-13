@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/usuario.dart';
+import 'menu_carta_perfil.dart';
 
 const Color _fondoPagina = Color(0xFFE2E2E2);
 const Color _verdeOscuro = Color(0xFF397800);
@@ -41,6 +42,7 @@ class ContenidoPerfil extends StatefulWidget {
 class _ContenidoPerfilState extends State<ContenidoPerfil> {
   final TextEditingController _busquedaController = TextEditingController();
 
+  bool _mostrarMenuNuevoUsuario = false;
   String _rolSeleccionado = 'Todos los Roles';
 
   List<_UsuarioSistema> get _usuarios {
@@ -122,8 +124,8 @@ class _ContenidoPerfilState extends State<ContenidoPerfil> {
           usuario.telefono.toLowerCase().contains(texto) ||
           usuario.rol.toLowerCase().contains(texto);
 
-      final coincideRol =
-          _rolSeleccionado == 'Todos los Roles' || usuario.rol == _rolSeleccionado;
+      final coincideRol = _rolSeleccionado == 'Todos los Roles' ||
+          usuario.rol == _rolSeleccionado;
 
       return coincideTexto && coincideRol;
     }).toList();
@@ -143,56 +145,97 @@ class _ContenidoPerfilState extends State<ContenidoPerfil> {
     return 2;
   }
 
+  void _abrirMenuNuevoUsuario() {
+    setState(() {
+      _mostrarMenuNuevoUsuario = true;
+    });
+  }
+
+  void _cerrarMenuNuevoUsuario() {
+    setState(() {
+      _mostrarMenuNuevoUsuario = false;
+    });
+  }
+
+  void _guardarUsuario() {
+    setState(() {
+      _mostrarMenuNuevoUsuario = false;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Usuario guardado localmente. Falta conectar endpoint.'),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
       color: _fondoPagina,
-      child: Align(
-        alignment: Alignment.topLeft,
-        child: SingleChildScrollView(
-          child: Container(
-            width: double.infinity,
-            color: _fondoPagina,
-            padding: const EdgeInsets.fromLTRB(26, 26, 26, 34),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const _EncabezadoUsuarios(),
-                const SizedBox(height: 28),
-                _ResumenUsuarios(
-                  totalUsuarios: _usuarios.length,
-                  usuariosActivos: _usuariosActivos,
-                  administradores: _administradores,
-                  invitacionesPendientes: _invitacionesPendientes,
-                ),
-                const SizedBox(height: 28),
-                _PanelUsuarios(
-                  busquedaController: _busquedaController,
-                  rolSeleccionado: _rolSeleccionado,
-                  onBuscar: () {
-                    setState(() {});
-                  },
-                  onRolChanged: (value) {
-                    if (value == null) return;
+      child: Row(
+        children: [
+          Expanded(
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: SingleChildScrollView(
+                child: Container(
+                  width: double.infinity,
+                  color: _fondoPagina,
+                  padding: const EdgeInsets.fromLTRB(26, 26, 26, 34),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _EncabezadoUsuarios(
+                        onNuevoUsuario: _abrirMenuNuevoUsuario,
+                      ),
+                      const SizedBox(height: 28),
+                      _ResumenUsuarios(
+                        totalUsuarios: _usuarios.length,
+                        usuariosActivos: _usuariosActivos,
+                        administradores: _administradores,
+                        invitacionesPendientes: _invitacionesPendientes,
+                      ),
+                      const SizedBox(height: 28),
+                      _PanelUsuarios(
+                        busquedaController: _busquedaController,
+                        rolSeleccionado: _rolSeleccionado,
+                        onBuscar: () {
+                          setState(() {});
+                        },
+                        onRolChanged: (value) {
+                          if (value == null) return;
 
-                    setState(() {
-                      _rolSeleccionado = value;
-                    });
-                  },
-                  usuarios: _usuariosFiltrados,
+                          setState(() {
+                            _rolSeleccionado = value;
+                          });
+                        },
+                        usuarios: _usuariosFiltrados,
+                      ),
+                    ],
+                  ),
                 ),
-              ],
+              ),
             ),
           ),
-        ),
+          if (_mostrarMenuNuevoUsuario)
+            MenuCartaPerfil(
+              onCerrar: _cerrarMenuNuevoUsuario,
+              onGuardarUsuario: _guardarUsuario,
+            ),
+        ],
       ),
     );
   }
 }
 
 class _EncabezadoUsuarios extends StatelessWidget {
-  const _EncabezadoUsuarios();
+  final VoidCallback onNuevoUsuario;
+
+  const _EncabezadoUsuarios({
+    required this.onNuevoUsuario,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -225,7 +268,7 @@ class _EncabezadoUsuarios extends StatelessWidget {
         SizedBox(
           height: 38,
           child: ElevatedButton.icon(
-            onPressed: () {},
+            onPressed: onNuevoUsuario,
             icon: const Icon(
               Icons.person_add_alt_1,
               color: Colors.white,

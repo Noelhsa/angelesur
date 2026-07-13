@@ -15,9 +15,11 @@ import 'ui/interfaces/contenido_pedidos.dart';
 import 'ui/interfaces/contenido_perfil.dart';
 import 'ui/interfaces/contenido_proveedores.dart';
 import 'ui/interfaces/contenido_venta.dart';
+import 'ui/interfaces/contenido_venta_yastas.dart';
 import 'ui/interfaces/menu_carta_carrito.dart';
 import 'ui/interfaces/menu_superior_catalogo.dart';
 import 'ui/login/login_screen.dart';
+import 'ui/interfaces/contenido_devolucion.dart';
 
 const Color _fondoApp = Color(0xFF181A20);
 const Color _fondoContenido = Color(0xFFE2E2E2);
@@ -183,9 +185,27 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     }).toList();
   }
 
+  List<Medicamento> get _productosDisponiblesParaCarrito {
+    return [
+      ..._medicamentos,
+      ...serviciosYastas,
+    ];
+  }
+
+  Medicamento? _productoCarritoPorId(int id) {
+    for (final producto in _productosDisponiblesParaCarrito) {
+      if (producto.id == id) {
+        return producto;
+      }
+    }
+
+    return null;
+  }
+
   List<Medicamento> get _itemsCarrito {
-    return _medicamentos
-        .where((medicamento) => _carrito.containsKey(medicamento.id))
+    return _carrito.keys
+        .map(_productoCarritoPorId)
+        .whereType<Medicamento>()
         .toList();
   }
 
@@ -193,11 +213,13 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     double total = 0;
 
     for (final item in _carrito.entries) {
-      final medicamento = _medicamentos.firstWhere(
-        (medicamento) => medicamento.id == item.key,
-      );
+      final producto = _productoCarritoPorId(item.key);
 
-      total += medicamento.precio * item.value;
+      if (producto == null) {
+        continue;
+      }
+
+      total += producto.precio * item.value;
     }
 
     return total;
@@ -225,9 +247,11 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
 
       setState(() {
         _medicamentos = medicamentos;
+
         _carrito.removeWhere((id, _) {
-          return !medicamentos.any((medicamento) => medicamento.id == id);
+          return _productoCarritoPorId(id) == null;
         });
+
         _cargandoInventario = false;
       });
     } on ApiException catch (error) {
@@ -248,53 +272,71 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     });
   }
 
-  void _agregarAlCarrito(Medicamento medicamento) {
-    final cantidadActual = _carrito[medicamento.id] ?? 0;
+  void _agregarAlCarrito(Medicamento producto) {
+    final cantidadActual = _carrito[producto.id] ?? 0;
 
-    if (cantidadActual >= medicamento.stock) {
+    if (cantidadActual >= producto.stock) {
       return;
     }
 
     setState(() {
-      _carrito[medicamento.id] = cantidadActual + 1;
+      _carrito[producto.id] = cantidadActual + 1;
     });
   }
 
-  void _incrementarCantidad(int medicamentoId) {
-    final medicamento = _medicamentos.firstWhere(
-      (medicamento) => medicamento.id == medicamentoId,
-    );
-    final cantidadActual = _carrito[medicamentoId] ?? 0;
+  void _incrementarCantidad(int productoId) {
+    final producto = _productoCarritoPorId(productoId);
 
-    if (cantidadActual >= medicamento.stock) {
+    if (producto == null) {
+      return;
+    }
+
+    final cantidadActual = _carrito[productoId] ?? 0;
+
+    if (cantidadActual >= producto.stock) {
       return;
     }
 
     setState(() {
-      _carrito[medicamentoId] = cantidadActual + 1;
+      _carrito[productoId] = cantidadActual + 1;
     });
   }
 
-  void _disminuirCantidad(int medicamentoId) {
+  void _disminuirCantidad(int productoId) {
     setState(() {
-      final cantidadActual = _carrito[medicamentoId] ?? 0;
+      final cantidadActual = _carrito[productoId] ?? 0;
 
       if (cantidadActual <= 1) {
-        _carrito.remove(medicamentoId);
+        _carrito.remove(productoId);
       } else {
-        _carrito[medicamentoId] = cantidadActual - 1;
+        _carrito[productoId] = cantidadActual - 1;
       }
     });
   }
 
-  void _eliminarDelCarrito(int medicamentoId) {
+  void _eliminarDelCarrito(int productoId) {
     setState(() {
-      _carrito.remove(medicamentoId);
+      _carrito.remove(productoId);
     });
   }
 
   Future<void> _pagarVenta() async {
     if (_carrito.isEmpty || _procesandoVenta) {
+      return;
+    }
+
+    final tieneServiciosYastas = _itemsCarrito.any(
+      (item) => item.categoria == 'Yastas',
+    );
+
+    if (tieneServiciosYastas) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Los servicios Yastas ya se pueden agregar al carrito, pero falta conectar su endpoint para cobrarlos.',
+          ),
+        ),
+      );
       return;
     }
 
@@ -451,6 +493,9 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
 
       case 6:
         return const ContenidoProveedores();
+      
+      case 7:
+        return const ContenidoDevolucion();
 
       default:
         return const _InterfazNoEncontrada();

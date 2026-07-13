@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../models/medicamento.dart';
 import '../../utils/config_moneda.dart';
+import 'contenido_venta_yastas.dart';
 
 const Color _blanco = Color(0xFFFFFFFF);
 const Color _verde = Color(0xFF6FD000);
 const Color _verdeOscuro = Color(0xFF417A00);
-const Color _grisChip = Color(0xFFDCDCDC);
 const Color _texto = Color(0xFF101010);
 
 class ContenidoVenta extends StatefulWidget {
@@ -26,27 +26,7 @@ class ContenidoVenta extends StatefulWidget {
 }
 
 class _ContenidoVentaState extends State<ContenidoVenta> {
-  String _categoriaSeleccionada = 'Todos';
-
-  List<Medicamento> get _medicamentosFiltradosPorCategoria {
-    if (_categoriaSeleccionada == 'Todos') {
-      return widget.medicamentos;
-    }
-
-    return widget.medicamentos.where((medicamento) {
-      final categoria = medicamento.categoria.toLowerCase();
-
-      if (_categoriaSeleccionada == 'Antibióticos') {
-        return categoria.contains('antib');
-      }
-
-      if (_categoriaSeleccionada == 'Analgésicos') {
-        return categoria.contains('analg');
-      }
-
-      return true;
-    }).toList();
-  }
+  String _seccionSeleccionada = 'Medicamentos';
 
   @override
   Widget build(BuildContext context) {
@@ -54,18 +34,23 @@ class _ContenidoVentaState extends State<ContenidoVenta> {
       children: [
         _BarraSuperiorVenta(
           busquedaController: widget.busquedaController,
-          categoriaSeleccionada: _categoriaSeleccionada,
-          onSeleccionarCategoria: (categoria) {
+          seccionSeleccionada: _seccionSeleccionada,
+          onSeleccionarSeccion: (seccion) {
             setState(() {
-              _categoriaSeleccionada = categoria;
+              _seccionSeleccionada = seccion;
             });
           },
         ),
         Expanded(
-          child: _CatalogoMedicamentos(
-            medicamentos: _medicamentosFiltradosPorCategoria,
-            onAgregar: widget.onAgregar,
-          ),
+          child: _seccionSeleccionada == 'Yastas'
+              ? ContenidoVentaYastas(
+                  busquedaController: widget.busquedaController,
+                  onAgregar: widget.onAgregar,
+                )
+              : _CatalogoMedicamentos(
+                  medicamentos: widget.medicamentos,
+                  onAgregar: widget.onAgregar,
+                ),
         ),
       ],
     );
@@ -74,17 +59,19 @@ class _ContenidoVentaState extends State<ContenidoVenta> {
 
 class _BarraSuperiorVenta extends StatelessWidget {
   final TextEditingController busquedaController;
-  final String categoriaSeleccionada;
-  final ValueChanged<String> onSeleccionarCategoria;
+  final String seccionSeleccionada;
+  final ValueChanged<String> onSeleccionarSeccion;
 
   const _BarraSuperiorVenta({
     required this.busquedaController,
-    required this.categoriaSeleccionada,
-    required this.onSeleccionarCategoria,
+    required this.seccionSeleccionada,
+    required this.onSeleccionarSeccion,
   });
 
   @override
   Widget build(BuildContext context) {
+    final esYastas = seccionSeleccionada == 'Yastas';
+
     return Container(
       height: 78,
       padding: const EdgeInsets.only(left: 28, top: 20, right: 18),
@@ -130,16 +117,17 @@ class _BarraSuperiorVenta extends StatelessWidget {
                         fontSize: 10,
                         fontWeight: FontWeight.w500,
                       ),
-                      decoration: const InputDecoration(
-                        hintText: 'Buscar medicamento...',
-                        hintStyle: TextStyle(
+                      decoration: InputDecoration(
+                        hintText:
+                            esYastas ? 'Buscar servicio...' : 'Buscar medicamento...',
+                        hintStyle: const TextStyle(
                           color: Color(0xFF9A9A9A),
                           fontSize: 9,
                           fontWeight: FontWeight.w500,
                         ),
                         border: InputBorder.none,
                         isCollapsed: true,
-                        contentPadding: EdgeInsets.only(
+                        contentPadding: const EdgeInsets.only(
                           left: 8,
                           right: 8,
                         ),
@@ -153,24 +141,17 @@ class _BarraSuperiorVenta extends StatelessWidget {
           ),
           const SizedBox(width: 18),
           _ChipCategoria(
-            texto: 'Todos',
-            activo: categoriaSeleccionada == 'Todos',
-            onTap: () => onSeleccionarCategoria('Todos'),
-            ancho: 64,
+            texto: 'Medicamentos',
+            activo: seccionSeleccionada == 'Medicamentos',
+            onTap: () => onSeleccionarSeccion('Medicamentos'),
+            ancho: 98,
           ),
           const SizedBox(width: 13),
           _ChipCategoria(
-            texto: 'Antibióticos',
-            activo: categoriaSeleccionada == 'Antibióticos',
-            onTap: () => onSeleccionarCategoria('Antibióticos'),
-            ancho: 91,
-          ),
-          const SizedBox(width: 13),
-          _ChipCategoria(
-            texto: 'Analgésicos',
-            activo: categoriaSeleccionada == 'Analgésicos',
-            onTap: () => onSeleccionarCategoria('Analgésicos'),
-            ancho: 95,
+            texto: 'Yastas',
+            activo: seccionSeleccionada == 'Yastas',
+            onTap: () => onSeleccionarSeccion('Yastas'),
+            ancho: 72,
           ),
         ],
       ),
@@ -243,18 +224,30 @@ class _CatalogoMedicamentos extends StatelessWidget {
           width: double.infinity,
           child: Align(
             alignment: Alignment.topLeft,
-            child: Wrap(
-              alignment: WrapAlignment.start,
-              crossAxisAlignment: WrapCrossAlignment.start,
-              spacing: 14,
-              runSpacing: 15,
-              children: medicamentos.map((medicamento) {
-                return _TarjetaMedicamento(
-                  medicamento: medicamento,
-                  onAgregar: () => onAgregar(medicamento),
-                );
-              }).toList(),
-            ),
+            child: medicamentos.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.only(top: 24),
+                    child: Text(
+                      'No hay medicamentos para mostrar',
+                      style: TextStyle(
+                        color: _texto,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  )
+                : Wrap(
+                    alignment: WrapAlignment.start,
+                    crossAxisAlignment: WrapCrossAlignment.start,
+                    spacing: 14,
+                    runSpacing: 15,
+                    children: medicamentos.map((medicamento) {
+                      return _TarjetaMedicamento(
+                        medicamento: medicamento,
+                        onAgregar: () => onAgregar(medicamento),
+                      );
+                    }).toList(),
+                  ),
           ),
         ),
       ),

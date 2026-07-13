@@ -24,63 +24,79 @@ class BarraLateralIzquierda extends StatelessWidget {
       color: _colorFondoBarra,
       child: Column(
         children: [
-          const SizedBox(height: 26),
-          _BotonMenuLateral(
-            indice: 0,
-            seleccionado: seleccionado,
-            icono: Icons.person_outline_rounded,
-            texto: 'Perfil',
-            onTap: onSeleccionar,
-          ),
           const SizedBox(height: 18),
-          _BotonMenuLateral(
-            indice: 1,
-            seleccionado: seleccionado,
-            icono: Icons.storefront_outlined,
-            texto: 'Venta',
-            onTap: onSeleccionar,
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _BotonMenuLateral(
+                    indice: 0,
+                    seleccionado: seleccionado,
+                    icono: Icons.person_outline_rounded,
+                    texto: 'Perfil',
+                    onTap: onSeleccionar,
+                  ),
+                  const SizedBox(height: 12),
+                  _BotonMenuLateral(
+                    indice: 1,
+                    seleccionado: seleccionado,
+                    icono: Icons.storefront_outlined,
+                    texto: 'Venta',
+                    onTap: onSeleccionar,
+                  ),
+                  const SizedBox(height: 12),
+                  _BotonMenuLateral(
+                    indice: 2,
+                    seleccionado: seleccionado,
+                    icono: Icons.history,
+                    texto: 'Historial',
+                    onTap: onSeleccionar,
+                  ),
+                  const SizedBox(height: 12),
+                  _BotonMenuLateral(
+                    indice: 3,
+                    seleccionado: seleccionado,
+                    icono: Icons.assignment_outlined,
+                    texto: 'Pedidos',
+                    onTap: onSeleccionar,
+                  ),
+                  const SizedBox(height: 12),
+                  _BotonMenuLateral(
+                    indice: 4,
+                    seleccionado: seleccionado,
+                    icono: Icons.inventory_2_outlined,
+                    texto: 'Catálogo',
+                    onTap: onSeleccionar,
+                  ),
+                  const SizedBox(height: 12),
+                  _BotonMenuLateral(
+                    indice: 5,
+                    seleccionado: seleccionado,
+                    icono: Icons.payments_outlined,
+                    texto: 'Cajero',
+                    onTap: onSeleccionar,
+                  ),
+                  const SizedBox(height: 12),
+                  _BotonMenuLateral(
+                    indice: 6,
+                    seleccionado: seleccionado,
+                    icono: Icons.local_shipping_outlined,
+                    texto: 'Provee.',
+                    onTap: onSeleccionar,
+                  ),
+                  const SizedBox(height: 12),
+                  _BotonMenuLateral(
+                    indice: 7,
+                    seleccionado: seleccionado,
+                    icono: Icons.assignment_return_outlined,
+                    texto: 'Devoluciones',
+                    onTap: onSeleccionar,
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            ),
           ),
-          const SizedBox(height: 18),
-          _BotonMenuLateral(
-            indice: 2,
-            seleccionado: seleccionado,
-            icono: Icons.history,
-            texto: 'Historial',
-            onTap: onSeleccionar,
-          ),
-          const SizedBox(height: 18),
-          _BotonMenuLateral(
-            indice: 3,
-            seleccionado: seleccionado,
-            icono: Icons.assignment_outlined,
-            texto: 'Pedidos',
-            onTap: onSeleccionar,
-          ),
-          const SizedBox(height: 18),
-          _BotonMenuLateral(
-            indice: 4,
-            seleccionado: seleccionado,
-            icono: Icons.inventory_2_outlined,
-            texto: 'Catálogo',
-            onTap: onSeleccionar,
-          ),
-          const SizedBox(height: 18),
-          _BotonMenuLateral(
-            indice: 5,
-            seleccionado: seleccionado,
-            icono: Icons.payments_outlined,
-            texto: 'Cajero',
-            onTap: onSeleccionar,
-          ),
-          const SizedBox(height: 18),
-          _BotonMenuLateral(
-            indice: 6,
-            seleccionado: seleccionado,
-            icono: Icons.local_shipping_outlined,
-            texto: 'Provee.',
-            onTap: onSeleccionar,
-          ),
-          const Spacer(),
           IconButton(
             onPressed: () {},
             icon: const Icon(
@@ -151,12 +167,20 @@ class _BotonMenuLateral extends StatelessWidget {
                 color: Colors.white,
               ),
               const SizedBox(height: 4),
-              Text(
-                texto,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    texto,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -180,12 +204,20 @@ class _BotonMenuLateral extends StatelessWidget {
               color: _colorIcono,
             ),
             const SizedBox(height: 4),
-            Text(
-              texto,
-              style: const TextStyle(
-                color: Color(0xFF4B4F45),
-                fontSize: 8,
-                fontWeight: FontWeight.w600,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  texto,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF4B4F45),
+                    fontSize: 8,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
           ],
