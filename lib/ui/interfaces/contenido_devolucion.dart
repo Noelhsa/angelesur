@@ -279,8 +279,12 @@ class _ContenidoDevolucionState extends State<ContenidoDevolucion> {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
+      height: double.infinity,
+      alignment: Alignment.topLeft,
       color: _fondoPagina,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: SingleChildScrollView(
@@ -587,18 +591,21 @@ class _PanelDevoluciones extends StatelessWidget {
           else
             LayoutBuilder(
               builder: (context, constraints) {
-                final anchoTabla =
+                final anchoLista =
                     constraints.maxWidth < 980 ? 980.0 : constraints.maxWidth;
 
                 return SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: SizedBox(
-                    width: anchoTabla,
-                    child: _TablaDevoluciones(
-                      devoluciones: devoluciones,
-                      onDetalle: onDetalle,
-                      onCancelar: onCancelar,
-                      procesando: procesando,
+                    width: anchoLista,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: _TablaDevoluciones(
+                        devoluciones: devoluciones,
+                        onDetalle: onDetalle,
+                        onCancelar: onCancelar,
+                        procesando: procesando,
+                      ),
                     ),
                   ),
                 );
@@ -694,59 +701,16 @@ class _TablaDevoluciones extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const _HeaderTablaDevoluciones(),
-        for (final devolucion in devoluciones)
+        for (var index = 0; index < devoluciones.length; index++) ...[
+          if (index > 0) const SizedBox(height: 10),
           _FilaDevolucion(
-            devolucion: devolucion,
+            devolucion: devoluciones[index],
             onDetalle: onDetalle,
             onCancelar: onCancelar,
             procesando: procesando,
           ),
-      ],
-    );
-  }
-}
-
-class _HeaderTablaDevoluciones extends StatelessWidget {
-  const _HeaderTablaDevoluciones();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 54,
-      color: _grisCabeceraTabla,
-      child: const Row(
-        children: [
-          SizedBox(width: 22),
-          Expanded(flex: 14, child: _TextoHeaderTabla('Folio')),
-          Expanded(flex: 14, child: _TextoHeaderTabla('Fecha')),
-          Expanded(flex: 13, child: _TextoHeaderTabla('Tipo')),
-          Expanded(flex: 20, child: _TextoHeaderTabla('Origen')),
-          Expanded(flex: 18, child: _TextoHeaderTabla('Motivo')),
-          Expanded(flex: 14, child: _TextoHeaderTabla('Estado')),
-          Expanded(flex: 13, child: _TextoHeaderTabla('Total')),
-          Expanded(flex: 12, child: _TextoHeaderTabla('Acciones')),
-          SizedBox(width: 16),
         ],
-      ),
-    );
-  }
-}
-
-class _TextoHeaderTabla extends StatelessWidget {
-  final String texto;
-
-  const _TextoHeaderTabla(this.texto);
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      texto,
-      style: const TextStyle(
-        color: Color(0xFF747B65),
-        fontSize: 11,
-        fontWeight: FontWeight.w900,
-      ),
+      ],
     );
   }
 }
@@ -767,109 +731,174 @@ class _FilaDevolucion extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 58,
-      decoration: const BoxDecoration(
+      padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+      decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(
-          top: BorderSide(color: Color(0xFFE0E8D8)),
-        ),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _grisCabeceraTabla),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          const SizedBox(width: 22),
-          Expanded(
-            flex: 14,
-            child: _TextoCelda(
-              devolucion.folio,
-              fuerte: true,
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: devolucion.esCliente
+                  ? const Color(0xFFEAF7DF)
+                  : const Color(0xFFE8F1FF),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              devolucion.esCliente
+                  ? Icons.person_outline
+                  : Icons.local_shipping_outlined,
+              color: devolucion.esCliente ? _verdeOscuro : _azul,
+              size: 22,
             ),
           ),
+          const SizedBox(width: 14),
           Expanded(
-            flex: 14,
-            child: _TextoCelda(
-              _formatoFecha(devolucion.fecha),
-            ),
-          ),
-          Expanded(
-            flex: 13,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: _BadgeTipo(esCliente: devolucion.esCliente),
-            ),
-          ),
-          Expanded(
-            flex: 20,
-            child: _TextoCelda(devolucion.origen),
-          ),
-          Expanded(
-            flex: 18,
-            child: _TextoCelda(_textoEnum(devolucion.motivo)),
-          ),
-          Expanded(
-            flex: 14,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: _BadgeEstado(estatus: devolucion.estatus),
-            ),
-          ),
-          Expanded(
-            flex: 13,
-            child: _TextoCelda(
-              ConfigMoneda.formato(devolucion.total),
-              fuerte: true,
-            ),
-          ),
-          Expanded(
-            flex: 12,
-            child: Row(
+            flex: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                IconButton(
-                  onPressed: () => onDetalle(devolucion),
-                  icon: const Icon(
-                    Icons.remove_red_eye_outlined,
-                    size: 18,
+                Text(
+                  devolucion.folio,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _textoPrincipal,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
                   ),
-                  tooltip: 'Ver detalle',
                 ),
-                IconButton(
-                  onPressed: devolucion.estatus == 'CANCELADA' || procesando
-                      ? null
-                      : () => onCancelar(devolucion),
-                  icon: const Icon(
-                    Icons.cancel_outlined,
-                    size: 18,
-                  ),
-                  tooltip: 'Cancelar',
+                const SizedBox(height: 5),
+                Row(
+                  children: [
+                    Text(
+                      _formatoFecha(devolucion.fecha),
+                      style: const TextStyle(
+                        color: _textoSecundario,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    _BadgeTipo(esCliente: devolucion.esCliente),
+                  ],
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 16),
+          _MetricaDevolucion(
+            titulo: 'Origen',
+            valor: devolucion.origen,
+            ancho: 150,
+          ),
+          _MetricaDevolucion(
+            titulo: 'Motivo',
+            valor: _textoEnum(devolucion.motivo),
+            ancho: 150,
+          ),
+          SizedBox(
+            width: 118,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Estado',
+                  style: TextStyle(
+                    color: _textoSecundario,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: _BadgeEstado(estatus: devolucion.estatus),
+                ),
+              ],
+            ),
+          ),
+          _MetricaDevolucion(
+            titulo: 'Total',
+            valor: ConfigMoneda.formato(devolucion.total),
+            ancho: 96,
+            fuerte: true,
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: () => onDetalle(devolucion),
+            icon: const Icon(
+              Icons.remove_red_eye_outlined,
+              size: 19,
+            ),
+            tooltip: 'Ver detalle',
+          ),
+          IconButton(
+            onPressed: devolucion.estatus == 'CANCELADA' || procesando
+                ? null
+                : () => onCancelar(devolucion),
+            icon: const Icon(
+              Icons.cancel_outlined,
+              size: 19,
+            ),
+            tooltip: 'Cancelar',
+          ),
         ],
       ),
     );
   }
 }
 
-class _TextoCelda extends StatelessWidget {
-  final String texto;
+class _MetricaDevolucion extends StatelessWidget {
+  final String titulo;
+  final String valor;
+  final double ancho;
   final bool fuerte;
 
-  const _TextoCelda(
-    this.texto, {
+  const _MetricaDevolucion({
+    required this.titulo,
+    required this.valor,
+    required this.ancho,
     this.fuerte = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      texto,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: TextStyle(
-        color: _textoPrincipal,
-        fontSize: 11,
-        fontWeight: fuerte ? FontWeight.w900 : FontWeight.w700,
+    return SizedBox(
+      width: ancho,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            titulo,
+            style: const TextStyle(
+              color: _textoSecundario,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            valor,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: _textoPrincipal,
+              fontSize: 12,
+              fontWeight: fuerte ? FontWeight.w900 : FontWeight.w800,
+            ),
+          ),
+        ],
       ),
     );
   }
