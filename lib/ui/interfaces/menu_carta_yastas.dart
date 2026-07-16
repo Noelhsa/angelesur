@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 const Color _fondoPanel = Color(0xFFF8F8F8);
 const Color _verdeOscuro = Color(0xFF397800);
-const Color _verdeClaro = Color(0xFFF1FAEA);
 const Color _textoPrincipal = Color(0xFF101828);
 const Color _textoSecundario = Color(0xFF667085);
 const Color _bordeSuave = Color(0xFFD9E6D3);
@@ -151,7 +150,9 @@ class _MenuCartaYastasState extends State<MenuCartaYastas> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const _TituloPanelYastas(),
+                  _TituloPanelYastas(
+                    onCerrar: widget.onCerrar,
+                  ),
                   const SizedBox(height: 28),
                   _CampoDropdownYastas(
                     etiqueta: 'Tipo de servicio',
@@ -234,7 +235,6 @@ class _MenuCartaYastasState extends State<MenuCartaYastas> {
                   _CampoDineroYastas(
                     etiqueta: 'Ganancia farmacia',
                     controller: _gananciaController,
-                    resaltado: true,
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 12),
@@ -287,29 +287,6 @@ class _MenuCartaYastasState extends State<MenuCartaYastas> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 38,
-                    child: OutlinedButton(
-                      onPressed: widget.guardando ? null : widget.onCerrar,
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        side: const BorderSide(color: _bordeSuave),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                      child: const Text(
-                        'Cancelar',
-                        style: TextStyle(
-                          color: _textoPrincipal,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -321,25 +298,47 @@ class _MenuCartaYastasState extends State<MenuCartaYastas> {
 }
 
 class _TituloPanelYastas extends StatelessWidget {
-  const _TituloPanelYastas();
+  final VoidCallback onCerrar;
+
+  const _TituloPanelYastas({
+    required this.onCerrar,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    return Row(
       children: [
-        Icon(
+        const Icon(
           Icons.receipt_long_outlined,
           color: _verdeOscuro,
           size: 17,
         ),
-        SizedBox(width: 8),
-        Text(
-          'Nueva tarifa',
-          style: TextStyle(
-            color: _textoPrincipal,
-            fontSize: 15,
-            fontWeight: FontWeight.w900,
+        const SizedBox(width: 8),
+        const Expanded(
+          child: Text(
+            'Nueva tarifa',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: _textoPrincipal,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+            ),
           ),
+        ),
+        IconButton(
+          onPressed: onCerrar,
+          icon: const Icon(
+            Icons.close,
+            color: _textoSecundario,
+            size: 18,
+          ),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(
+            minWidth: 28,
+            minHeight: 28,
+          ),
+          tooltip: 'Cerrar',
         ),
       ],
     );
@@ -380,30 +379,26 @@ class _CampoTextoYastas extends StatelessWidget {
 class _CampoDineroYastas extends StatelessWidget {
   final String etiqueta;
   final TextEditingController controller;
-  final bool resaltado;
 
   const _CampoDineroYastas({
     required this.etiqueta,
     required this.controller,
-    this.resaltado = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return _ContenedorCampoYastas(
       etiqueta: etiqueta,
-      etiquetaColor: resaltado ? _verdeOscuro : _textoPrincipal,
       child: TextField(
         controller: controller,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         cursorColor: _verdeOscuro,
-        style: TextStyle(
-          color: resaltado ? _verdeOscuro : _textoPrincipal,
+        style: const TextStyle(
+          color: _textoPrincipal,
           fontSize: 12,
           fontWeight: FontWeight.w800,
         ),
         decoration: _decoracionCampoYastas(
-          fillColor: resaltado ? _verdeClaro : _grisCampo,
           prefixIcon: const Padding(
             padding: EdgeInsets.only(left: 12, right: 8),
             child: Text(
@@ -461,13 +456,11 @@ class _CampoDropdownYastas extends StatelessWidget {
 
 class _ContenedorCampoYastas extends StatelessWidget {
   final String etiqueta;
-  final Color etiquetaColor;
   final Widget child;
 
   const _ContenedorCampoYastas({
     required this.etiqueta,
     required this.child,
-    this.etiquetaColor = _textoPrincipal,
   });
 
   @override
@@ -477,8 +470,8 @@ class _ContenedorCampoYastas extends StatelessWidget {
       children: [
         Text(
           etiqueta,
-          style: TextStyle(
-            color: etiquetaColor,
+          style: const TextStyle(
+            color: _textoPrincipal,
             fontSize: 10,
             fontWeight: FontWeight.w900,
           ),
