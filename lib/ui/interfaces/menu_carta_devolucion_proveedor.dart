@@ -1,22 +1,30 @@
 import 'package:flutter/material.dart';
 
-const Color _fondoPagina = Color(0xFFF8F6F5);
+import '../../services/compras_api_service.dart';
+import '../../services/devoluciones_api_service.dart';
+
+const Color _fondoPanel = Color(0xFFF8F8F8);
 const Color _verdeOscuro = Color(0xFF397800);
-const Color _azul = Color(0xFF0B63CE);
 const Color _textoPrincipal = Color(0xFF101828);
 const Color _textoSecundario = Color(0xFF667085);
 const Color _bordeSuave = Color(0xFFD9E6D3);
-const Color _grisCampo = Color(0xFFF6F4F1);
-const Color _naranja = Color(0xFFFF8A00);
+const Color _grisCampo = Color(0xFFF2F2F2);
+const Color _rojo = Color(0xFFE02020);
 
 class MenuCartaDevolucionProveedor extends StatefulWidget {
+  final int idUsuario;
+  final ComprasApiService comprasApiService;
+  final bool procesando;
   final VoidCallback onCerrar;
-  final VoidCallback onGuardarDevolucion;
+  final ValueChanged<RegistrarDevolucionProveedorPayload> onGuardarDevolucion;
 
   const MenuCartaDevolucionProveedor({
     super.key,
+    required this.idUsuario,
+    required this.comprasApiService,
     required this.onCerrar,
     required this.onGuardarDevolucion,
+    this.procesando = false,
   });
 
   @override
@@ -26,165 +34,395 @@ class MenuCartaDevolucionProveedor extends StatefulWidget {
 
 class _MenuCartaDevolucionProveedorState
     extends State<MenuCartaDevolucionProveedor> {
-  final TextEditingController _folioController = TextEditingController(
-    text: 'DEV-PROV-2023-0892',
-  );
-  final TextEditingController _fechaController = TextEditingController();
-  final TextEditingController _totalController = TextEditingController();
+  final TextEditingController _cantidadController =
+      TextEditingController(text: '1');
   final TextEditingController _observacionesController =
       TextEditingController();
-  final TextEditingController _fechaRegistroController = TextEditingController(
-    text: '24 de Mayo, 2024 · 14:30',
-  );
 
-  String? _motivoSeleccionado;
-  String _metodoSeleccionado = 'Efectivo';
-  String _estatusSeleccionado = 'Pendiente';
+  bool _cargando = true;
+  bool _cargandoDetalle = false;
+
+  String? _error;
+  String _motivo = 'OTRO';
+  String _compensacion = 'SIN_COMPENSACION';
+
+  List<CompraResumen> _compras = [];
+  CompraDetalle? _compraDetalle;
+
+  int? _idCompra;
+  int? _idCompraDetalle;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarCompras();
+  }
 
   @override
   void dispose() {
-    _folioController.dispose();
-    _fechaController.dispose();
-    _totalController.dispose();
+    _cantidadController.dispose();
     _observacionesController.dispose();
-    _fechaRegistroController.dispose();
     super.dispose();
   }
 
+  Future<void> _cargarCompras() async {
+    setState(() {
+      _cargando = true;
+      _error = null;
+    });
+
+    try {
+      final compras = await widget.comprasApiService.listarCompras(
+        estatus: 'REGISTRADA',
+        limite: 300,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _compras = compras;
+        _cargando = false;
+
+        if (compras.isEmpty) {
+          _error = 'No se pudieron cargar compras registradas';
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        _error = 'No se pudieron cargar compras registradas';
+        _cargando = false;
+      });
+    }
+  }
+
+  Future<void> _seleccionarCompra(int? idCompra) async {
+    if (idCompra == null) return;
+
+    setState(() {
+      _idCompra = idCompra;
+      _idCompraDetalle = null;
+      _compraDetalle = null;
+      _cargandoDetalle = true;
+      _error = null;
+    });
+
+    try {
+      final detalle = await widget.comprasApiService.obtenerCompra(idCompra);
+
+      if (!mounted) return;
+
+      setState(() {
+        _compraDetalle = detalle;
+        _idCompraDetalle = detalle.detalles.isNotEmpty
+            ? detalle.detalles.first.idCompraDetalle
+            : null;
+        _cargandoDetalle = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        _error = 'No se pudo cargar el detalle de la compra';
+        _cargandoDetalle = false;
+      });
+    }
+  }
+
+  dynamic _detalleSeleccionado() {
+    final compra = _compraDetalle;
+    final idDetalle = _idCompraDetalle;
+
+    if (compra == null || idDetalle == null) return null;
+
+    for (final detalle in compra.detalles) {
+      if (detalle.idCompraDetalle == idDetalle) {
+        return detalle;
+      }
+    }
+
+    return null;
+  }
+
+  void _guardar() {
+    final compra = _compraDetalle;
+    final detalle = _detalleSeleccionado();
+    final cantidad = int.tryParse(_cantidadController.text.trim()) ?? 0;
+
+    if (compra == null || detalle == null) {
+      setState(() {
+        _error = 'Selecciona una compra y un producto';
+      });
+      return;
+    }
+
+    if (detalle.idInventario == null) {
+      setState(() {
+        _error = 'El renglón seleccionado no tiene inventario ligado';
+      });
+      return;
+    }
+
+    if (cantidad <= 0 || cantidad > detalle.cantidad) {
+      setState(() {
+        _error = 'La cantidad debe estar entre 1 y ${detalle.cantidad}';
+      });
+      return;
+    }
+
+    List<ReposicionProveedorDetallePayload>? reposicionDetalles;
+
+    if (_compensacion == 'REPOSICION_PRODUCTO') {
+      reposicionDetalles = [
+        ReposicionProveedorDetallePayload(
+          idProducto: detalle.idProducto,
+          cantidad: cantidad,
+          costoUnitario: detalle.costoUnitario,
+          precioVenta: detalle.precioVentaSugerido,
+          codigoLote: 'REP-${detalle.codigoLote}',
+          fechaCaducidad: _textoONulo(
+            _formatoFechaApi(detalle.fechaCaducidad),
+          ),
+        ),
+      ];
+    }
+
+    setState(() {
+      _error = null;
+    });
+
+    widget.onGuardarDevolucion(
+      RegistrarDevolucionProveedorPayload(
+        idUsuario: widget.idUsuario,
+        idCompra: compra.idCompra,
+        idProveedor: compra.idProveedor,
+        tipoCompensacion: _compensacion,
+        motivo: _motivo,
+        observaciones: _textoONulo(_observacionesController.text),
+        detalles: [
+          DevolucionProveedorDetallePayload(
+            idCompraDetalle: detalle.idCompraDetalle,
+            idInventario: detalle.idInventario,
+            cantidad: cantidad,
+            motivoDetalle: _motivo,
+            observaciones: _textoONulo(_observacionesController.text),
+          ),
+        ],
+        reposicionDetalles: reposicionDetalles,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 430,
+      width: 250,
       height: double.infinity,
-      decoration: const BoxDecoration(
-        color: _fondoPagina,
-        border: Border(
-          left: BorderSide(
-            color: _bordeSuave,
-            width: 1,
-          ),
+      decoration: BoxDecoration(
+        color: _fondoPanel,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _bordeSuave,
+          width: 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          _EncabezadoDevolucionProveedor(
-            onCerrar: widget.onCerrar,
-            onGuardar: widget.onGuardarDevolucion,
-          ),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: _bordeSuave),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  children: [
-                    _FilaCampo(
-                      etiqueta: 'Folio de Referencia',
-                      child: _CampoTexto(
-                        controller: _folioController,
-                        hintText: 'DEV-PROV-2023-0892',
+              padding: const EdgeInsets.fromLTRB(12, 18, 12, 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _EncabezadoPanel(
+                    onCerrar: widget.onCerrar,
+                  ),
+                  const SizedBox(height: 28),
+                  if (_cargando)
+                    const SizedBox(
+                      height: 180,
+                      child: Center(
+                        child: CircularProgressIndicator(),
                       ),
+                    )
+                  else ...[
+                    _CampoDropdownInt(
+                      etiqueta: 'Compra origen',
+                      valor: _idCompra,
+                      hintText: 'Seleccione compra...',
+                      opciones: [
+                        for (final compra in _compras)
+                          DropdownMenuItem<int>(
+                            value: compra.idCompra,
+                            child: Text(
+                              'CMP-${compra.idCompra} - ${compra.proveedor}',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
+                      onChanged: _seleccionarCompra,
                     ),
-                    const _SeparadorFormulario(),
-                    _FilaCampo(
-                      etiqueta: 'Fecha de Devolución',
-                      child: _CampoTexto(
-                        controller: _fechaController,
-                        hintText: 'dd/mm/aaaa',
-                        suffixIcon: Icons.calendar_today_outlined,
-                      ),
-                    ),
-                    const _SeparadorFormulario(),
-                    _FilaCampo(
-                      etiqueta: 'Motivo',
-                      child: _CampoDropdown(
-                        valor: _motivoSeleccionado,
-                        hintText: 'Seleccione un motivo...',
-                        opciones: const [
-                          'Producto dañado',
-                          'Sobrestock / Acuerdo',
-                          'Producto caducado',
-                          'Error de proveedor',
-                          'Cambio de lote',
-                          'Otro',
+                    if (_cargandoDetalle) ...[
+                      const SizedBox(height: 12),
+                      const LinearProgressIndicator(),
+                    ],
+                    if (!_cargandoDetalle && _compraDetalle != null) ...[
+                      const SizedBox(height: 18),
+                      _CampoDropdownInt(
+                        etiqueta: 'Producto devuelto',
+                        valor: _idCompraDetalle,
+                        hintText: 'Seleccione producto...',
+                        opciones: [
+                          for (final detalle in _compraDetalle!.detalles)
+                            DropdownMenuItem<int>(
+                              value: detalle.idCompraDetalle,
+                              child: Text(
+                                '${detalle.producto} - cant. ${detalle.cantidad}',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                         ],
                         onChanged: (value) {
                           setState(() {
-                            _motivoSeleccionado = value;
+                            _idCompraDetalle = value;
                           });
                         },
                       ),
+                    ],
+                    const SizedBox(height: 18),
+                    _CampoTexto(
+                      etiqueta: 'Cantidad',
+                      controller: _cantidadController,
+                      keyboardType: TextInputType.number,
                     ),
-                    const _SeparadorFormulario(),
-                    _FilaCampo(
-                      etiqueta: 'Total (\$)',
-                      child: _CampoTexto(
-                        controller: _totalController,
-                        hintText: '0.00',
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
+                    const SizedBox(height: 18),
+                    _CampoDropdownString(
+                      etiqueta: 'Compensación',
+                      valor: _compensacion,
+                      opciones: const [
+                        DropdownMenuItem(
+                          value: 'EFECTIVO',
+                          child: Text('Efectivo'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'ELECTRONICO',
+                          child: Text('Electrónico'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'NOTA_CREDITO',
+                          child: Text('Nota crédito'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'REPOSICION_PRODUCTO',
+                          child: Text('Reposición'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'SIN_COMPENSACION',
+                          child: Text('Sin compensación'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+
+                        setState(() {
+                          _compensacion = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 18),
+                    _CampoDropdownString(
+                      etiqueta: 'Motivo',
+                      valor: _motivo,
+                      opciones: const [
+                        DropdownMenuItem(
+                          value: 'PRODUCTO_DANADO',
+                          child: Text('Producto dañado'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'CADUCADO',
+                          child: Text('Caducado'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'ERROR_COMPRA',
+                          child: Text('Error de compra'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'EXCEDENTE',
+                          child: Text('Excedente'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'CAMBIO_PRECIO',
+                          child: Text('Cambio de precio'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'OTRO',
+                          child: Text('Otro'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+
+                        setState(() {
+                          _motivo = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 22),
+                    _CampoTexto(
+                      etiqueta: 'Observaciones',
+                      controller: _observacionesController,
+                      hintText: 'Detalle la razón del retorno aquí...',
+                      maxLines: 4,
+                    ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        _error!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: _rojo,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 90),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 40,
+                      child: ElevatedButton(
+                        onPressed: widget.procesando ? null : _guardar,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _verdeOscuro,
+                          disabledBackgroundColor:
+                              _verdeOscuro.withOpacity(0.55),
+                          elevation: 4,
+                          shadowColor: _verdeOscuro.withOpacity(0.25),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
+                        child: Text(
+                          widget.procesando ? 'Guardando...' : 'Guardar',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                       ),
                     ),
-                    const _SeparadorFormulario(),
-                    _FilaCampo(
-                      etiqueta: 'Método de Devolución',
-                      child: _CampoDropdown(
-                        valor: _metodoSeleccionado,
-                        opciones: const [
-                          'Efectivo',
-                          'Tarjeta',
-                          'Transferencia',
-                          'Crédito con proveedor',
-                          'Nota de crédito',
-                        ],
-                        onChanged: (value) {
-                          if (value == null) return;
-
-                          setState(() {
-                            _metodoSeleccionado = value;
-                          });
-                        },
-                      ),
-                    ),
-                    const _SeparadorFormulario(),
-                    _FilaCampo(
-                      etiqueta: 'Estatus Inicial',
-                      child: _SelectorEstatus(
-                        estatusSeleccionado: _estatusSeleccionado,
-                        onChanged: (estatus) {
-                          setState(() {
-                            _estatusSeleccionado = estatus;
-                          });
-                        },
-                      ),
-                    ),
-                    const _SeparadorFormulario(),
-                    _FilaCampo(
-                      etiqueta: 'Observaciones',
-                      alineacionSuperior: true,
-                      child: _CampoTexto(
-                        controller: _observacionesController,
-                        hintText:
-                            'Detalles adicionales sobre el producto, lote o acuerdo con proveedor...',
-                        maxLines: 4,
-                      ),
-                    ),
-                    const _SeparadorFormulario(),
-                    _FilaCampo(
-                      etiqueta: 'Fecha de Registro',
-                      child: _CampoTexto(
-                        controller: _fechaRegistroController,
-                        enabled: false,
-                      ),
-                    ),
                   ],
-                ),
+                ],
               ),
             ),
           ),
@@ -194,413 +432,232 @@ class _MenuCartaDevolucionProveedorState
   }
 }
 
-class _EncabezadoDevolucionProveedor extends StatelessWidget {
+class _EncabezadoPanel extends StatelessWidget {
   final VoidCallback onCerrar;
-  final VoidCallback onGuardar;
 
-  const _EncabezadoDevolucionProveedor({
+  const _EncabezadoPanel({
     required this.onCerrar,
-    required this.onGuardar,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 58,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: const BoxDecoration(
-        color: _fondoPagina,
-        border: Border(
-          bottom: BorderSide(
-            color: _bordeSuave,
-            width: 1,
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: onCerrar,
-            icon: const Icon(
-              Icons.arrow_back,
-              color: _textoPrincipal,
-              size: 20,
-            ),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(
-              minWidth: 30,
-              minHeight: 30,
-            ),
-          ),
-          const SizedBox(width: 4),
-          const Expanded(
-            child: Text(
-              'Añadir Devolución a Proveedor',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: _textoPrincipal,
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          SizedBox(
-            width: 86,
-            height: 34,
-            child: OutlinedButton(
-              onPressed: onCerrar,
-              style: OutlinedButton.styleFrom(
-                backgroundColor: Colors.white,
-                side: const BorderSide(color: _bordeSuave),
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(5),
-                ),
-              ),
-              child: const Text(
-                'Cancelar',
-                style: TextStyle(
-                  color: _textoPrincipal,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 128,
-            height: 34,
-            child: ElevatedButton.icon(
-              onPressed: onGuardar,
-              icon: const Icon(
-                Icons.save_outlined,
-                color: Colors.white,
-                size: 14,
-              ),
-              label: const Text(
-                'Guardar Devolución',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _verdeOscuro,
-                elevation: 4,
-                shadowColor: _verdeOscuro.withOpacity(0.25),
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(5),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 4),
-          IconButton(
-            onPressed: onCerrar,
-            icon: const Icon(
-              Icons.close,
-              color: _textoPrincipal,
-              size: 18,
-            ),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(
-              minWidth: 28,
-              minHeight: 28,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FilaCampo extends StatelessWidget {
-  final String etiqueta;
-  final Widget child;
-  final bool alineacionSuperior;
-
-  const _FilaCampo({
-    required this.etiqueta,
-    required this.child,
-    this.alineacionSuperior = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment:
-          alineacionSuperior ? CrossAxisAlignment.start : CrossAxisAlignment.center,
       children: [
-        SizedBox(
-          width: 130,
-          child: Padding(
-            padding: EdgeInsets.only(top: alineacionSuperior ? 10 : 0),
-            child: Text(
-              etiqueta,
-              style: const TextStyle(
-                color: Color(0xFF6A736C),
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-              ),
+        const Icon(
+          Icons.keyboard_return,
+          color: _verdeOscuro,
+          size: 17,
+        ),
+        const SizedBox(width: 8),
+        const Expanded(
+          child: Text(
+            'Devolución a proveedor',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: _textoPrincipal,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
             ),
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(child: child),
+        IconButton(
+          onPressed: onCerrar,
+          icon: const Icon(
+            Icons.close,
+            color: _textoSecundario,
+            size: 18,
+          ),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(
+            minWidth: 28,
+            minHeight: 28,
+          ),
+        ),
       ],
     );
   }
 }
 
-class _SeparadorFormulario extends StatelessWidget {
-  const _SeparadorFormulario();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 1,
-      margin: const EdgeInsets.symmetric(vertical: 14),
-      color: const Color(0xFFE6EADC),
-    );
-  }
-}
-
 class _CampoTexto extends StatelessWidget {
+  final String etiqueta;
   final TextEditingController controller;
   final String? hintText;
-  final IconData? suffixIcon;
-  final bool enabled;
   final int maxLines;
   final TextInputType? keyboardType;
 
   const _CampoTexto({
+    required this.etiqueta,
     required this.controller,
     this.hintText,
-    this.suffixIcon,
-    this.enabled = true,
     this.maxLines = 1,
     this.keyboardType,
   });
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      enabled: enabled,
-      maxLines: maxLines,
-      keyboardType: keyboardType,
-      cursorColor: _verdeOscuro,
-      style: TextStyle(
-        color: enabled ? _textoPrincipal : _textoSecundario,
-        fontSize: 12,
-        fontWeight: FontWeight.w700,
-      ),
-      decoration: _decoracionCampo(
-        hintText: hintText,
-        suffixIcon: suffixIcon,
-        enabled: enabled,
+    return _ContenedorCampo(
+      etiqueta: etiqueta,
+      child: TextField(
+        controller: controller,
+        maxLines: maxLines,
+        keyboardType: keyboardType,
+        cursorColor: _verdeOscuro,
+        style: const TextStyle(
+          color: _textoPrincipal,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+        decoration: _decoracionCampo(
+          hintText: hintText,
+        ),
       ),
     );
   }
 }
 
-class _CampoDropdown extends StatelessWidget {
-  final String? valor;
-  final String? hintText;
-  final List<String> opciones;
-  final ValueChanged<String?> onChanged;
+class _CampoDropdownInt extends StatelessWidget {
+  final String etiqueta;
+  final int? valor;
+  final String hintText;
+  final List<DropdownMenuItem<int>> opciones;
+  final ValueChanged<int?> onChanged;
 
-  const _CampoDropdown({
+  const _CampoDropdownInt({
+    required this.etiqueta,
     required this.valor,
-    this.hintText,
+    required this.hintText,
     required this.opciones,
     required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<String>(
-      value: valor,
-      isExpanded: true,
-      icon: const Icon(
-        Icons.keyboard_arrow_down,
-        color: _textoSecundario,
-        size: 18,
+    return _ContenedorCampo(
+      etiqueta: etiqueta,
+      child: DropdownButtonFormField<int>(
+        initialValue: valor,
+        isExpanded: true,
+        icon: const Icon(
+          Icons.keyboard_arrow_down,
+          color: _textoSecundario,
+          size: 18,
+        ),
+        hint: Text(
+          hintText,
+          style: const TextStyle(
+            color: _textoSecundario,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        decoration: _decoracionCampo(),
+        style: const TextStyle(
+          color: _textoPrincipal,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+        items: opciones,
+        onChanged: onChanged,
       ),
-      hint: hintText == null
-          ? null
-          : Text(
-              hintText!,
-              style: const TextStyle(
-                color: _textoSecundario,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-      style: const TextStyle(
-        color: _textoPrincipal,
-        fontSize: 12,
-        fontWeight: FontWeight.w700,
-      ),
-      decoration: _decoracionCampo(),
-      items: opciones.map((opcion) {
-        return DropdownMenuItem<String>(
-          value: opcion,
-          child: Text(opcion),
-        );
-      }).toList(),
-      onChanged: onChanged,
     );
   }
 }
 
-class _SelectorEstatus extends StatelessWidget {
-  final String estatusSeleccionado;
-  final ValueChanged<String> onChanged;
+class _CampoDropdownString extends StatelessWidget {
+  final String etiqueta;
+  final String valor;
+  final List<DropdownMenuItem<String>> opciones;
+  final ValueChanged<String?> onChanged;
 
-  const _SelectorEstatus({
-    required this.estatusSeleccionado,
+  const _CampoDropdownString({
+    required this.etiqueta,
+    required this.valor,
+    required this.opciones,
     required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _OpcionEstatus(
-          texto: 'Pendiente',
-          activo: estatusSeleccionado == 'Pendiente',
-          color: _naranja,
-          fondo: const Color(0xFFFFF0DE),
-          onTap: () => onChanged('Pendiente'),
+    return _ContenedorCampo(
+      etiqueta: etiqueta,
+      child: DropdownButtonFormField<String>(
+        initialValue: valor,
+        isExpanded: true,
+        icon: const Icon(
+          Icons.keyboard_arrow_down,
+          color: _textoSecundario,
+          size: 18,
         ),
-        const SizedBox(width: 16),
-        _OpcionEstatus(
-          texto: 'Procesado',
-          activo: estatusSeleccionado == 'Procesado',
-          color: _azul,
-          fondo: const Color(0xFFE8F1FF),
-          onTap: () => onChanged('Procesado'),
+        decoration: _decoracionCampo(),
+        style: const TextStyle(
+          color: _textoPrincipal,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
         ),
-      ],
+        items: opciones,
+        onChanged: onChanged,
+      ),
     );
   }
 }
 
-class _OpcionEstatus extends StatelessWidget {
-  final String texto;
-  final bool activo;
-  final Color color;
-  final Color fondo;
-  final VoidCallback onTap;
+class _ContenedorCampo extends StatelessWidget {
+  final String etiqueta;
+  final Widget child;
 
-  const _OpcionEstatus({
-    required this.texto,
-    required this.activo,
-    required this.color,
-    required this.fondo,
-    required this.onTap,
+  const _ContenedorCampo({
+    required this.etiqueta,
+    required this.child,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Row(
-        children: [
-          Container(
-            width: 13,
-            height: 13,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: activo ? _verdeOscuro : const Color(0xFFC7CDD3),
-                width: 2,
-              ),
-            ),
-            child: activo
-                ? Center(
-                    child: Container(
-                      width: 5,
-                      height: 5,
-                      decoration: const BoxDecoration(
-                        color: _verdeOscuro,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  )
-                : null,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          etiqueta,
+          style: const TextStyle(
+            color: _textoPrincipal,
+            fontSize: 9,
+            fontWeight: FontWeight.w900,
           ),
-          const SizedBox(width: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-            decoration: BoxDecoration(
-              color: fondo,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              texto,
-              style: TextStyle(
-                color: color,
-                fontSize: 9,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 8),
+        child,
+      ],
     );
   }
 }
 
 InputDecoration _decoracionCampo({
   String? hintText,
-  IconData? suffixIcon,
-  bool enabled = true,
 }) {
   return InputDecoration(
     filled: true,
-    fillColor: enabled ? _grisCampo : const Color(0xFFEDEDED),
+    fillColor: _grisCampo,
     hintText: hintText,
     hintStyle: const TextStyle(
       color: _textoSecundario,
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: FontWeight.w600,
     ),
-    suffixIcon: suffixIcon == null
-        ? null
-        : Icon(
-            suffixIcon,
-            color: _textoSecundario,
-            size: 17,
-          ),
     contentPadding: const EdgeInsets.symmetric(
       horizontal: 12,
-      vertical: 10,
+      vertical: 11,
     ),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(6),
       borderSide: const BorderSide(
-        color: _bordeSuave,
+        color: Color(0xFFE0E0E0),
         width: 1,
       ),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(6),
       borderSide: const BorderSide(
-        color: _bordeSuave,
-        width: 1,
-      ),
-    ),
-    disabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(6),
-      borderSide: const BorderSide(
-        color: _bordeSuave,
+        color: Color(0xFFE0E0E0),
         width: 1,
       ),
     ),
@@ -608,8 +665,26 @@ InputDecoration _decoracionCampo({
       borderRadius: BorderRadius.circular(6),
       borderSide: const BorderSide(
         color: _verdeOscuro,
-        width: 1.3,
+        width: 1.2,
       ),
     ),
   );
+}
+
+String _formatoFechaApi(dynamic fecha) {
+  if (fecha == null) return '';
+
+  if (fecha is DateTime) {
+    final mes = fecha.month.toString().padLeft(2, '0');
+    final dia = fecha.day.toString().padLeft(2, '0');
+    return '${fecha.year}-$mes-$dia';
+  }
+
+  return fecha.toString();
+}
+
+String? _textoONulo(String value) {
+  final text = value.trim();
+
+  return text.isEmpty ? null : text;
 }

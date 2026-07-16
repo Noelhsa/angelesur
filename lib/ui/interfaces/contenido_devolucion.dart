@@ -7,6 +7,7 @@ import '../../services/devoluciones_api_service.dart';
 import '../../services/ventas_api_service.dart';
 import '../../utils/config_moneda.dart';
 import 'menu_carta_devolucion_cliente.dart';
+import 'menu_carta_devolucion_proveedor.dart';
 
 const Color _fondoPagina = Color(0xFFE2E2E2);
 const Color _verdeOscuro = Color(0xFF397800);
@@ -39,6 +40,8 @@ class _ContenidoDevolucionState extends State<ContenidoDevolucion> {
   bool _cargando = true;
   bool _procesando = false;
   bool _mostrarMenuDevolucionCliente = false;
+  bool _mostrarMenuDevolucionProveedor = false;
+
   String? _error;
   List<DevolucionClienteResumen> _clientes = [];
   List<DevolucionProveedorResumen> _proveedores = [];
@@ -130,6 +133,7 @@ class _ContenidoDevolucionState extends State<ContenidoDevolucion> {
     if (_procesando) return;
 
     setState(() {
+      _mostrarMenuDevolucionProveedor = false;
       _mostrarMenuDevolucionCliente = true;
     });
   }
@@ -166,17 +170,24 @@ class _ContenidoDevolucionState extends State<ContenidoDevolucion> {
     }
   }
 
-  Future<void> _registrarProveedor() async {
-    final payload = await showDialog<RegistrarDevolucionProveedorPayload>(
-      context: context,
-      builder: (context) => _DialogoNuevaDevolucionProveedor(
-        idUsuario: widget.usuario.id,
-        comprasApiService: _comprasApiService,
-      ),
-    );
+  void _registrarProveedor() {
+    if (_procesando) return;
 
-    if (payload == null) return;
+    setState(() {
+      _mostrarMenuDevolucionCliente = false;
+      _mostrarMenuDevolucionProveedor = true;
+    });
+  }
 
+  void _cerrarMenuDevolucionProveedor() {
+    setState(() {
+      _mostrarMenuDevolucionProveedor = false;
+    });
+  }
+
+  Future<void> _guardarDevolucionProveedorDesdeMenu(
+    RegistrarDevolucionProveedorPayload payload,
+  ) async {
     setState(() => _procesando = true);
 
     try {
@@ -185,6 +196,10 @@ class _ContenidoDevolucionState extends State<ContenidoDevolucion> {
       );
 
       _mostrarMensaje('Devolucion ${devolucion.folio} registrada');
+
+      setState(() {
+        _mostrarMenuDevolucionProveedor = false;
+      });
 
       await _cargarDevoluciones();
     } on ApiException catch (error) {
@@ -318,6 +333,17 @@ class _ContenidoDevolucionState extends State<ContenidoDevolucion> {
                 procesando: _procesando,
                 onCerrar: _cerrarMenuDevolucionCliente,
                 onGuardarDevolucion: _guardarDevolucionClienteDesdeMenu,
+              ),
+            ),
+          if (_mostrarMenuDevolucionProveedor)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 20, 14, 20),
+              child: MenuCartaDevolucionProveedor(
+                idUsuario: widget.usuario.id,
+                comprasApiService: _comprasApiService,
+                procesando: _procesando,
+                onCerrar: _cerrarMenuDevolucionProveedor,
+                onGuardarDevolucion: _guardarDevolucionProveedorDesdeMenu,
               ),
             ),
         ],
@@ -950,469 +976,6 @@ class _EstadoDevoluciones extends StatelessWidget {
   }
 }
 
-class _DialogoNuevaDevolucionProveedor extends StatefulWidget {
-  final int idUsuario;
-  final ComprasApiService comprasApiService;
-
-  const _DialogoNuevaDevolucionProveedor({
-    required this.idUsuario,
-    required this.comprasApiService,
-  });
-
-  @override
-  State<_DialogoNuevaDevolucionProveedor> createState() =>
-      _DialogoNuevaDevolucionProveedorState();
-}
-
-class _DialogoNuevaDevolucionProveedorState
-    extends State<_DialogoNuevaDevolucionProveedor> {
-  final TextEditingController _cantidadController =
-      TextEditingController(text: '1');
-  final TextEditingController _observacionesController =
-      TextEditingController();
-  final TextEditingController _reposicionLoteController =
-      TextEditingController();
-  final TextEditingController _reposicionCaducidadController =
-      TextEditingController();
-  final TextEditingController _reposicionPrecioController =
-      TextEditingController();
-
-  bool _cargando = true;
-  bool _cargandoDetalle = false;
-  String? _error;
-  String _motivo = 'OTRO';
-  String _compensacion = 'SIN_COMPENSACION';
-  List<CompraResumen> _compras = [];
-  CompraDetalle? _compraDetalle;
-  int? _idCompra;
-  int? _idCompraDetalle;
-
-  @override
-  void initState() {
-    super.initState();
-    _cargarCompras();
-  }
-
-  @override
-  void dispose() {
-    _cantidadController.dispose();
-    _observacionesController.dispose();
-    _reposicionLoteController.dispose();
-    _reposicionCaducidadController.dispose();
-    _reposicionPrecioController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _cargarCompras() async {
-    try {
-      final compras = await widget.comprasApiService.listarCompras(
-        estatus: 'REGISTRADA',
-        limite: 300,
-      );
-
-      if (!mounted) return;
-
-      setState(() {
-        _compras = compras;
-        _cargando = false;
-      });
-    } catch (_) {
-      setState(() {
-        _error = 'No se pudieron cargar compras registradas';
-        _cargando = false;
-      });
-    }
-  }
-
-  Future<void> _seleccionarCompra(int? idCompra) async {
-    if (idCompra == null) return;
-
-    setState(() {
-      _idCompra = idCompra;
-      _idCompraDetalle = null;
-      _compraDetalle = null;
-      _cargandoDetalle = true;
-    });
-
-    try {
-      final detalle = await widget.comprasApiService.obtenerCompra(idCompra);
-
-      if (!mounted) return;
-
-      setState(() {
-        _compraDetalle = detalle;
-        _idCompraDetalle = detalle.detalles.isNotEmpty
-            ? detalle.detalles.first.idCompraDetalle
-            : null;
-        _actualizarDatosReposicion();
-        _cargandoDetalle = false;
-      });
-    } catch (_) {
-      setState(() {
-        _error = 'No se pudo cargar el detalle de la compra';
-        _cargandoDetalle = false;
-      });
-    }
-  }
-
-  void _guardar() {
-    final compra = _compraDetalle;
-    final idDetalle = _idCompraDetalle;
-    final cantidad = int.tryParse(_cantidadController.text.trim()) ?? 0;
-    final detalle = compra?.detalles
-        .where((item) => item.idCompraDetalle == idDetalle)
-        .firstOrNull;
-
-    if (compra == null || idDetalle == null || detalle == null) {
-      setState(() => _error = 'Selecciona una compra y un producto');
-      return;
-    }
-
-    if (detalle.idInventario == null) {
-      setState(() {
-        _error = 'El renglon seleccionado no tiene inventario ligado';
-      });
-      return;
-    }
-
-    if (cantidad <= 0 || cantidad > detalle.cantidad) {
-      setState(() {
-        _error = 'La cantidad debe estar entre 1 y ${detalle.cantidad}';
-      });
-      return;
-    }
-
-    List<ReposicionProveedorDetallePayload>? reposicionDetalles;
-
-    if (_compensacion == 'REPOSICION_PRODUCTO') {
-      final precioVenta =
-          double.tryParse(_reposicionPrecioController.text.trim()) ?? -1;
-
-      if (precioVenta < 0) {
-        setState(() => _error = 'Ingresa el precio de venta de la reposicion');
-        return;
-      }
-
-      reposicionDetalles = [
-        ReposicionProveedorDetallePayload(
-          idProducto: detalle.idProducto,
-          cantidad: cantidad,
-          costoUnitario: detalle.costoUnitario,
-          precioVenta: precioVenta,
-          codigoLote: _textoONulo(_reposicionLoteController.text) ??
-              'REPOSICION-${compra.idCompra}',
-          fechaCaducidad: _textoONulo(_reposicionCaducidadController.text),
-        ),
-      ];
-    }
-
-    Navigator.of(context).pop(
-      RegistrarDevolucionProveedorPayload(
-        idUsuario: widget.idUsuario,
-        idCompra: compra.idCompra,
-        idProveedor: compra.idProveedor,
-        tipoCompensacion: _compensacion,
-        motivo: _motivo,
-        observaciones: _textoONulo(_observacionesController.text),
-        detalles: [
-          DevolucionProveedorDetallePayload(
-            idCompraDetalle: idDetalle,
-            idInventario: detalle.idInventario!,
-            cantidad: cantidad,
-            motivoDetalle: _motivo,
-            observaciones: _textoONulo(_observacionesController.text),
-          ),
-        ],
-        reposicionDetalles: reposicionDetalles,
-      ),
-    );
-  }
-
-  void _actualizarDatosReposicion() {
-    final detalle = _compraDetalle?.detalles
-        .where((item) => item.idCompraDetalle == _idCompraDetalle)
-        .firstOrNull;
-
-    if (detalle == null) return;
-
-    _reposicionPrecioController.text =
-        detalle.precioVentaSugerido.toStringAsFixed(2);
-    _reposicionLoteController.text = 'REP-${detalle.codigoLote}';
-    _reposicionCaducidadController.text =
-        _formatoFechaApi(detalle.fechaCaducidad);
-  }
-
-  Future<void> _seleccionarCaducidadReposicion() async {
-    final inicial = DateTime.tryParse(_reposicionCaducidadController.text) ??
-        DateTime.now().add(const Duration(days: 365));
-
-    final seleccionada = await showDatePicker(
-      context: context,
-      initialDate: inicial,
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2100),
-      helpText: 'Selecciona caducidad de reposicion',
-      cancelText: 'Cancelar',
-      confirmText: 'Aceptar',
-    );
-
-    if (seleccionada == null) return;
-
-    setState(() {
-      _reposicionCaducidadController.text = _formatoFechaApi(seleccionada);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Devolucion a proveedor'),
-      content: SizedBox(
-        width: 540,
-        child: _cargando
-            ? const SizedBox(
-                height: 160,
-                child: Center(child: CircularProgressIndicator()),
-              )
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButtonFormField<int>(
-                    initialValue: _idCompra,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Compra origen',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: [
-                      for (final compra in _compras)
-                        DropdownMenuItem(
-                          value: compra.idCompra,
-                          child: Text(
-                            'CMP-${compra.idCompra} - ${compra.proveedor}',
-                          ),
-                        ),
-                    ],
-                    onChanged: _seleccionarCompra,
-                  ),
-                  const SizedBox(height: 12),
-                  if (_cargandoDetalle)
-                    const LinearProgressIndicator()
-                  else if (_compraDetalle != null)
-                    DropdownButtonFormField<int>(
-                      initialValue: _idCompraDetalle,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Producto devuelto',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: [
-                        for (final detalle in _compraDetalle!.detalles)
-                          DropdownMenuItem(
-                            value: detalle.idCompraDetalle,
-                            child: Text(
-                              '${detalle.producto} - cant. ${detalle.cantidad}',
-                            ),
-                          ),
-                      ],
-                      onChanged: (value) => setState(() {
-                        _idCompraDetalle = value;
-                        _actualizarDatosReposicion();
-                      }),
-                    ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _cantidadController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Cantidad',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          initialValue: _compensacion,
-                          decoration: const InputDecoration(
-                            labelText: 'Compensacion',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'EFECTIVO',
-                              child: Text('Efectivo'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'ELECTRONICO',
-                              child: Text('Electronico'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'NOTA_CREDITO',
-                              child: Text('Nota credito'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'REPOSICION_PRODUCTO',
-                              child: Text('Reposicion'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'SIN_COMPENSACION',
-                              child: Text('Sin compensacion'),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() {
-                                _compensacion = value;
-                                if (value == 'REPOSICION_PRODUCTO') {
-                                  _actualizarDatosReposicion();
-                                }
-                              });
-                            }
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: _motivo,
-                    decoration: const InputDecoration(
-                      labelText: 'Motivo',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'PRODUCTO_DANADO',
-                        child: Text('Producto danado'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'CADUCADO',
-                        child: Text('Caducado'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'ERROR_COMPRA',
-                        child: Text('Error de compra'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'EXCEDENTE',
-                        child: Text('Excedente'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'CAMBIO_PRECIO',
-                        child: Text('Cambio de precio'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'OTRO',
-                        child: Text('Otro'),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _motivo = value);
-                      }
-                    },
-                  ),
-                  if (_compensacion == 'REPOSICION_PRODUCTO') ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEAF7DF),
-                        border: Border.all(color: _bordeSuave),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Entrada de producto repuesto',
-                            style: TextStyle(
-                              color: _verdeOscuro,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _reposicionLoteController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Lote repuesto',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: TextField(
-                                  controller: _reposicionCaducidadController,
-                                  readOnly: true,
-                                  onTap: _seleccionarCaducidadReposicion,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Caducidad',
-                                    border: OutlineInputBorder(),
-                                    suffixIcon: Icon(
-                                      Icons.calendar_month_outlined,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          TextField(
-                            controller: _reposicionPrecioController,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            decoration: const InputDecoration(
-                              labelText: 'Precio de venta del repuesto',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _observacionesController,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: 'Observaciones',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  if (_error != null) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      _error!,
-                      style: const TextStyle(color: _rojo),
-                    ),
-                  ],
-                ],
-              ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancelar'),
-        ),
-        ElevatedButton(
-          onPressed: _guardar,
-          child: const Text('Guardar'),
-        ),
-      ],
-    );
-  }
-}
-
 class _DialogoDetalleCliente extends StatelessWidget {
   final Future<DevolucionClienteDetalle> future;
 
@@ -1681,23 +1244,8 @@ String _formatoFecha(DateTime? fecha) {
   return '$dia/$mes/${fecha.year}';
 }
 
-String _formatoFechaApi(DateTime? fecha) {
-  if (fecha == null) return '';
-
-  final mes = fecha.month.toString().padLeft(2, '0');
-  final dia = fecha.day.toString().padLeft(2, '0');
-
-  return '${fecha.year}-$mes-$dia';
-}
-
 String _textoEnum(String value) {
   if (value.isEmpty) return 'Sin dato';
 
   return value.replaceAll('_', ' ').toLowerCase();
-}
-
-String? _textoONulo(String value) {
-  final text = value.trim();
-
-  return text.isEmpty ? null : text;
 }
