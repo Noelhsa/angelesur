@@ -6,6 +6,7 @@ import '../../services/compras_api_service.dart';
 import '../../services/devoluciones_api_service.dart';
 import '../../services/ventas_api_service.dart';
 import '../../utils/config_moneda.dart';
+import 'menu_carta_devolucion_cliente.dart';
 
 const Color _fondoPagina = Color(0xFFE2E2E2);
 const Color _verdeOscuro = Color(0xFF397800);
@@ -37,6 +38,7 @@ class _ContenidoDevolucionState extends State<ContenidoDevolucion> {
   String _filtroSeleccionado = 'Todos';
   bool _cargando = true;
   bool _procesando = false;
+  bool _mostrarMenuDevolucionCliente = false;
   String? _error;
   List<DevolucionClienteResumen> _clientes = [];
   List<DevolucionProveedorResumen> _proveedores = [];
@@ -93,6 +95,7 @@ class _ContenidoDevolucionState extends State<ContenidoDevolucion> {
       ]);
 
       if (!mounted) return;
+
       setState(() {
         _clientes = results[0] as List<DevolucionClienteResumen>;
         _proveedores = results[1] as List<DevolucionProveedorResumen>;
@@ -107,6 +110,7 @@ class _ContenidoDevolucionState extends State<ContenidoDevolucion> {
 
   void _mostrarError(String mensaje) {
     if (!mounted) return;
+
     setState(() {
       _error = mensaje;
       _cargando = false;
@@ -116,27 +120,42 @@ class _ContenidoDevolucionState extends State<ContenidoDevolucion> {
 
   void _mostrarMensaje(String mensaje) {
     if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(mensaje)),
     );
   }
 
-  Future<void> _registrarCliente() async {
-    final payload = await showDialog<RegistrarDevolucionClientePayload>(
-      context: context,
-      builder: (context) => _DialogoNuevaDevolucionCliente(
-        idUsuario: widget.usuario.id,
-        ventasApiService: _ventasApiService,
-      ),
-    );
+  void _registrarCliente() {
+    if (_procesando) return;
 
-    if (payload == null) return;
+    setState(() {
+      _mostrarMenuDevolucionCliente = true;
+    });
+  }
 
+  void _cerrarMenuDevolucionCliente() {
+    setState(() {
+      _mostrarMenuDevolucionCliente = false;
+    });
+  }
+
+  Future<void> _guardarDevolucionClienteDesdeMenu(
+    RegistrarDevolucionClientePayload payload,
+  ) async {
     setState(() => _procesando = true);
+
     try {
-      final devolucion =
-          await _devolucionesApiService.registrarCliente(payload);
+      final devolucion = await _devolucionesApiService.registrarCliente(
+        payload,
+      );
+
       _mostrarMensaje('Devolucion ${devolucion.folio} registrada');
+
+      setState(() {
+        _mostrarMenuDevolucionCliente = false;
+      });
+
       await _cargarDevoluciones();
     } on ApiException catch (error) {
       _mostrarMensaje(error.message);
@@ -159,10 +178,14 @@ class _ContenidoDevolucionState extends State<ContenidoDevolucion> {
     if (payload == null) return;
 
     setState(() => _procesando = true);
+
     try {
-      final devolucion =
-          await _devolucionesApiService.registrarProveedor(payload);
+      final devolucion = await _devolucionesApiService.registrarProveedor(
+        payload,
+      );
+
       _mostrarMensaje('Devolucion ${devolucion.folio} registrada');
+
       await _cargarDevoluciones();
     } on ApiException catch (error) {
       _mostrarMensaje(error.message);
@@ -210,6 +233,7 @@ class _ContenidoDevolucionState extends State<ContenidoDevolucion> {
     if (confirmar != true) return;
 
     setState(() => _procesando = true);
+
     try {
       if (item.esCliente) {
         await _devolucionesApiService.cancelarCliente(
@@ -224,7 +248,9 @@ class _ContenidoDevolucionState extends State<ContenidoDevolucion> {
           observaciones: 'Cancelada desde interfaz',
         );
       }
+
       _mostrarMensaje('Devolucion cancelada');
+
       await _cargarDevoluciones();
     } on ApiException catch (error) {
       _mostrarMensaje(error.message);
@@ -239,43 +265,62 @@ class _ContenidoDevolucionState extends State<ContenidoDevolucion> {
   Widget build(BuildContext context) {
     return Container(
       color: _fondoPagina,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(26, 26, 26, 34),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _EncabezadoDevoluciones(
-              procesando: _procesando,
-              onDevolucionProveedor: _registrarProveedor,
-              onDevolucionCliente: _registrarCliente,
-            ),
-            const SizedBox(height: 28),
-            _ResumenDevoluciones(
-              devolucionesClientes: _clientes.length,
-              devolucionesProveedores: _proveedores.length,
-              totalRetornos: _totalRetornos,
-            ),
-            const SizedBox(height: 28),
-            if (_cargando)
-              const _EstadoDevoluciones(mensaje: 'Cargando devoluciones...')
-            else if (_error != null)
-              _EstadoDevoluciones(
-                mensaje: _error!,
-                onReintentar: _cargarDevoluciones,
-              )
-            else
-              _PanelDevoluciones(
-                filtroSeleccionado: _filtroSeleccionado,
-                onFiltroSeleccionado: (filtro) {
-                  setState(() => _filtroSeleccionado = filtro);
-                },
-                devoluciones: _devoluciones,
-                onDetalle: _verDetalle,
-                onCancelar: _cancelar,
-                procesando: _procesando,
+      child: Row(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(26, 26, 26, 34),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _EncabezadoDevoluciones(
+                    procesando: _procesando,
+                    onDevolucionProveedor: _registrarProveedor,
+                    onDevolucionCliente: _registrarCliente,
+                  ),
+                  const SizedBox(height: 28),
+                  _ResumenDevoluciones(
+                    devolucionesClientes: _clientes.length,
+                    devolucionesProveedores: _proveedores.length,
+                    totalRetornos: _totalRetornos,
+                  ),
+                  const SizedBox(height: 28),
+                  if (_cargando)
+                    const _EstadoDevoluciones(
+                      mensaje: 'Cargando devoluciones...',
+                    )
+                  else if (_error != null)
+                    _EstadoDevoluciones(
+                      mensaje: _error!,
+                      onReintentar: _cargarDevoluciones,
+                    )
+                  else
+                    _PanelDevoluciones(
+                      filtroSeleccionado: _filtroSeleccionado,
+                      onFiltroSeleccionado: (filtro) {
+                        setState(() => _filtroSeleccionado = filtro);
+                      },
+                      devoluciones: _devoluciones,
+                      onDetalle: _verDetalle,
+                      onCancelar: _cancelar,
+                      procesando: _procesando,
+                    ),
+                ],
               ),
-          ],
-        ),
+            ),
+          ),
+          if (_mostrarMenuDevolucionCliente)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 20, 14, 20),
+              child: MenuCartaDevolucionCliente(
+                idUsuario: widget.usuario.id,
+                ventasApiService: _ventasApiService,
+                procesando: _procesando,
+                onCerrar: _cerrarMenuDevolucionCliente,
+                onGuardarDevolucion: _guardarDevolucionClienteDesdeMenu,
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -333,14 +378,21 @@ class _EncabezadoDevoluciones extends StatelessWidget {
           height: 38,
           child: ElevatedButton.icon(
             onPressed: procesando ? null : onDevolucionCliente,
-            icon:
-                const Icon(Icons.person_outline, color: Colors.white, size: 17),
+            icon: const Icon(
+              Icons.person_outline,
+              color: Colors.white,
+              size: 17,
+            ),
             label: const Text(
               'Devolucion a Cliente',
-              style:
-                  TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+              ),
             ),
-            style: ElevatedButton.styleFrom(backgroundColor: _verdeOscuro),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _verdeOscuro,
+            ),
           ),
         ),
       ],
@@ -426,7 +478,11 @@ class _TarjetaResumenDevolucion extends StatelessWidget {
               color: const Color(0xFFEAF7DF),
               borderRadius: BorderRadius.circular(7),
             ),
-            child: Icon(icono, color: colorIcono, size: 23),
+            child: Icon(
+              icono,
+              color: colorIcono,
+              size: 23,
+            ),
           ),
           const SizedBox(width: 18),
           Expanded(
@@ -507,6 +563,7 @@ class _PanelDevoluciones extends StatelessWidget {
               builder: (context, constraints) {
                 final anchoTabla =
                     constraints.maxWidth < 980 ? 980.0 : constraints.maxWidth;
+
                 return SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: SizedBox(
@@ -687,15 +744,26 @@ class _FilaDevolucion extends StatelessWidget {
       height: 58,
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFE0E8D8))),
+        border: Border(
+          top: BorderSide(color: Color(0xFFE0E8D8)),
+        ),
       ),
       child: Row(
         children: [
           const SizedBox(width: 22),
           Expanded(
-              flex: 14, child: _TextoCelda(devolucion.folio, fuerte: true)),
+            flex: 14,
+            child: _TextoCelda(
+              devolucion.folio,
+              fuerte: true,
+            ),
+          ),
           Expanded(
-              flex: 14, child: _TextoCelda(_formatoFecha(devolucion.fecha))),
+            flex: 14,
+            child: _TextoCelda(
+              _formatoFecha(devolucion.fecha),
+            ),
+          ),
           Expanded(
             flex: 13,
             child: Align(
@@ -703,8 +771,14 @@ class _FilaDevolucion extends StatelessWidget {
               child: _BadgeTipo(esCliente: devolucion.esCliente),
             ),
           ),
-          Expanded(flex: 20, child: _TextoCelda(devolucion.origen)),
-          Expanded(flex: 18, child: _TextoCelda(_textoEnum(devolucion.motivo))),
+          Expanded(
+            flex: 20,
+            child: _TextoCelda(devolucion.origen),
+          ),
+          Expanded(
+            flex: 18,
+            child: _TextoCelda(_textoEnum(devolucion.motivo)),
+          ),
           Expanded(
             flex: 14,
             child: Align(
@@ -714,8 +788,10 @@ class _FilaDevolucion extends StatelessWidget {
           ),
           Expanded(
             flex: 13,
-            child: _TextoCelda(ConfigMoneda.formato(devolucion.total),
-                fuerte: true),
+            child: _TextoCelda(
+              ConfigMoneda.formato(devolucion.total),
+              fuerte: true,
+            ),
           ),
           Expanded(
             flex: 12,
@@ -723,14 +799,20 @@ class _FilaDevolucion extends StatelessWidget {
               children: [
                 IconButton(
                   onPressed: () => onDetalle(devolucion),
-                  icon: const Icon(Icons.remove_red_eye_outlined, size: 18),
+                  icon: const Icon(
+                    Icons.remove_red_eye_outlined,
+                    size: 18,
+                  ),
                   tooltip: 'Ver detalle',
                 ),
                 IconButton(
                   onPressed: devolucion.estatus == 'CANCELADA' || procesando
                       ? null
                       : () => onCancelar(devolucion),
-                  icon: const Icon(Icons.cancel_outlined, size: 18),
+                  icon: const Icon(
+                    Icons.cancel_outlined,
+                    size: 18,
+                  ),
                   tooltip: 'Cancelar',
                 ),
               ],
@@ -747,7 +829,10 @@ class _TextoCelda extends StatelessWidget {
   final String texto;
   final bool fuerte;
 
-  const _TextoCelda(this.texto, {this.fuerte = false});
+  const _TextoCelda(
+    this.texto, {
+    this.fuerte = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -767,12 +852,17 @@ class _TextoCelda extends StatelessWidget {
 class _BadgeTipo extends StatelessWidget {
   final bool esCliente;
 
-  const _BadgeTipo({required this.esCliente});
+  const _BadgeTipo({
+    required this.esCliente,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 9,
+        vertical: 4,
+      ),
       decoration: BoxDecoration(
         color: esCliente ? const Color(0xFFE8F5DD) : const Color(0xFFE4E4E4),
         borderRadius: BorderRadius.circular(12),
@@ -792,13 +882,19 @@ class _BadgeTipo extends StatelessWidget {
 class _BadgeEstado extends StatelessWidget {
   final String estatus;
 
-  const _BadgeEstado({required this.estatus});
+  const _BadgeEstado({
+    required this.estatus,
+  });
 
   @override
   Widget build(BuildContext context) {
     final cancelada = estatus == 'CANCELADA';
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 9,
+        vertical: 4,
+      ),
       decoration: BoxDecoration(
         color: cancelada ? const Color(0xFFFFE8E8) : const Color(0xFFE8F1FF),
         borderRadius: BorderRadius.circular(12),
@@ -850,301 +946,6 @@ class _EstadoDevoluciones extends StatelessWidget {
           ],
         ],
       ),
-    );
-  }
-}
-
-class _DialogoNuevaDevolucionCliente extends StatefulWidget {
-  final int idUsuario;
-  final VentasApiService ventasApiService;
-
-  const _DialogoNuevaDevolucionCliente({
-    required this.idUsuario,
-    required this.ventasApiService,
-  });
-
-  @override
-  State<_DialogoNuevaDevolucionCliente> createState() =>
-      _DialogoNuevaDevolucionClienteState();
-}
-
-class _DialogoNuevaDevolucionClienteState
-    extends State<_DialogoNuevaDevolucionCliente> {
-  final TextEditingController _cantidadController =
-      TextEditingController(text: '1');
-  final TextEditingController _observacionesController =
-      TextEditingController();
-
-  bool _cargando = true;
-  bool _cargandoDetalle = false;
-  bool _regresaAInventario = true;
-  String? _error;
-  String _motivo = 'OTRO';
-  String _metodo = 'EFECTIVO';
-  List<VentaResumen> _ventas = [];
-  VentaDetalleCompleta? _ventaDetalle;
-  int? _idVenta;
-  int? _idVentaDetalle;
-
-  @override
-  void initState() {
-    super.initState();
-    _cargarVentas();
-  }
-
-  @override
-  void dispose() {
-    _cantidadController.dispose();
-    _observacionesController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _cargarVentas() async {
-    try {
-      final ventas = await widget.ventasApiService.listarVentas(
-        estatus: 'REGISTRADA',
-        limite: 300,
-      );
-      if (!mounted) return;
-      setState(() {
-        _ventas = ventas;
-        _cargando = false;
-      });
-    } catch (_) {
-      setState(() {
-        _error = 'No se pudieron cargar ventas registradas';
-        _cargando = false;
-      });
-    }
-  }
-
-  Future<void> _seleccionarVenta(int? idVenta) async {
-    if (idVenta == null) return;
-    setState(() {
-      _idVenta = idVenta;
-      _idVentaDetalle = null;
-      _ventaDetalle = null;
-      _cargandoDetalle = true;
-    });
-
-    try {
-      final detalle = await widget.ventasApiService.obtenerVenta(idVenta);
-      if (!mounted) return;
-      setState(() {
-        _ventaDetalle = detalle;
-        _idVentaDetalle = detalle.detalles.isNotEmpty
-            ? detalle.detalles.first.idVentaDetalle
-            : null;
-        _cargandoDetalle = false;
-      });
-    } catch (_) {
-      setState(() {
-        _error = 'No se pudo cargar el detalle de la venta';
-        _cargandoDetalle = false;
-      });
-    }
-  }
-
-  void _guardar() {
-    final venta = _ventaDetalle;
-    final idDetalle = _idVentaDetalle;
-    final cantidad = int.tryParse(_cantidadController.text.trim()) ?? 0;
-    final detalle = venta?.detalles
-        .where((item) => item.idVentaDetalle == idDetalle)
-        .firstOrNull;
-
-    if (venta == null || idDetalle == null || detalle == null) {
-      setState(() => _error = 'Selecciona una venta y un producto');
-      return;
-    }
-
-    if (cantidad <= 0 || cantidad > detalle.cantidad) {
-      setState(() {
-        _error = 'La cantidad debe estar entre 1 y ${detalle.cantidad}';
-      });
-      return;
-    }
-
-    Navigator.of(context).pop(
-      RegistrarDevolucionClientePayload(
-        idUsuario: widget.idUsuario,
-        idVenta: venta.idVenta,
-        metodoDevolucion: _metodo,
-        motivo: _motivo,
-        observaciones: _textoONulo(_observacionesController.text),
-        detalles: [
-          DevolucionClienteDetallePayload(
-            idVentaDetalle: idDetalle,
-            cantidad: cantidad,
-            regresaAInventario: _regresaAInventario,
-            motivoDetalle: _motivo,
-            observaciones: _textoONulo(_observacionesController.text),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Devolucion de cliente'),
-      content: SizedBox(
-        width: 520,
-        child: _cargando
-            ? const SizedBox(
-                height: 160,
-                child: Center(child: CircularProgressIndicator()),
-              )
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButtonFormField<int>(
-                    initialValue: _idVenta,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Venta origen',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: [
-                      for (final venta in _ventas)
-                        DropdownMenuItem(
-                          value: venta.idVenta,
-                          child: Text(
-                              '${venta.folio} - ${ConfigMoneda.formato(venta.total)}'),
-                        ),
-                    ],
-                    onChanged: _seleccionarVenta,
-                  ),
-                  const SizedBox(height: 12),
-                  if (_cargandoDetalle)
-                    const LinearProgressIndicator()
-                  else if (_ventaDetalle != null)
-                    DropdownButtonFormField<int>(
-                      initialValue: _idVentaDetalle,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Producto devuelto',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: [
-                        for (final detalle in _ventaDetalle!.detalles)
-                          DropdownMenuItem(
-                            value: detalle.idVentaDetalle,
-                            child: Text(
-                                '${detalle.producto} - cant. ${detalle.cantidad}'),
-                          ),
-                      ],
-                      onChanged: (value) =>
-                          setState(() => _idVentaDetalle = value),
-                    ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _cantidadController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Cantidad',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          initialValue: _metodo,
-                          decoration: const InputDecoration(
-                            labelText: 'Metodo',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                                value: 'EFECTIVO', child: Text('Efectivo')),
-                            DropdownMenuItem(
-                                value: 'ELECTRONICO',
-                                child: Text('Electronico')),
-                            DropdownMenuItem(
-                                value: 'CAMBIO_PRODUCTO',
-                                child: Text('Cambio')),
-                            DropdownMenuItem(
-                              value: 'SIN_DEVOLUCION_DINERO',
-                              child: Text('Sin dinero'),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() => _metodo = value);
-                            }
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: _motivo,
-                    decoration: const InputDecoration(
-                      labelText: 'Motivo',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                          value: 'PRODUCTO_EQUIVOCADO',
-                          child: Text('Producto equivocado')),
-                      DropdownMenuItem(
-                          value: 'PRODUCTO_DANADO',
-                          child: Text('Producto danado')),
-                      DropdownMenuItem(
-                          value: 'CADUCADO', child: Text('Caducado')),
-                      DropdownMenuItem(
-                          value: 'ERROR_VENTA', child: Text('Error de venta')),
-                      DropdownMenuItem(
-                          value: 'CLIENTE_SE_ARREPINTIO',
-                          child: Text('Cliente se arrepintio')),
-                      DropdownMenuItem(value: 'OTRO', child: Text('Otro')),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _motivo = value);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  CheckboxListTile(
-                    value: _regresaAInventario,
-                    onChanged: (value) {
-                      setState(() => _regresaAInventario = value ?? true);
-                    },
-                    title: const Text('Regresa a inventario'),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                  TextField(
-                    controller: _observacionesController,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: 'Observaciones',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  if (_error != null) ...[
-                    const SizedBox(height: 10),
-                    Text(_error!, style: const TextStyle(color: _rojo)),
-                  ],
-                ],
-              ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancelar'),
-        ),
-        ElevatedButton(
-          onPressed: _guardar,
-          child: const Text('Guardar'),
-        ),
-      ],
     );
   }
 }
@@ -1208,7 +1009,9 @@ class _DialogoNuevaDevolucionProveedorState
         estatus: 'REGISTRADA',
         limite: 300,
       );
+
       if (!mounted) return;
+
       setState(() {
         _compras = compras;
         _cargando = false;
@@ -1223,6 +1026,7 @@ class _DialogoNuevaDevolucionProveedorState
 
   Future<void> _seleccionarCompra(int? idCompra) async {
     if (idCompra == null) return;
+
     setState(() {
       _idCompra = idCompra;
       _idCompraDetalle = null;
@@ -1232,7 +1036,9 @@ class _DialogoNuevaDevolucionProveedorState
 
     try {
       final detalle = await widget.comprasApiService.obtenerCompra(idCompra);
+
       if (!mounted) return;
+
       setState(() {
         _compraDetalle = detalle;
         _idCompraDetalle = detalle.detalles.isNotEmpty
@@ -1263,8 +1069,9 @@ class _DialogoNuevaDevolucionProveedorState
     }
 
     if (detalle.idInventario == null) {
-      setState(
-          () => _error = 'El renglon seleccionado no tiene inventario ligado');
+      setState(() {
+        _error = 'El renglon seleccionado no tiene inventario ligado';
+      });
       return;
     }
 
@@ -1276,6 +1083,7 @@ class _DialogoNuevaDevolucionProveedorState
     }
 
     List<ReposicionProveedorDetallePayload>? reposicionDetalles;
+
     if (_compensacion == 'REPOSICION_PRODUCTO') {
       final precioVenta =
           double.tryParse(_reposicionPrecioController.text.trim()) ?? -1;
@@ -1324,6 +1132,7 @@ class _DialogoNuevaDevolucionProveedorState
     final detalle = _compraDetalle?.detalles
         .where((item) => item.idCompraDetalle == _idCompraDetalle)
         .firstOrNull;
+
     if (detalle == null) return;
 
     _reposicionPrecioController.text =
@@ -1336,6 +1145,7 @@ class _DialogoNuevaDevolucionProveedorState
   Future<void> _seleccionarCaducidadReposicion() async {
     final inicial = DateTime.tryParse(_reposicionCaducidadController.text) ??
         DateTime.now().add(const Duration(days: 365));
+
     final seleccionada = await showDatePicker(
       context: context,
       initialDate: inicial,
@@ -1347,6 +1157,7 @@ class _DialogoNuevaDevolucionProveedorState
     );
 
     if (seleccionada == null) return;
+
     setState(() {
       _reposicionCaducidadController.text = _formatoFechaApi(seleccionada);
     });
@@ -1378,7 +1189,8 @@ class _DialogoNuevaDevolucionProveedorState
                         DropdownMenuItem(
                           value: compra.idCompra,
                           child: Text(
-                              'CMP-${compra.idCompra} - ${compra.proveedor}'),
+                            'CMP-${compra.idCompra} - ${compra.proveedor}',
+                          ),
                         ),
                     ],
                     onChanged: _seleccionarCompra,
@@ -1399,7 +1211,8 @@ class _DialogoNuevaDevolucionProveedorState
                           DropdownMenuItem(
                             value: detalle.idCompraDetalle,
                             child: Text(
-                                '${detalle.producto} - cant. ${detalle.cantidad}'),
+                              '${detalle.producto} - cant. ${detalle.cantidad}',
+                            ),
                           ),
                       ],
                       onChanged: (value) => setState(() {
@@ -1430,19 +1243,25 @@ class _DialogoNuevaDevolucionProveedorState
                           ),
                           items: const [
                             DropdownMenuItem(
-                                value: 'EFECTIVO', child: Text('Efectivo')),
+                              value: 'EFECTIVO',
+                              child: Text('Efectivo'),
+                            ),
                             DropdownMenuItem(
-                                value: 'ELECTRONICO',
-                                child: Text('Electronico')),
+                              value: 'ELECTRONICO',
+                              child: Text('Electronico'),
+                            ),
                             DropdownMenuItem(
-                                value: 'NOTA_CREDITO',
-                                child: Text('Nota credito')),
+                              value: 'NOTA_CREDITO',
+                              child: Text('Nota credito'),
+                            ),
                             DropdownMenuItem(
-                                value: 'REPOSICION_PRODUCTO',
-                                child: Text('Reposicion')),
+                              value: 'REPOSICION_PRODUCTO',
+                              child: Text('Reposicion'),
+                            ),
                             DropdownMenuItem(
-                                value: 'SIN_COMPENSACION',
-                                child: Text('Sin compensacion')),
+                              value: 'SIN_COMPENSACION',
+                              child: Text('Sin compensacion'),
+                            ),
                           ],
                           onChanged: (value) {
                             if (value != null) {
@@ -1467,19 +1286,29 @@ class _DialogoNuevaDevolucionProveedorState
                     ),
                     items: const [
                       DropdownMenuItem(
-                          value: 'PRODUCTO_DANADO',
-                          child: Text('Producto danado')),
+                        value: 'PRODUCTO_DANADO',
+                        child: Text('Producto danado'),
+                      ),
                       DropdownMenuItem(
-                          value: 'CADUCADO', child: Text('Caducado')),
+                        value: 'CADUCADO',
+                        child: Text('Caducado'),
+                      ),
                       DropdownMenuItem(
-                          value: 'ERROR_COMPRA',
-                          child: Text('Error de compra')),
+                        value: 'ERROR_COMPRA',
+                        child: Text('Error de compra'),
+                      ),
                       DropdownMenuItem(
-                          value: 'EXCEDENTE', child: Text('Excedente')),
+                        value: 'EXCEDENTE',
+                        child: Text('Excedente'),
+                      ),
                       DropdownMenuItem(
-                          value: 'CAMBIO_PRECIO',
-                          child: Text('Cambio de precio')),
-                      DropdownMenuItem(value: 'OTRO', child: Text('Otro')),
+                        value: 'CAMBIO_PRECIO',
+                        child: Text('Cambio de precio'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'OTRO',
+                        child: Text('Otro'),
+                      ),
                     ],
                     onChanged: (value) {
                       if (value != null) {
@@ -1528,8 +1357,9 @@ class _DialogoNuevaDevolucionProveedorState
                                   decoration: const InputDecoration(
                                     labelText: 'Caducidad',
                                     border: OutlineInputBorder(),
-                                    suffixIcon:
-                                        Icon(Icons.calendar_month_outlined),
+                                    suffixIcon: Icon(
+                                      Icons.calendar_month_outlined,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1561,7 +1391,10 @@ class _DialogoNuevaDevolucionProveedorState
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 10),
-                    Text(_error!, style: const TextStyle(color: _rojo)),
+                    Text(
+                      _error!,
+                      style: const TextStyle(color: _rojo),
+                    ),
                   ],
                 ],
               ),
@@ -1583,7 +1416,9 @@ class _DialogoNuevaDevolucionProveedorState
 class _DialogoDetalleCliente extends StatelessWidget {
   final Future<DevolucionClienteDetalle> future;
 
-  const _DialogoDetalleCliente({required this.future});
+  const _DialogoDetalleCliente({
+    required this.future,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1600,10 +1435,13 @@ class _DialogoDetalleCliente extends StatelessWidget {
                 child: Center(child: CircularProgressIndicator()),
               );
             }
+
             if (!snapshot.hasData) {
               return const Text('No se pudo cargar el detalle');
             }
+
             final devolucion = snapshot.data!;
+
             return _DetalleContenido(
               datos: [
                 _DatoDetalle('Folio', devolucion.folio),
@@ -1611,7 +1449,9 @@ class _DialogoDetalleCliente extends StatelessWidget {
                 _DatoDetalle('Metodo', _textoEnum(devolucion.metodoDevolucion)),
                 _DatoDetalle('Motivo', _textoEnum(devolucion.motivo)),
                 _DatoDetalle(
-                    'Total', ConfigMoneda.formato(devolucion.totalDevuelto)),
+                  'Total',
+                  ConfigMoneda.formato(devolucion.totalDevuelto),
+                ),
                 _DatoDetalle('Estado', devolucion.estatus),
               ],
               renglones: [
@@ -1636,7 +1476,9 @@ class _DialogoDetalleCliente extends StatelessWidget {
 class _DialogoDetalleProveedor extends StatelessWidget {
   final Future<DevolucionProveedorDetalle> future;
 
-  const _DialogoDetalleProveedor({required this.future});
+  const _DialogoDetalleProveedor({
+    required this.future,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1653,19 +1495,26 @@ class _DialogoDetalleProveedor extends StatelessWidget {
                 child: Center(child: CircularProgressIndicator()),
               );
             }
+
             if (!snapshot.hasData) {
               return const Text('No se pudo cargar el detalle');
             }
+
             final devolucion = snapshot.data!;
+
             return _DetalleContenido(
               datos: [
                 _DatoDetalle('Folio', devolucion.folio),
                 _DatoDetalle('Proveedor', devolucion.proveedor),
                 _DatoDetalle(
-                    'Compensacion', _textoEnum(devolucion.tipoCompensacion)),
+                  'Compensacion',
+                  _textoEnum(devolucion.tipoCompensacion),
+                ),
                 _DatoDetalle('Motivo', _textoEnum(devolucion.motivo)),
                 _DatoDetalle(
-                    'Total', ConfigMoneda.formato(devolucion.totalDevolucion)),
+                  'Total',
+                  ConfigMoneda.formato(devolucion.totalDevolucion),
+                ),
                 _DatoDetalle('Estado', devolucion.estatus),
               ],
               renglones: [
@@ -1713,7 +1562,10 @@ class _DetalleContenido extends StatelessWidget {
           const SizedBox(height: 18),
           const Text(
             'Productos',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+            ),
           ),
           const SizedBox(height: 8),
           for (final renglon in renglones)
@@ -1735,7 +1587,10 @@ class _DatoDetalle extends StatelessWidget {
   final String label;
   final String value;
 
-  const _DatoDetalle(this.label, this.value);
+  const _DatoDetalle(
+    this.label,
+    this.value,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -1819,24 +1674,30 @@ class _DevolucionFila {
 
 String _formatoFecha(DateTime? fecha) {
   if (fecha == null) return 'Sin fecha';
+
   final dia = fecha.day.toString().padLeft(2, '0');
   final mes = fecha.month.toString().padLeft(2, '0');
+
   return '$dia/$mes/${fecha.year}';
 }
 
 String _formatoFechaApi(DateTime? fecha) {
   if (fecha == null) return '';
+
   final mes = fecha.month.toString().padLeft(2, '0');
   final dia = fecha.day.toString().padLeft(2, '0');
+
   return '${fecha.year}-$mes-$dia';
 }
 
 String _textoEnum(String value) {
   if (value.isEmpty) return 'Sin dato';
+
   return value.replaceAll('_', ' ').toLowerCase();
 }
 
 String? _textoONulo(String value) {
   final text = value.trim();
+
   return text.isEmpty ? null : text;
 }

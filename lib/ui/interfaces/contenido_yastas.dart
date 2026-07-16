@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/api_client.dart';
 import '../../services/servicios_yastas_api_service.dart';
 import '../../utils/config_moneda.dart';
+import 'menu_carta_yastas.dart';
 
 const Color _blanco = Color(0xFFFFFFFF);
 const Color _verdeOscuro = Color(0xFF2F6E00);
@@ -22,6 +23,8 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
   final TextEditingController _busquedaController = TextEditingController();
 
   bool _cargando = true;
+  bool _guardandoTarifa = false;
+  bool _mostrarMenuNuevaTarifa = false;
   String? _error;
   List<TarifaServicioYastas> _tarifas = [];
 
@@ -87,7 +90,68 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
     });
   }
 
-  Future<void> _abrirFormulario([TarifaServicioYastas? tarifa]) async {
+  void _abrirMenuNuevaTarifa() {
+    setState(() {
+      _mostrarMenuNuevaTarifa = true;
+    });
+  }
+
+  void _cerrarMenuNuevaTarifa() {
+    setState(() {
+      _mostrarMenuNuevaTarifa = false;
+    });
+  }
+
+  Future<void> _guardarNuevaTarifa(DatosMenuTarifaYastas datos) async {
+    setState(() {
+      _guardandoTarifa = true;
+    });
+
+    try {
+      await _apiService.crearTarifa(
+        tipoServicio: datos.tipoServicio,
+        nombreServicio: datos.nombreServicio,
+        montoBase: datos.montoBase,
+        comisionCliente: datos.comisionCliente,
+        comisionYastas: datos.comisionYastas,
+        regaliaYastas: datos.regaliaYastas,
+        gananciaFarmacia: datos.gananciaFarmacia,
+      );
+
+      await _cargarTarifas();
+
+      if (!mounted) return;
+
+      setState(() {
+        _mostrarMenuNuevaTarifa = false;
+        _guardandoTarifa = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tarifa creada.'),
+        ),
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        _guardandoTarifa = false;
+      });
+
+      _mostrarSnack(error.message);
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        _guardandoTarifa = false;
+      });
+
+      _mostrarSnack('No se pudo guardar la tarifa');
+    }
+  }
+
+  Future<void> _abrirFormularioEditar(TarifaServicioYastas tarifa) async {
     final datos = await showDialog<_DatosTarifaYastas>(
       context: context,
       builder: (context) => _DialogoTarifaYastas(tarifa: tarifa),
@@ -98,38 +162,24 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
     }
 
     try {
-      if (tarifa == null) {
-        await _apiService.crearTarifa(
-          tipoServicio: datos.tipoServicio,
-          nombreServicio: datos.nombreServicio,
-          montoBase: datos.montoBase,
-          comisionCliente: datos.comisionCliente,
-          comisionYastas: datos.comisionYastas,
-          regaliaYastas: datos.regaliaYastas,
-          gananciaFarmacia: datos.gananciaFarmacia,
-        );
-      } else {
-        await _apiService.actualizarTarifa(
-          idTarifa: tarifa.idTarifa,
-          tipoServicio: datos.tipoServicio,
-          nombreServicio: datos.nombreServicio,
-          montoBase: datos.montoBase,
-          comisionCliente: datos.comisionCliente,
-          comisionYastas: datos.comisionYastas,
-          regaliaYastas: datos.regaliaYastas,
-          gananciaFarmacia: datos.gananciaFarmacia,
-        );
-      }
+      await _apiService.actualizarTarifa(
+        idTarifa: tarifa.idTarifa,
+        tipoServicio: datos.tipoServicio,
+        nombreServicio: datos.nombreServicio,
+        montoBase: datos.montoBase,
+        comisionCliente: datos.comisionCliente,
+        comisionYastas: datos.comisionYastas,
+        regaliaYastas: datos.regaliaYastas,
+        gananciaFarmacia: datos.gananciaFarmacia,
+      );
 
       await _cargarTarifas();
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            tarifa == null ? 'Tarifa creada.' : 'Tarifa actualizada.',
-          ),
+        const SnackBar(
+          content: Text('Tarifa actualizada.'),
         ),
       );
     } on ApiException catch (error) {
@@ -163,22 +213,37 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(28, 24, 28, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _EncabezadoYastas(
-            busquedaController: _busquedaController,
-            onNuevo: () => _abrirFormulario(),
-            onActualizar: _cargarTarifas,
+    return Row(
+      children: [
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(28, 24, 28, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _EncabezadoYastas(
+                  busquedaController: _busquedaController,
+                  onNuevo: _abrirMenuNuevaTarifa,
+                  onActualizar: _cargarTarifas,
+                ),
+                const SizedBox(height: 20),
+                Expanded(
+                  child: _construirContenido(),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: _construirContenido(),
+        ),
+        if (_mostrarMenuNuevaTarifa)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(0, 20, 14, 20),
+            child: MenuCartaYastas(
+              guardando: _guardandoTarifa,
+              onCerrar: _cerrarMenuNuevaTarifa,
+              onGuardarTarifa: _guardarNuevaTarifa,
+            ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -233,7 +298,7 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
         final tarifa = tarifas[index];
         return _TarjetaTarifaYastas(
           tarifa: tarifa,
-          onEditar: () => _abrirFormulario(tarifa),
+          onEditar: () => _abrirFormularioEditar(tarifa),
           onCambiarEstado: () => _cambiarEstado(tarifa),
         );
       },
@@ -504,10 +569,10 @@ class _DatosTarifaYastas {
 }
 
 class _DialogoTarifaYastas extends StatefulWidget {
-  final TarifaServicioYastas? tarifa;
+  final TarifaServicioYastas tarifa;
 
   const _DialogoTarifaYastas({
-    this.tarifa,
+    required this.tarifa,
   });
 
   @override
@@ -524,30 +589,21 @@ class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
   final TextEditingController _regaliaController = TextEditingController();
   final TextEditingController _gananciaController = TextEditingController();
 
-  String _tipoServicio = 'RECARGA';
+  late String _tipoServicio;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    final tarifa = widget.tarifa;
 
-    if (tarifa != null) {
-      _tipoServicio = tarifa.tipoServicio;
-      _nombreController.text = tarifa.nombreServicio;
-      _montoController.text = tarifa.montoBase.toStringAsFixed(2);
-      _comisionClienteController.text =
-          tarifa.comisionCliente.toStringAsFixed(2);
-      _comisionYastasController.text = tarifa.comisionYastas.toStringAsFixed(2);
-      _regaliaController.text = tarifa.regaliaYastas.toStringAsFixed(2);
-      _gananciaController.text = tarifa.gananciaFarmacia.toStringAsFixed(2);
-    } else {
-      _montoController.text = '0.00';
-      _comisionClienteController.text = '0.00';
-      _comisionYastasController.text = '0.00';
-      _regaliaController.text = '0.00';
-      _gananciaController.text = '0.00';
-    }
+    final tarifa = widget.tarifa;
+    _tipoServicio = tarifa.tipoServicio;
+    _nombreController.text = tarifa.nombreServicio;
+    _montoController.text = tarifa.montoBase.toStringAsFixed(2);
+    _comisionClienteController.text = tarifa.comisionCliente.toStringAsFixed(2);
+    _comisionYastasController.text = tarifa.comisionYastas.toStringAsFixed(2);
+    _regaliaController.text = tarifa.regaliaYastas.toStringAsFixed(2);
+    _gananciaController.text = tarifa.gananciaFarmacia.toStringAsFixed(2);
   }
 
   @override
@@ -604,7 +660,7 @@ class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.tarifa == null ? 'Nueva tarifa' : 'Editar tarifa'),
+      title: const Text('Editar tarifa'),
       content: SizedBox(
         width: 520,
         child: SingleChildScrollView(
