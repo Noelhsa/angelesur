@@ -61,7 +61,9 @@ class _ContenidoProveedoresState extends State<ContenidoProveedores> {
       final proveedores = await _proveedoresApiService.listarProveedores(
         busqueda: _busquedaController.text,
       );
+
       if (!mounted) return;
+
       setState(() {
         _proveedores = proveedores;
         _cargando = false;
@@ -75,6 +77,7 @@ class _ContenidoProveedoresState extends State<ContenidoProveedores> {
 
   void _mostrarError(String mensaje) {
     if (!mounted) return;
+
     setState(() {
       _error = mensaje;
       _cargando = false;
@@ -84,6 +87,7 @@ class _ContenidoProveedoresState extends State<ContenidoProveedores> {
 
   void _mostrarMensaje(String mensaje) {
     if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(mensaje)),
     );
@@ -94,6 +98,7 @@ class _ContenidoProveedoresState extends State<ContenidoProveedores> {
       context: context,
       builder: (context) => _DialogoProveedor(proveedor: proveedor),
     );
+
     if (datos == null) return;
 
     setState(() {
@@ -111,6 +116,7 @@ class _ContenidoProveedoresState extends State<ContenidoProveedores> {
         );
         _mostrarMensaje('Proveedor actualizado');
       }
+
       await _cargarProveedores();
     } on ApiException catch (error) {
       _mostrarMensaje(error.message);
@@ -135,9 +141,11 @@ class _ContenidoProveedoresState extends State<ContenidoProveedores> {
         proveedor.idProveedor,
         activo: !proveedor.activo,
       );
+
       _mostrarMensaje(
         proveedor.activo ? 'Proveedor desactivado' : 'Proveedor activado',
       );
+
       await _cargarProveedores();
     } on ApiException catch (error) {
       _mostrarMensaje(error.message);
@@ -158,6 +166,9 @@ class _ContenidoProveedoresState extends State<ContenidoProveedores> {
     final inactivos = _proveedores.length - activos;
 
     return Container(
+      width: double.infinity,
+      height: double.infinity,
+      alignment: Alignment.topLeft,
       color: _fondoPagina,
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(22, 22, 22, 32),
@@ -215,7 +226,9 @@ class _ContenidoProveedoresState extends State<ContenidoProveedores> {
             ),
             const SizedBox(height: 18),
             if (_cargando)
-              const _EstadoProveedores(mensaje: 'Cargando proveedores...')
+              const _EstadoProveedores(
+                mensaje: 'Cargando proveedores...',
+              )
             else if (_error != null)
               _EstadoProveedores(
                 mensaje: _error!,
@@ -223,12 +236,14 @@ class _ContenidoProveedoresState extends State<ContenidoProveedores> {
               )
             else if (_proveedoresFiltrados.isEmpty)
               const _EstadoProveedores(
-                  mensaje: 'No hay proveedores para mostrar')
+                mensaje: 'No hay proveedores para mostrar',
+              )
             else
               LayoutBuilder(
                 builder: (context, constraints) {
                   final anchoTabla =
                       constraints.maxWidth < 980 ? 980.0 : constraints.maxWidth;
+
                   return SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: SizedBox(
@@ -236,8 +251,9 @@ class _ContenidoProveedoresState extends State<ContenidoProveedores> {
                       child: _TablaProveedores(
                         proveedores: _proveedoresFiltrados,
                         procesando: _procesando,
-                        onEditar: (proveedor) =>
-                            _guardarProveedor(proveedor: proveedor),
+                        onEditar: (proveedor) {
+                          _guardarProveedor(proveedor: proveedor);
+                        },
                         onCambiarEstado: _cambiarEstado,
                       ),
                     ),
@@ -254,7 +270,9 @@ class _ContenidoProveedoresState extends State<ContenidoProveedores> {
 class _EncabezadoProveedores extends StatelessWidget {
   final VoidCallback? onNuevo;
 
-  const _EncabezadoProveedores({required this.onNuevo});
+  const _EncabezadoProveedores({
+    required this.onNuevo,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -288,7 +306,11 @@ class _EncabezadoProveedores extends StatelessWidget {
           height: 36,
           child: ElevatedButton.icon(
             onPressed: onNuevo,
-            icon: const Icon(Icons.add, size: 18, color: Colors.white),
+            icon: const Icon(
+              Icons.add,
+              size: 18,
+              color: Colors.white,
+            ),
             label: const Text(
               'Nuevo Proveedor',
               style: TextStyle(
@@ -347,7 +369,11 @@ class _TarjetaResumenProveedor extends StatelessWidget {
               color: fondoIcono,
               borderRadius: BorderRadius.circular(7),
             ),
-            child: Icon(icono, color: colorIcono, size: 23),
+            child: Icon(
+              icono,
+              color: colorIcono,
+              size: 23,
+            ),
           ),
           const SizedBox(width: 20),
           Expanded(
@@ -419,12 +445,17 @@ class _PanelFiltrosProveedores extends StatelessWidget {
               decoration: InputDecoration(
                 labelText: 'Buscar proveedor',
                 hintText: 'Nombre, contacto o telefono',
-                prefixIcon: const Icon(Icons.search, size: 18),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  size: 18,
+                ),
                 filled: true,
                 fillColor: _grisCampo,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(6),
-                  borderSide: const BorderSide(color: Color(0xFFC8D6C0)),
+                  borderSide: const BorderSide(
+                    color: Color(0xFFC8D6C0),
+                  ),
                 ),
                 isDense: true,
               ),
@@ -440,14 +471,25 @@ class _PanelFiltrosProveedores extends StatelessWidget {
                 fillColor: _grisCampo,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(6),
-                  borderSide: const BorderSide(color: Color(0xFFC8D6C0)),
+                  borderSide: const BorderSide(
+                    color: Color(0xFFC8D6C0),
+                  ),
                 ),
                 isDense: true,
               ),
               items: const [
-                DropdownMenuItem(value: 'Todos', child: Text('Todos')),
-                DropdownMenuItem(value: 'Activos', child: Text('Activos')),
-                DropdownMenuItem(value: 'Inactivos', child: Text('Inactivos')),
+                DropdownMenuItem(
+                  value: 'Todos',
+                  child: Text('Todos'),
+                ),
+                DropdownMenuItem(
+                  value: 'Activos',
+                  child: Text('Activos'),
+                ),
+                DropdownMenuItem(
+                  value: 'Inactivos',
+                  child: Text('Inactivos'),
+                ),
               ],
               onChanged: (value) {
                 if (value == null) return;
@@ -488,7 +530,11 @@ class _BotonSecundario extends StatelessWidget {
       height: 42,
       child: OutlinedButton.icon(
         onPressed: onTap,
-        icon: Icon(icono, size: 16, color: _textoSecundario),
+        icon: Icon(
+          icono,
+          size: 16,
+          color: _textoSecundario,
+        ),
         label: Text(
           texto,
           style: const TextStyle(
@@ -499,8 +545,12 @@ class _BotonSecundario extends StatelessWidget {
         ),
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 14),
-          side: const BorderSide(color: Color(0xFFC8D6C0)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+          side: const BorderSide(
+            color: Color(0xFFC8D6C0),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+          ),
         ),
       ),
     );
@@ -522,70 +572,19 @@ class _TablaProveedores extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: _bordeSuave),
-        borderRadius: BorderRadius.circular(7),
-      ),
-      child: Column(
-        children: [
-          const _HeaderTablaProveedores(),
-          for (final proveedor in proveedores)
-            _FilaProveedor(
-              proveedor: proveedor,
-              procesando: procesando,
-              onEditar: onEditar,
-              onCambiarEstado: onCambiarEstado,
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var index = 0; index < proveedores.length; index++) ...[
+          if (index > 0) const SizedBox(height: 10),
+          _FilaProveedor(
+            proveedor: proveedores[index],
+            procesando: procesando,
+            onEditar: onEditar,
+            onCambiarEstado: onCambiarEstado,
+          ),
         ],
-      ),
-    );
-  }
-}
-
-class _HeaderTablaProveedores extends StatelessWidget {
-  const _HeaderTablaProveedores();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 42,
-      decoration: const BoxDecoration(
-        color: Color(0xFFE7E3E3),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(7)),
-      ),
-      child: const Row(
-        children: [
-          SizedBox(width: 18),
-          Expanded(flex: 8, child: _TextoHeader('ID')),
-          Expanded(flex: 28, child: _TextoHeader('PROVEEDOR')),
-          Expanded(flex: 18, child: _TextoHeader('CONTACTO')),
-          Expanded(flex: 16, child: _TextoHeader('TELEFONO')),
-          Expanded(flex: 24, child: _TextoHeader('DIRECCION')),
-          Expanded(flex: 12, child: _TextoHeader('ESTADO')),
-          Expanded(flex: 14, child: _TextoHeader('ACCIONES')),
-          SizedBox(width: 12),
-        ],
-      ),
-    );
-  }
-}
-
-class _TextoHeader extends StatelessWidget {
-  final String texto;
-
-  const _TextoHeader(this.texto);
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      texto,
-      style: const TextStyle(
-        color: Color(0xFF34423B),
-        fontSize: 10,
-        fontWeight: FontWeight.w900,
-      ),
+      ],
     );
   }
 }
@@ -605,105 +604,176 @@ class _FilaProveedor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 62),
-      child: Container(
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: Color(0xFFE0E8D8))),
-        ),
-        child: Row(
-          children: [
-            const SizedBox(width: 18),
-            Expanded(
-              flex: 8,
-              child: Text(
-                '${proveedor.idProveedor}',
-                style: const TextStyle(
-                  color: _verdeOscuro,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _bordeSuave),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: proveedor.activo
+                  ? const Color(0xFFEAF7DF)
+                  : const Color(0xFFFFE8E8),
+              borderRadius: BorderRadius.circular(8),
             ),
-            Expanded(
-              flex: 28,
-              child: Text(
-                proveedor.nombre,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: _textoPrincipal,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
+            child: Icon(
+              Icons.local_shipping_outlined,
+              color: proveedor.activo ? _verdeOscuro : _rojo,
+              size: 22,
             ),
-            Expanded(
-              flex: 18,
-              child: _TextoTabla(proveedor.contacto, fallback: 'Sin contacto'),
-            ),
-            Expanded(
-              flex: 16,
-              child: _TextoTabla(proveedor.telefono, fallback: 'Sin telefono'),
-            ),
-            Expanded(
-              flex: 24,
-              child:
-                  _TextoTabla(proveedor.direccion, fallback: 'Sin direccion'),
-            ),
-            Expanded(
-              flex: 12,
-              child: _BadgeEstadoProveedor(activo: proveedor.activo),
-            ),
-            Expanded(
-              flex: 14,
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: procesando ? null : () => onEditar(proveedor),
-                    tooltip: 'Editar',
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    color: _verdeOscuro,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            flex: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  proveedor.nombre,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _textoPrincipal,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
                   ),
-                  IconButton(
-                    onPressed:
-                        procesando ? null : () => onCambiarEstado(proveedor),
-                    tooltip: proveedor.activo ? 'Desactivar' : 'Activar',
-                    icon: Icon(
-                      proveedor.activo
-                          ? Icons.toggle_on_outlined
-                          : Icons.toggle_off_outlined,
-                      size: 22,
-                    ),
-                    color: proveedor.activo ? _verdeOscuro : _rojo,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Proveedor #${proveedor.idProveedor}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _textoSecundario,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-          ],
-        ),
+          ),
+          _MetricaProveedor(
+            titulo: 'Contacto',
+            valor: proveedor.contacto,
+            fallback: 'Sin contacto',
+            ancho: 170,
+          ),
+          _MetricaProveedor(
+            titulo: 'Telefono',
+            valor: proveedor.telefono,
+            fallback: 'Sin telefono',
+            ancho: 135,
+          ),
+          _MetricaProveedor(
+            titulo: 'Direccion',
+            valor: proveedor.direccion,
+            fallback: 'Sin direccion',
+            ancho: 210,
+          ),
+          SizedBox(
+            width: 105,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Estado',
+                  style: TextStyle(
+                    color: _textoSecundario,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                _BadgeEstadoProveedor(
+                  activo: proveedor.activo,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: procesando ? null : () => onEditar(proveedor),
+            tooltip: 'Editar',
+            icon: const Icon(
+              Icons.edit_outlined,
+              size: 19,
+            ),
+            color: _verdeOscuro,
+          ),
+          IconButton(
+            onPressed: procesando
+                ? null
+                : () => onCambiarEstado(proveedor),
+            tooltip: proveedor.activo ? 'Desactivar' : 'Activar',
+            icon: Icon(
+              proveedor.activo
+                  ? Icons.toggle_on_outlined
+                  : Icons.toggle_off_outlined,
+              size: 24,
+            ),
+            color: proveedor.activo ? _verdeOscuro : _rojo,
+          ),
+        ],
       ),
     );
   }
 }
 
-class _TextoTabla extends StatelessWidget {
-  final String texto;
+class _MetricaProveedor extends StatelessWidget {
+  final String titulo;
+  final String valor;
   final String fallback;
+  final double ancho;
 
-  const _TextoTabla(this.texto, {required this.fallback});
+  const _MetricaProveedor({
+    required this.titulo,
+    required this.valor,
+    required this.fallback,
+    required this.ancho,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      texto.isEmpty ? fallback : texto,
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
-      style: const TextStyle(
-        color: _textoPrincipal,
-        fontSize: 11,
-        fontWeight: FontWeight.w600,
+    final texto = valor.trim().isEmpty ? fallback : valor;
+
+    return SizedBox(
+      width: ancho,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            titulo,
+            style: const TextStyle(
+              color: _textoSecundario,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            texto,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _textoPrincipal,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -712,16 +782,23 @@ class _TextoTabla extends StatelessWidget {
 class _BadgeEstadoProveedor extends StatelessWidget {
   final bool activo;
 
-  const _BadgeEstadoProveedor({required this.activo});
+  const _BadgeEstadoProveedor({
+    required this.activo,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: 4,
+        ),
         decoration: BoxDecoration(
-          color: activo ? const Color(0xFFEAF8DD) : const Color(0xFFFFE8E8),
+          color: activo
+              ? const Color(0xFFEAF8DD)
+              : const Color(0xFFFFE8E8),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
@@ -781,7 +858,9 @@ class _EstadoProveedores extends StatelessWidget {
 class _DialogoProveedor extends StatefulWidget {
   final ProveedorApi? proveedor;
 
-  const _DialogoProveedor({this.proveedor});
+  const _DialogoProveedor({
+    this.proveedor,
+  });
 
   @override
   State<_DialogoProveedor> createState() => _DialogoProveedorState();
@@ -792,19 +871,27 @@ class _DialogoProveedorState extends State<_DialogoProveedor> {
   late final TextEditingController _telefonoController;
   late final TextEditingController _contactoController;
   late final TextEditingController _direccionController;
+
   String? _error;
 
   @override
   void initState() {
     super.initState();
+
     final proveedor = widget.proveedor;
-    _nombreController = TextEditingController(text: proveedor?.nombre ?? '');
-    _telefonoController =
-        TextEditingController(text: proveedor?.telefono ?? '');
-    _contactoController =
-        TextEditingController(text: proveedor?.contacto ?? '');
-    _direccionController =
-        TextEditingController(text: proveedor?.direccion ?? '');
+
+    _nombreController = TextEditingController(
+      text: proveedor?.nombre ?? '',
+    );
+    _telefonoController = TextEditingController(
+      text: proveedor?.telefono ?? '',
+    );
+    _contactoController = TextEditingController(
+      text: proveedor?.contacto ?? '',
+    );
+    _direccionController = TextEditingController(
+      text: proveedor?.direccion ?? '',
+    );
   }
 
   @override
@@ -818,6 +905,7 @@ class _DialogoProveedorState extends State<_DialogoProveedor> {
 
   void _confirmar() {
     final nombre = _nombreController.text.trim();
+
     if (nombre.isEmpty) {
       setState(() {
         _error = 'Ingresa el nombre del proveedor';
@@ -839,17 +927,29 @@ class _DialogoProveedorState extends State<_DialogoProveedor> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(
-          widget.proveedor == null ? 'Nuevo proveedor' : 'Editar proveedor'),
+        widget.proveedor == null
+            ? 'Nuevo proveedor'
+            : 'Editar proveedor',
+      ),
       content: SizedBox(
         width: 420,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _CampoDialogo(label: 'Nombre', controller: _nombreController),
+            _CampoDialogo(
+              label: 'Nombre',
+              controller: _nombreController,
+            ),
             const SizedBox(height: 12),
-            _CampoDialogo(label: 'Contacto', controller: _contactoController),
+            _CampoDialogo(
+              label: 'Contacto',
+              controller: _contactoController,
+            ),
             const SizedBox(height: 12),
-            _CampoDialogo(label: 'Telefono', controller: _telefonoController),
+            _CampoDialogo(
+              label: 'Telefono',
+              controller: _telefonoController,
+            ),
             const SizedBox(height: 12),
             _CampoDialogo(
               label: 'Direccion',
