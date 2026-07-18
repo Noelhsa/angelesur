@@ -307,7 +307,9 @@ class _ContenidoCajeroState extends State<ContenidoCajero> {
                             onAbrir: _abrirCorte,
                             onCerrar: _cerrarCorte,
                           );
-                          final resumen = _DetalleCorteCard(corte: _corte);
+                          final resumen = _DetalleCorteCard(
+                            corte: _corte,
+                          );
 
                           if (constraints.maxWidth < 850) {
                             return Column(
@@ -391,7 +393,11 @@ class _MovimientosCajaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final abierto = corte != null;
-    final mostrandoElectronico = tabSeleccionado == 1;
+    final mostrandoEfectivo = tabSeleccionado == 1;
+    final mostrandoElectronico = tabSeleccionado == 2;
+    final movimientosEfectivo = movimientos
+        .where((movimiento) => movimiento.medio.toUpperCase() == 'EFECTIVO')
+        .toList();
     final electronicoEntrada = movimientosElectronico
         .where((movimiento) => movimiento.esEntrada)
         .fold<double>(0, (total, movimiento) => total + movimiento.monto);
@@ -414,7 +420,7 @@ class _MovimientosCajaCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Historial de Caja',
+                      'Historial de Transacciones',
                       style: TextStyle(
                         color: _textoPrincipal,
                         fontSize: 20,
@@ -425,7 +431,9 @@ class _MovimientosCajaCard extends StatelessWidget {
                     Text(
                       mostrandoElectronico
                           ? 'Seguimiento separado del dinero electronico.'
-                          : 'Entradas y salidas manuales del corte.',
+                          : mostrandoEfectivo
+                              ? 'Solo movimientos y transacciones en efectivo.'
+                              : 'Vista completa de efectivo, electronico y otros movimientos.',
                       style: const TextStyle(
                         color: _textoSecundario,
                         fontSize: 12,
@@ -449,26 +457,24 @@ class _MovimientosCajaCard extends StatelessWidget {
                 tooltip: 'Actualizar',
                 icon: const Icon(Icons.refresh, color: _textoSecundario),
               ),
-              if (!mostrandoElectronico) ...[
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: abierto && !procesando ? onNuevoMovimiento : null,
-                  icon: const Icon(Icons.add, size: 18, color: Colors.white),
-                  label: Text(
-                    procesando ? 'Guardando...' : 'Nuevo movimiento',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _verdeOscuro,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: abierto && !procesando ? onNuevoMovimiento : null,
+                icon: const Icon(Icons.add, size: 18, color: Colors.white),
+                label: Text(
+                  procesando ? 'Guardando...' : 'Nuevo movimiento',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
-              ],
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _verdeOscuro,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -485,10 +491,14 @@ class _MovimientosCajaCard extends StatelessWidget {
               icono: Icons.lock_outline,
               titulo: mostrandoElectronico
                   ? 'Abre un corte para ver dinero electronico'
-                  : 'Abre un corte para ver movimientos',
+                  : mostrandoEfectivo
+                      ? 'Abre un corte para ver efectivo'
+                      : 'Abre un corte para ver transacciones',
               subtitulo: mostrandoElectronico
                   ? 'Los pagos y movimientos electronicos se agrupan por corte.'
-                  : 'Los movimientos manuales se registran en el corte abierto.',
+                  : mostrandoEfectivo
+                      ? 'Los movimientos en efectivo se agrupan por corte.'
+                      : 'Las transacciones se registran en el corte abierto.',
             )
           else if (mostrandoElectronico)
             _ContenidoHistorialMovimientos(
@@ -499,13 +509,23 @@ class _MovimientosCajaCard extends StatelessWidget {
               vacioSubtitulo:
                   'Los pagos electronicos, tarjetas y transferencias apareceran aqui.',
             )
+          else if (mostrandoEfectivo)
+            _ContenidoHistorialMovimientos(
+              movimientos: movimientosEfectivo,
+              cargando: cargando,
+              error: error,
+              vacioTitulo: 'Sin movimientos en efectivo',
+              vacioSubtitulo:
+                  'Las entradas y salidas en efectivo apareceran aqui.',
+            )
           else
             _ContenidoHistorialMovimientos(
               movimientos: movimientos,
               cargando: cargando,
               error: error,
-              vacioTitulo: 'Sin movimientos registrados',
-              vacioSubtitulo: 'Las ventas, compras y ajustes apareceran aqui.',
+              vacioTitulo: 'Sin transacciones registradas',
+              vacioSubtitulo:
+                  'Los movimientos en efectivo, electronico y otros apareceran aqui.',
             ),
         ],
       ),
@@ -536,16 +556,22 @@ class _TabsHistorialCaja extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _TabHistorialCaja(
-            texto: 'Movimientos',
-            icono: Icons.receipt_long_outlined,
+            texto: 'Todo',
+            icono: Icons.all_inbox_outlined,
             activo: seleccionado == 0,
             onTap: () => onSeleccionar(0),
           ),
           _TabHistorialCaja(
-            texto: 'Electronico',
-            icono: Icons.credit_card,
+            texto: 'Efectivo',
+            icono: Icons.payments_outlined,
             activo: seleccionado == 1,
             onTap: () => onSeleccionar(1),
+          ),
+          _TabHistorialCaja(
+            texto: 'Electronico',
+            icono: Icons.credit_card,
+            activo: seleccionado == 2,
+            onTap: () => onSeleccionar(2),
           ),
         ],
       ),
@@ -1174,8 +1200,18 @@ class _DetalleCorteCard extends StatelessWidget {
                       value: ConfigMoneda.formato(actual.efectivoInicial),
                     ),
                     _DatoCorte(
+                      label: 'Efectivo final',
+                      value: ConfigMoneda.formato(actual.efectivoEsperado),
+                      valueColor: _verdeOscuro,
+                    ),
+                    _DatoCorte(
                       label: 'Electronico inicial',
                       value: ConfigMoneda.formato(actual.electronicoInicial),
+                    ),
+                    _DatoCorte(
+                      label: 'Electronico final',
+                      value: ConfigMoneda.formato(actual.electronicoEsperado),
+                      valueColor: _verdeOscuro,
                     ),
                     _DatoCorte(
                       label: 'Ventas efectivo',
@@ -1190,8 +1226,13 @@ class _DetalleCorteCard extends StatelessWidget {
                       value: ConfigMoneda.formato(actual.otrosIngresos),
                     ),
                     _DatoCorte(
-                      label: 'Salidas',
-                      value: ConfigMoneda.formato(actual.salidas),
+                      label: 'Salidas efectivo',
+                      value: ConfigMoneda.formato(actual.salidasEfectivo),
+                      valueColor: _rojo,
+                    ),
+                    _DatoCorte(
+                      label: 'Salidas electronico',
+                      value: ConfigMoneda.formato(actual.salidasElectronico),
                       valueColor: _rojo,
                     ),
                     _DatoCorte(

@@ -10,6 +10,8 @@ class CorteResumen {
   final double ventasEfectivo;
   final double ventasElectronico;
   final double otrosIngresos;
+  final double salidasEfectivo;
+  final double salidasElectronico;
   final double salidas;
   final double efectivoEsperado;
   final double electronicoEsperado;
@@ -25,6 +27,8 @@ class CorteResumen {
     required this.ventasEfectivo,
     required this.ventasElectronico,
     required this.otrosIngresos,
+    required this.salidasEfectivo,
+    required this.salidasElectronico,
     required this.salidas,
     required this.efectivoEsperado,
     required this.electronicoEsperado,
@@ -57,12 +61,27 @@ class CorteResumen {
       'entradas',
       'entradasEfectivo',
     ]);
-    final salidas = _asDoubleAny(map, [
+    final salidasEfectivo = _asDoubleAny(map, [
+      'salidasEfectivo',
+      'retirosEfectivo',
+      'egresosEfectivo',
+    ]);
+    final salidasElectronico = _asDoubleAny(map, [
+      'salidasElectronico',
+      'retirosElectronico',
+      'egresosElectronico',
+    ]);
+    final salidasRegistradas = _asDoubleAny(map, [
       'salidas',
       'retiros',
       'egresos',
-      'salidasEfectivo',
     ]);
+    final salidas = salidasRegistradas == 0
+        ? salidasEfectivo + salidasElectronico
+        : salidasRegistradas;
+    final salidasEfectivoFinal = salidasEfectivo == 0 && salidasElectronico == 0
+        ? salidas
+        : salidasEfectivo;
     final efectivoEsperado = _asDoubleAny(map, [
       'efectivoEsperado',
       'saldoEfectivo',
@@ -91,12 +110,17 @@ class CorteResumen {
       ventasEfectivo: ventasEfectivo,
       ventasElectronico: ventasElectronico,
       otrosIngresos: otrosIngresos,
+      salidasEfectivo: salidasEfectivoFinal,
+      salidasElectronico: salidasElectronico,
       salidas: salidas,
       efectivoEsperado: efectivoEsperado == 0
-          ? efectivoInicial + ventasEfectivo + otrosIngresos - salidas
+          ? efectivoInicial +
+              ventasEfectivo +
+              otrosIngresos -
+              salidasEfectivoFinal
           : efectivoEsperado,
       electronicoEsperado: electronicoEsperado == 0
-          ? electronicoInicial + ventasElectronico
+          ? electronicoInicial + ventasElectronico - salidasElectronico
           : electronicoEsperado,
       totalEsperado: totalEsperado == 0
           ? efectivoInicial +
