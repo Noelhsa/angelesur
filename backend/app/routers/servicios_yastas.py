@@ -115,6 +115,13 @@ def obtener_tarifa_servicio(id_tarifa: int):
 
 @router.post("/tarifas", status_code=201)
 def crear_tarifa_servicio(request: CrearTarifaServicioRequest):
+    _validar_reparto_tarifa(
+        request.comisionCliente,
+        request.comisionYastas,
+        request.regaliaYastas,
+        request.gananciaFarmacia,
+    )
+
     with db_connection() as connection:
         with connection.cursor() as cursor:
             cursor.execute(
@@ -133,7 +140,7 @@ def crear_tarifa_servicio(request: CrearTarifaServicioRequest):
                 [
                     request.tipoServicio,
                     request.nombreServicio.strip(),
-                    request.montoBase,
+                    Decimal("0.00"),
                     request.comisionCliente,
                     request.comisionYastas,
                     request.regaliaYastas,
@@ -147,12 +154,25 @@ def crear_tarifa_servicio(request: CrearTarifaServicioRequest):
 
 @router.patch("/tarifas/{id_tarifa}")
 def actualizar_tarifa_servicio(id_tarifa: int, request: ActualizarTarifaServicioRequest):
-    obtener_tarifa_servicio(id_tarifa)
+    tarifa_actual = obtener_tarifa_servicio(id_tarifa)
+    _validar_reparto_tarifa(
+        request.comisionCliente
+        if "comisionCliente" in request.model_fields_set
+        else tarifa_actual["comisionCliente"],
+        request.comisionYastas
+        if "comisionYastas" in request.model_fields_set
+        else tarifa_actual["comisionYastas"],
+        request.regaliaYastas
+        if "regaliaYastas" in request.model_fields_set
+        else tarifa_actual["regaliaYastas"],
+        request.gananciaFarmacia
+        if "gananciaFarmacia" in request.model_fields_set
+        else tarifa_actual["gananciaFarmacia"],
+    )
 
     campos = [
         "tipoServicio",
         "nombreServicio",
-        "montoBase",
         "comisionCliente",
         "comisionYastas",
         "regaliaYastas",
@@ -172,6 +192,8 @@ def actualizar_tarifa_servicio(id_tarifa: int, request: ActualizarTarifaServicio
         params.append(value)
 
     if updates:
+        updates.append("montoBase = %s")
+        params.append(Decimal("0.00"))
         params.append(id_tarifa)
         with db_connection() as connection:
             with connection.cursor() as cursor:
@@ -181,6 +203,24 @@ def actualizar_tarifa_servicio(id_tarifa: int, request: ActualizarTarifaServicio
                 )
 
     return obtener_tarifa_servicio(id_tarifa)
+
+
+def _validar_reparto_tarifa(
+    comision_cliente: Decimal,
+    comision_yastas: Decimal,
+    regalia_yastas: Decimal,
+    ganancia_farmacia: Decimal,
+):
+    reparto = comision_yastas + regalia_yastas + ganancia_farmacia
+
+    if reparto > comision_cliente:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "La suma de comision Yastas, regalia Yastas y ganancia farmacia "
+                "no puede superar la comision cobrada al cliente"
+            ),
+        )
 
 
 @router.patch("/tarifas/{id_tarifa}/estado")
@@ -245,8 +285,16 @@ def obtener_servicio_yastas(id_servicio_operacion: int):
 
 @router.post("", status_code=201)
 def registrar_servicio_yastas(request: RegistrarServicioYastasRequest):
-    if not _obtener_tarifa(request.idTarifa):
+    tarifa = _obtener_tarifa(request.idTarifa)
+    if not tarifa:
         raise HTTPException(status_code=404, detail="Tarifa de servicio no encontrada")
+
+    _validar_reparto_tarifa(
+        tarifa["comisionCliente"],
+        tarifa["comisionYastas"],
+        tarifa["regaliaYastas"],
+        tarifa["gananciaFarmacia"],
+    )
 
     result = call_procedure(
         "sp_registrar_servicio_yastas",

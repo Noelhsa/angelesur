@@ -83,19 +83,39 @@ class TarifaServicioYastas {
 
 class ServicioYastasRegistrado {
   final int idServicioOperacion;
+  final int? idUsuario;
+  final int? idCorte;
+  final String usuario;
   final String nombreServicio;
   final String tipoServicio;
+  final String referenciaOperacion;
   final double montoServicio;
+  final double comisionCliente;
+  final double comisionYastas;
+  final double regaliaYastas;
+  final double gananciaFarmacia;
   final double totalCobradoCliente;
   final String estatus;
+  final DateTime? fecha;
+  final String observaciones;
 
   const ServicioYastasRegistrado({
     required this.idServicioOperacion,
+    required this.idUsuario,
+    required this.idCorte,
+    required this.usuario,
     required this.nombreServicio,
     required this.tipoServicio,
+    required this.referenciaOperacion,
     required this.montoServicio,
+    required this.comisionCliente,
+    required this.comisionYastas,
+    required this.regaliaYastas,
+    required this.gananciaFarmacia,
     required this.totalCobradoCliente,
     required this.estatus,
+    required this.fecha,
+    required this.observaciones,
   });
 
   factory ServicioYastasRegistrado.fromJson(Map<String, dynamic> map) {
@@ -103,14 +123,33 @@ class ServicioYastasRegistrado {
       idServicioOperacion: TarifaServicioYastas._asInt(
         map['idServicioOperacion'],
       ),
+      idUsuario: _asNullableInt(map['idUsuario']),
+      idCorte: _asNullableInt(map['idCorte']),
+      usuario: map['usuario']?.toString() ?? '',
       nombreServicio: map['nombreServicio']?.toString() ?? '',
       tipoServicio: map['tipoServicio']?.toString() ?? '',
+      referenciaOperacion: map['referenciaOperacion']?.toString() ?? '',
       montoServicio: TarifaServicioYastas._asDouble(map['montoServicio']),
+      comisionCliente: TarifaServicioYastas._asDouble(map['comisionCliente']),
+      comisionYastas: TarifaServicioYastas._asDouble(map['comisionYastas']),
+      regaliaYastas: TarifaServicioYastas._asDouble(map['regaliaYastas']),
+      gananciaFarmacia: TarifaServicioYastas._asDouble(
+        map['gananciaFarmacia'],
+      ),
       totalCobradoCliente: TarifaServicioYastas._asDouble(
         map['totalCobradoCliente'],
       ),
       estatus: map['estatus']?.toString() ?? '',
+      fecha: DateTime.tryParse(map['fecha']?.toString() ?? ''),
+      observaciones: map['observaciones']?.toString() ?? '',
     );
+  }
+
+  static int? _asNullableInt(Object? value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
   }
 }
 
@@ -160,10 +199,37 @@ class ServiciosYastasApiService {
     return ServicioYastasRegistrado.fromJson(response as Map<String, dynamic>);
   }
 
+  Future<List<ServicioYastasRegistrado>> listarServicios({
+    String? estatus,
+    String? tipoServicio,
+    int? idCorte,
+    int? idUsuario,
+    int limite = 200,
+  }) async {
+    final params = <String, String>{
+      'limite': limite.toString(),
+      if (estatus != null && estatus.isNotEmpty) 'estatus': estatus,
+      if (tipoServicio != null && tipoServicio.isNotEmpty)
+        'tipoServicio': tipoServicio,
+      if (idCorte != null) 'idCorte': idCorte.toString(),
+      if (idUsuario != null) 'idUsuario': idUsuario.toString(),
+    };
+    final query = Uri(queryParameters: params).query;
+    final response = await _apiClient.get('/servicios-yastas?$query');
+    final items = response as List<dynamic>;
+
+    return items
+        .map(
+          (item) =>
+              ServicioYastasRegistrado.fromJson(item as Map<String, dynamic>),
+        )
+        .toList();
+  }
+
   Future<TarifaServicioYastas> crearTarifa({
     required String tipoServicio,
     required String nombreServicio,
-    required double montoBase,
+    double montoBase = 0,
     required double comisionCliente,
     required double comisionYastas,
     required double regaliaYastas,
@@ -186,7 +252,7 @@ class ServiciosYastasApiService {
     required int idTarifa,
     required String tipoServicio,
     required String nombreServicio,
-    required double montoBase,
+    double montoBase = 0,
     required double comisionCliente,
     required double comisionYastas,
     required double regaliaYastas,

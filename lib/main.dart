@@ -13,8 +13,8 @@ import 'ui/interfaces/contenido_catalogo_inventario.dart';
 import 'ui/interfaces/contenido_catalogo_producto.dart';
 import 'ui/interfaces/contenido_historial.dart';
 import 'ui/interfaces/contenido_pedidos.dart';
-import 'ui/interfaces/contenido_perfil.dart';
 import 'ui/interfaces/contenido_proveedores.dart';
+import 'ui/interfaces/contenido_usuarios.dart';
 import 'ui/interfaces/contenido_venta.dart';
 import 'ui/interfaces/contenido_yastas.dart';
 import 'ui/interfaces/menu_carta_carrito.dart';
@@ -217,8 +217,22 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
 
   bool get _carritoTieneYastas => _serviciosYastasCarrito.isNotEmpty;
 
-  bool get _carritoTieneProductos {
-    return _carrito.keys.any((id) => !_serviciosYastasCarrito.containsKey(id));
+  List<Medicamento> get _itemsProductosCarrito {
+    return _carrito.keys
+        .where((id) => !_serviciosYastasCarrito.containsKey(id))
+        .map(_productoCarritoPorId)
+        .whereType<Medicamento>()
+        .toList();
+  }
+
+  double get _subtotalProductos {
+    double total = 0;
+
+    for (final item in _itemsProductosCarrito) {
+      total += item.precio * (_carrito[item.id] ?? 0);
+    }
+
+    return total;
   }
 
   double get _subtotal {
@@ -285,17 +299,6 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
   }
 
   void _agregarAlCarrito(Medicamento producto) {
-    if (_carritoTieneYastas) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Termina o elimina los servicios Yastas antes de agregar productos.',
-          ),
-        ),
-      );
-      return;
-    }
-
     final cantidadActual = _carrito[producto.id] ?? 0;
 
     if (cantidadActual >= producto.stock) {
@@ -308,17 +311,6 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
   }
 
   Future<void> _agregarServicioYastas(TarifaServicioYastas tarifa) async {
-    if (_carritoTieneProductos) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Termina o elimina los productos antes de agregar servicios Yastas.',
-          ),
-        ),
-      );
-      return;
-    }
-
     final datos = await showDialog<DatosServicioYastas>(
       context: context,
       builder: (context) => DialogoServicioYastas(tarifa: tarifa),
@@ -386,8 +378,10 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
       return;
     }
 
-    if (_carritoTieneYastas) {
-      await _registrarServiciosYastas();
+    if (_carritoTieneYastas && widget.usuario.rol != 'JEFE') {
+      _mostrarErrorVenta(
+        'Solo un usuario JEFE puede registrar servicios Yastas.',
+      );
       return;
     }
 
@@ -400,68 +394,46 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
       return;
     }
 
-    setState(() {
-      _procesandoVenta = true;
-    });
-
-    try {
-      final venta = await _ventasApiService.registrarVenta(
-        idUsuario: widget.usuario.id,
-        medicamentos: _itemsCarrito,
-        cantidades: Map<int, int>.from(_carrito),
-        descuentoGeneral: _descuento,
-        medioPago: datosPago.medio,
-        total: _total,
-        montoRecibido: datosPago.montoRecibido ?? _total,
-        referencia: datosPago.referencia,
+    if (_carritoTieneYastas && datosPago.medio != 'EFECTIVO') {
+      _mostrarErrorVenta(
+        'Los tickets con servicios Yastas deben cobrarse en efectivo.',
       );
-
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _carrito.clear();
-        _procesandoVenta = false;
-      });
-
-      await _cargarInventario();
-
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Venta ${venta.folio} registrada. Cambio: \$${venta.cambio.toStringAsFixed(2)}',
-          ),
-        ),
-      );
-    } on ApiException catch (error) {
-      _mostrarErrorVenta(error.message);
-    } catch (_) {
-      _mostrarErrorVenta('No se pudo registrar la venta');
+      return;
     }
-  }
 
-  Future<void> _registrarServiciosYastas() async {
     setState(() {
       _procesandoVenta = true;
     });
 
     try {
-      final servicios = _serviciosYastasCarrito.values.toList();
+      VentaRegistrada? venta;
 
-      for (final servicio in servicios) {
-        await _serviciosYastasApiService.registrarServicio(
+      if (_itemsProductosCarrito.isNotEmpty) {
+        final totalYastas = _total - _subtotalProductos;
+        final montoRecibidoProductos = datosPago.montoRecibido == null
+            ? null
+            : (datosPago.montoRecibido! - totalYastas < _subtotalProductos
+                ? _subtotalProductos
+                : datosPago.montoRecibido! - totalYastas);
+
+        venta = await _ventasApiService.registrarVenta(
           idUsuario: widget.usuario.id,
-          idTarifa: servicio.tarifa.idTarifa,
-          montoServicio: servicio.montoServicio,
-          referenciaOperacion: servicio.referenciaOperacion,
-          observaciones: servicio.observaciones,
+          medicamentos: _itemsProductosCarrito,
+          cantidades: Map<int, int>.from(_carrito),
+          descuentoGeneral: _descuento,
+          medioPago: datosPago.medio,
+          total: _subtotalProductos,
+          montoRecibido:
+              datosPago.medio == 'EFECTIVO' ? montoRecibidoProductos : null,
+          referencia: datosPago.referencia,
+          observaciones:
+              _carritoTieneYastas ? 'Ticket mixto con servicios Yastas.' : null,
         );
       }
+
+      final serviciosRegistrados = await _registrarServiciosYastasEnCarrito(
+        folioVenta: venta?.folio,
+      );
 
       if (!mounted) {
         return;
@@ -473,20 +445,80 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
         _procesandoVenta = false;
       });
 
+      if (venta != null) {
+        await _cargarInventario();
+      }
+
+      if (!mounted) {
+        return;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            servicios.length == 1
-                ? 'Servicio Yastas registrado.'
-                : '${servicios.length} servicios Yastas registrados.',
-          ),
+          content: Text(_mensajeVentaRegistrada(venta, serviciosRegistrados)),
         ),
       );
     } on ApiException catch (error) {
       _mostrarErrorVenta(error.message);
     } catch (_) {
-      _mostrarErrorVenta('No se pudieron registrar los servicios Yastas');
+      _mostrarErrorVenta('No se pudo registrar la venta');
     }
+  }
+
+  Future<List<ServicioYastasRegistrado>> _registrarServiciosYastasEnCarrito({
+    String? folioVenta,
+  }) async {
+    final registrados = <ServicioYastasRegistrado>[];
+
+    for (final servicio in _serviciosYastasCarrito.values) {
+      final registrado = await _serviciosYastasApiService.registrarServicio(
+        idUsuario: widget.usuario.id,
+        idTarifa: servicio.tarifa.idTarifa,
+        montoServicio: servicio.montoServicio,
+        referenciaOperacion: servicio.referenciaOperacion,
+        observaciones: _observacionesYastas(
+          servicio.observaciones,
+          folioVenta,
+        ),
+      );
+      registrados.add(registrado);
+    }
+
+    return registrados;
+  }
+
+  String? _observacionesYastas(String? observaciones, String? folioVenta) {
+    final partes = <String>[
+      if (folioVenta != null && folioVenta.isNotEmpty)
+        '[VENTA_FOLIO:$folioVenta]',
+      if (observaciones != null && observaciones.trim().isNotEmpty)
+        observaciones.trim(),
+    ];
+
+    if (partes.isEmpty) {
+      return null;
+    }
+
+    return partes.join(' ');
+  }
+
+  String _mensajeVentaRegistrada(
+    VentaRegistrada? venta,
+    List<ServicioYastasRegistrado> servicios,
+  ) {
+    if (venta != null && servicios.isNotEmpty) {
+      return 'Ticket registrado: venta ${venta.folio} y ${servicios.length} servicio(s) Yastas.';
+    }
+
+    if (venta != null) {
+      return 'Venta ${venta.folio} registrada.';
+    }
+
+    if (servicios.length == 1) {
+      return 'Servicio Yastas registrado.';
+    }
+
+    return '${servicios.length} servicios Yastas registrados.';
   }
 
   void _mostrarErrorVenta(String mensaje) {
@@ -555,7 +587,7 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
   Widget _construirContenidoSeleccionado() {
     switch (_menuSeleccionado) {
       case 0:
-        return EditarPerfilScreen(usuario: widget.usuario);
+        return ContenidoUsuarios(usuario: widget.usuario);
 
       case 1:
         return _construirContenidoVenta();

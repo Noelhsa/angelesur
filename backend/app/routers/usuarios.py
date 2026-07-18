@@ -26,6 +26,14 @@ class CrearUsuarioRequest(BaseModel):
     telefono: str | None = Field(default=None, max_length=20)
 
 
+class ActualizarUsuarioRequest(BaseModel):
+    nombre: str | None = Field(default=None, min_length=1, max_length=120)
+    username: str | None = Field(default=None, min_length=1, max_length=60)
+    password: str | None = Field(default=None, min_length=4, max_length=128)
+    rol: Literal["JEFE", "EMPLEADO"] | None = None
+    telefono: str | None = Field(default=None, max_length=20)
+
+
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -90,6 +98,60 @@ def crear_usuario(request: CrearUsuarioRequest):
                 ],
             )
             id_usuario = cursor.lastrowid
+
+    return obtener_usuario(id_usuario)
+
+
+@router.patch("/usuarios/{id_usuario}", response_model=UsuarioResponse)
+def actualizar_usuario(id_usuario: int, request: ActualizarUsuarioRequest):
+    obtener_usuario(id_usuario)
+
+    updates: list[str] = []
+    params: list[object] = []
+
+    if "nombre" in request.model_fields_set:
+        if request.nombre is None or not request.nombre.strip():
+            raise HTTPException(status_code=400, detail="El nombre es obligatorio")
+        updates.append("nombre = %s")
+        params.append(request.nombre.strip())
+
+    if "username" in request.model_fields_set:
+        if request.username is None or not request.username.strip():
+            raise HTTPException(status_code=400, detail="El username es obligatorio")
+        existente = fetch_one(
+            """
+            SELECT idUsuario
+            FROM usuario
+            WHERE username = %s AND idUsuario <> %s
+            LIMIT 1
+            """,
+            [request.username.strip(), id_usuario],
+        )
+        if existente:
+            raise HTTPException(status_code=400, detail="El username ya esta en uso")
+        updates.append("username = %s")
+        params.append(request.username.strip())
+
+    if "telefono" in request.model_fields_set:
+        updates.append("telefono = %s")
+        params.append(request.telefono.strip() if request.telefono else None)
+
+    if "rol" in request.model_fields_set:
+        updates.append("rol = %s")
+        params.append(request.rol)
+
+    if "password" in request.model_fields_set and request.password:
+        updates.append("password_hash = %s")
+        params.append(hash_password(request.password))
+
+    if updates:
+        params.append(id_usuario)
+        with db_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    f"UPDATE usuario SET {', '.join(updates)} WHERE idUsuario = %s",
+                    params,
+                )
 
     return obtener_usuario(id_usuario)
 

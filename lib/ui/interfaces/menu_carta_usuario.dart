@@ -1,28 +1,51 @@
 import 'package:flutter/material.dart';
 
+import '../../models/usuario.dart';
+
 const Color _fondoPagina = Color(0xFFF8F6F5);
 const Color _verdeOscuro = Color(0xFF397800);
-const Color _verde = Color(0xFF64D20A);
 const Color _textoPrincipal = Color(0xFF101828);
 const Color _textoSecundario = Color(0xFF667085);
 const Color _bordeSuave = Color(0xFFD9E6D3);
 const Color _grisCampo = Color(0xFFF6F4F1);
 
-class MenuCartaPerfil extends StatefulWidget {
-  final VoidCallback onCerrar;
-  final VoidCallback onGuardarUsuario;
+class DatosFormularioUsuario {
+  final String nombre;
+  final String username;
+  final String telefono;
+  final String password;
+  final String rol;
+  final bool activo;
 
-  const MenuCartaPerfil({
+  const DatosFormularioUsuario({
+    required this.nombre,
+    required this.username,
+    required this.telefono,
+    required this.password,
+    required this.rol,
+    required this.activo,
+  });
+}
+
+class MenuCartaUsuario extends StatefulWidget {
+  final VoidCallback onCerrar;
+  final ValueChanged<DatosFormularioUsuario> onGuardarUsuario;
+  final bool guardando;
+  final Usuario? usuario;
+
+  const MenuCartaUsuario({
     super.key,
     required this.onCerrar,
     required this.onGuardarUsuario,
+    this.guardando = false,
+    this.usuario,
   });
 
   @override
-  State<MenuCartaPerfil> createState() => _MenuCartaPerfilState();
+  State<MenuCartaUsuario> createState() => _MenuCartaUsuarioState();
 }
 
-class _MenuCartaPerfilState extends State<MenuCartaPerfil> {
+class _MenuCartaUsuarioState extends State<MenuCartaUsuario> {
   final TextEditingController _nombreController = TextEditingController();
   final TextEditingController _usuarioController = TextEditingController();
   final TextEditingController _telefonoController = TextEditingController();
@@ -31,6 +54,23 @@ class _MenuCartaPerfilState extends State<MenuCartaPerfil> {
   String? _rolSeleccionado;
   bool _usuarioActivo = true;
   bool _passwordVisible = false;
+  String? _error;
+
+  bool get _editando => widget.usuario != null;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final usuario = widget.usuario;
+    if (usuario != null) {
+      _nombreController.text = usuario.nombre;
+      _usuarioController.text = usuario.username;
+      _telefonoController.text = usuario.telefono ?? '';
+      _rolSeleccionado = usuario.rol;
+      _usuarioActivo = usuario.activo;
+    }
+  }
 
   @override
   void dispose() {
@@ -58,6 +98,7 @@ class _MenuCartaPerfilState extends State<MenuCartaPerfil> {
       child: Column(
         children: [
           _EncabezadoNuevoUsuario(
+            editando: _editando,
             onCerrar: widget.onCerrar,
           ),
           Expanded(
@@ -73,29 +114,31 @@ class _MenuCartaPerfilState extends State<MenuCartaPerfil> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _CampoTextoPerfil(
+                    _CampoTextoUsuario(
                       etiqueta: 'Nombre Completo',
                       controller: _nombreController,
                       hintText: 'Ej: Juan Pérez',
                       suffixIcon: Icons.person_outline,
                     ),
                     const SizedBox(height: 16),
-                    _CampoTextoPerfil(
+                    _CampoTextoUsuario(
                       etiqueta: 'Nombre de Usuario',
                       controller: _usuarioController,
                       hintText: 'jperez_pharmacy',
                       suffixIcon: Icons.alternate_email,
                     ),
                     const SizedBox(height: 16),
-                    _CampoTextoPerfil(
+                    _CampoTextoUsuario(
                       etiqueta: 'Teléfono',
                       controller: _telefonoController,
                       hintText: '+52 555 123 4567',
                       suffixIcon: Icons.phone_outlined,
                     ),
                     const SizedBox(height: 16),
-                    _CampoTextoPerfil(
-                      etiqueta: 'Contraseña',
+                    _CampoTextoUsuario(
+                      etiqueta: _editando
+                          ? 'Nueva contrasena (opcional)'
+                          : 'Contrasena',
                       controller: _passwordController,
                       hintText: '••••••••',
                       obscureText: !_passwordVisible,
@@ -115,14 +158,12 @@ class _MenuCartaPerfilState extends State<MenuCartaPerfil> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _CampoDropdownPerfil(
+                    _CampoDropdownUsuario(
                       etiqueta: 'Rol',
                       valor: _rolSeleccionado,
                       opciones: const [
-                        'Admin',
-                        'Cajero',
-                        'Auxiliar',
-                        'Empleado',
+                        'JEFE',
+                        'EMPLEADO',
                       ],
                       onChanged: (value) {
                         setState(() {
@@ -146,8 +187,20 @@ class _MenuCartaPerfilState extends State<MenuCartaPerfil> {
                     const SizedBox(height: 14),
                     _AccionesNuevoUsuario(
                       onCancelar: widget.onCerrar,
-                      onGuardar: widget.onGuardarUsuario,
+                      onGuardar: _guardar,
+                      guardando: widget.guardando,
                     ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        _error!,
+                        style: const TextStyle(
+                          color: Color(0xFFE02020),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -157,13 +210,55 @@ class _MenuCartaPerfilState extends State<MenuCartaPerfil> {
       ),
     );
   }
+
+  void _guardar() {
+    final nombre = _nombreController.text.trim();
+    final username = _usuarioController.text.trim();
+    final telefono = _telefonoController.text.trim();
+    final password = _passwordController.text;
+    final rol = _rolSeleccionado;
+
+    if (nombre.isEmpty ||
+        username.isEmpty ||
+        (!_editando && password.isEmpty) ||
+        rol == null) {
+      setState(() {
+        _error = 'Nombre, usuario, contrasena y rol son obligatorios';
+      });
+      return;
+    }
+
+    if (password.isNotEmpty && password.length < 4) {
+      setState(() {
+        _error = 'La contrasena debe tener al menos 4 caracteres';
+      });
+      return;
+    }
+
+    setState(() {
+      _error = null;
+    });
+
+    widget.onGuardarUsuario(
+      DatosFormularioUsuario(
+        nombre: nombre,
+        username: username,
+        telefono: telefono,
+        password: password,
+        rol: rol,
+        activo: _usuarioActivo,
+      ),
+    );
+  }
 }
 
 class _EncabezadoNuevoUsuario extends StatelessWidget {
   final VoidCallback onCerrar;
+  final bool editando;
 
   const _EncabezadoNuevoUsuario({
     required this.onCerrar,
+    required this.editando,
   });
 
   @override
@@ -196,23 +291,25 @@ class _EncabezadoNuevoUsuario extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 4),
-          const Expanded(
+          Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Añadir Nuevo Usuario',
-                  style: TextStyle(
+                  editando ? 'Editar Usuario' : 'Añadir Nuevo Usuario',
+                  style: const TextStyle(
                     color: _textoPrincipal,
                     fontSize: 19,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
-                  'Gestione los permisos y el acceso de su personal clínico.',
-                  style: TextStyle(
+                  editando
+                      ? 'Actualiza datos, rol y acceso del usuario.'
+                      : 'Gestione los permisos y el acceso de su personal clínico.',
+                  style: const TextStyle(
                     color: Color(0xFF214025),
                     fontSize: 10,
                     fontWeight: FontWeight.w500,
@@ -240,7 +337,7 @@ class _EncabezadoNuevoUsuario extends StatelessWidget {
   }
 }
 
-class _CampoTextoPerfil extends StatelessWidget {
+class _CampoTextoUsuario extends StatelessWidget {
   final String etiqueta;
   final TextEditingController controller;
   final String hintText;
@@ -248,7 +345,7 @@ class _CampoTextoPerfil extends StatelessWidget {
   final Widget? suffixWidget;
   final bool obscureText;
 
-  const _CampoTextoPerfil({
+  const _CampoTextoUsuario({
     required this.etiqueta,
     required this.controller,
     required this.hintText,
@@ -259,7 +356,7 @@ class _CampoTextoPerfil extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _ContenedorCampoPerfil(
+    return _ContenedorCampoUsuario(
       etiqueta: etiqueta,
       child: TextField(
         controller: controller,
@@ -280,13 +377,13 @@ class _CampoTextoPerfil extends StatelessWidget {
   }
 }
 
-class _CampoDropdownPerfil extends StatelessWidget {
+class _CampoDropdownUsuario extends StatelessWidget {
   final String etiqueta;
   final String? valor;
   final List<String> opciones;
   final ValueChanged<String?> onChanged;
 
-  const _CampoDropdownPerfil({
+  const _CampoDropdownUsuario({
     required this.etiqueta,
     required this.valor,
     required this.opciones,
@@ -295,7 +392,7 @@ class _CampoDropdownPerfil extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _ContenedorCampoPerfil(
+    return _ContenedorCampoUsuario(
       etiqueta: etiqueta,
       child: DropdownButtonFormField<String>(
         value: valor,
@@ -342,7 +439,7 @@ class _CampoEstadoUsuario extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _ContenedorCampoPerfil(
+    return _ContenedorCampoUsuario(
       etiqueta: 'Estado',
       child: Container(
         height: 38,
@@ -385,7 +482,7 @@ class _AreaAvatarUsuario extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _ContenedorCampoPerfil(
+    return _ContenedorCampoUsuario(
       etiqueta: 'Avatar de Usuario',
       child: Container(
         height: 130,
@@ -440,10 +537,12 @@ class _AreaAvatarUsuario extends StatelessWidget {
 class _AccionesNuevoUsuario extends StatelessWidget {
   final VoidCallback onCancelar;
   final VoidCallback onGuardar;
+  final bool guardando;
 
   const _AccionesNuevoUsuario({
     required this.onCancelar,
     required this.onGuardar,
+    required this.guardando,
   });
 
   @override
@@ -480,15 +579,24 @@ class _AccionesNuevoUsuario extends StatelessWidget {
           width: 145,
           height: 36,
           child: ElevatedButton.icon(
-            onPressed: onGuardar,
-            icon: const Icon(
-              Icons.save_outlined,
-              color: Colors.white,
-              size: 14,
-            ),
-            label: const Text(
-              'Guardar Usuario',
-              style: TextStyle(
+            onPressed: guardando ? null : onGuardar,
+            icon: guardando
+                ? const SizedBox(
+                    width: 13,
+                    height: 13,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(
+                    Icons.save_outlined,
+                    color: Colors.white,
+                    size: 14,
+                  ),
+            label: Text(
+              guardando ? 'Guardando...' : 'Guardar Usuario',
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 11,
                 fontWeight: FontWeight.w900,
@@ -510,11 +618,11 @@ class _AccionesNuevoUsuario extends StatelessWidget {
   }
 }
 
-class _ContenedorCampoPerfil extends StatelessWidget {
+class _ContenedorCampoUsuario extends StatelessWidget {
   final String etiqueta;
   final Widget child;
 
-  const _ContenedorCampoPerfil({
+  const _ContenedorCampoUsuario({
     required this.etiqueta,
     required this.child,
   });

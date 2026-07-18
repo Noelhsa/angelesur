@@ -33,7 +33,7 @@ class BarraLateralIzquierda extends StatelessWidget {
                     indice: 0,
                     seleccionado: seleccionado,
                     icono: Icons.person_outline_rounded,
-                    texto: 'Perfil',
+                    texto: 'Usuarios',
                     onTap: onSeleccionar,
                   ),
                   const SizedBox(height: 12),

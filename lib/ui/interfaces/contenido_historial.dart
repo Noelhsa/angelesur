@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../services/api_client.dart';
+import '../../services/servicios_yastas_api_service.dart';
 import '../../services/ventas_api_service.dart';
 import '../../utils/config_moneda.dart';
 
@@ -14,6 +15,99 @@ const Color _bordeSuave = Color(0xFFD9E6D3);
 const Color _grisCabeceraTabla = Color(0xFFE7E3E3);
 const Color _rojo = Color(0xFFE02020);
 
+class _TicketHistorial {
+  final VentaResumen? venta;
+  final List<ServicioYastasRegistrado> serviciosYastas;
+
+  const _TicketHistorial({
+    this.venta,
+    this.serviciosYastas = const [],
+  });
+
+  String get folio {
+    if (venta != null) {
+      return venta!.folio;
+    }
+
+    final id = serviciosYastas.isEmpty
+        ? 'SIN-ID'
+        : serviciosYastas.first.idServicioOperacion.toString();
+    return 'YASTAS-$id';
+  }
+
+  String get usuario {
+    if (venta != null && venta!.usuario.isNotEmpty) {
+      return venta!.usuario;
+    }
+
+    if (serviciosYastas.isNotEmpty) {
+      return serviciosYastas.first.usuario;
+    }
+
+    return '';
+  }
+
+  DateTime? get fecha {
+    return venta?.fecha ??
+        (serviciosYastas.isEmpty ? null : serviciosYastas.first.fecha);
+  }
+
+  String get estatus {
+    if (venta != null) {
+      return venta!.estatus;
+    }
+
+    if (serviciosYastas.isEmpty) {
+      return '';
+    }
+
+    final estatusServicios =
+        serviciosYastas.map((item) => item.estatus).toSet();
+    if (estatusServicios.length == 1) {
+      return estatusServicios.first;
+    }
+
+    return 'MIXTO';
+  }
+
+  bool get esMixto => venta != null && serviciosYastas.isNotEmpty;
+
+  String get titulo {
+    if (venta != null && serviciosYastas.isNotEmpty) {
+      return 'Venta + Yastas';
+    }
+
+    if (serviciosYastas.isNotEmpty) {
+      return 'Servicio Yastas';
+    }
+
+    return 'Venta de mostrador';
+  }
+
+  double get total {
+    return totalProductos + totalYastas;
+  }
+
+  double get totalProductos => venta?.total ?? 0;
+
+  double get totalYastas {
+    return serviciosYastas.fold<double>(
+      0,
+      (total, servicio) => total + servicio.totalCobradoCliente,
+    );
+  }
+}
+
+class _DetalleTicketHistorial {
+  final _TicketHistorial ticket;
+  final VentaDetalleCompleta venta;
+
+  const _DetalleTicketHistorial({
+    required this.ticket,
+    required this.venta,
+  });
+}
+
 class ContenidoHistorial extends StatefulWidget {
   const ContenidoHistorial({super.key});
 
@@ -23,13 +117,15 @@ class ContenidoHistorial extends StatefulWidget {
 
 class _ContenidoHistorialState extends State<ContenidoHistorial> {
   final VentasApiService _ventasApiService = VentasApiService();
+  final ServiciosYastasApiService _serviciosYastasApiService =
+      ServiciosYastasApiService();
   final TextEditingController _busquedaController = TextEditingController();
 
   String _periodoSeleccionado = 'Hoy';
   String _estatusSeleccionado = 'Todos';
   bool _cargando = true;
   String? _error;
-  List<VentaResumen> _ventas = [];
+  List<_TicketHistorial> _tickets = [];
 
   @override
   void initState() {
@@ -43,12 +139,12 @@ class _ContenidoHistorialState extends State<ContenidoHistorial> {
     super.dispose();
   }
 
-  List<VentaResumen> get _ventasFiltradas {
+  List<_TicketHistorial> get _ventasFiltradas {
     final texto = _busquedaController.text.trim().toLowerCase();
     final ahora = DateTime.now();
 
-    return _ventas.where((venta) {
-      final fecha = venta.fecha;
+    return _tickets.where((ticket) {
+      final fecha = ticket.fecha;
 
       final coincidePeriodo = switch (_periodoSeleccionado) {
         'Hoy' => fecha != null &&
@@ -64,12 +160,14 @@ class _ContenidoHistorialState extends State<ContenidoHistorial> {
       };
 
       final coincideEstatus = _estatusSeleccionado == 'Todos' ||
-          venta.estatus == _estatusSeleccionado;
+          (_estatusSeleccionado == 'MIXTO' && ticket.esMixto) ||
+          ticket.estatus == _estatusSeleccionado;
 
       final coincideTexto = texto.isEmpty ||
-          venta.folio.toLowerCase().contains(texto) ||
-          venta.usuario.toLowerCase().contains(texto) ||
-          venta.estatus.toLowerCase().contains(texto);
+          ticket.folio.toLowerCase().contains(texto) ||
+          ticket.usuario.toLowerCase().contains(texto) ||
+          ticket.estatus.toLowerCase().contains(texto) ||
+          ticket.titulo.toLowerCase().contains(texto);
 
       return coincidePeriodo && coincideEstatus && coincideTexto;
     }).toList();
@@ -89,14 +187,20 @@ class _ContenidoHistorialState extends State<ContenidoHistorial> {
     });
 
     try {
-      final ventas = await _ventasApiService.listarVentas();
+      final ventasFuture = _ventasApiService.listarVentas(limite: 300);
+      final yastasFuture = _serviciosYastasApiService.listarServicios(
+        limite: 300,
+      );
+      final ventas = await ventasFuture;
+      final serviciosYastas = await yastasFuture;
+      final tickets = _construirTickets(ventas, serviciosYastas);
 
       if (!mounted) {
         return;
       }
 
       setState(() {
-        _ventas = ventas;
+        _tickets = tickets;
         _cargando = false;
       });
     } on ApiException catch (error) {
@@ -117,13 +221,148 @@ class _ContenidoHistorialState extends State<ContenidoHistorial> {
     });
   }
 
-  void _mostrarDetalle(VentaResumen venta) {
+  List<_TicketHistorial> _construirTickets(
+    List<VentaResumen> ventas,
+    List<ServicioYastasRegistrado> serviciosYastas,
+  ) {
+    final serviciosPorFolio = <String, List<ServicioYastasRegistrado>>{};
+    final serviciosSinFolio = <ServicioYastasRegistrado>[];
+
+    for (final servicio in serviciosYastas) {
+      final folio = _folioVentaDesdeObservaciones(servicio.observaciones);
+
+      if (folio == null) {
+        serviciosSinFolio.add(servicio);
+        continue;
+      }
+
+      serviciosPorFolio.putIfAbsent(folio, () => []).add(servicio);
+    }
+
+    final consumidosSinFolio = <int>{};
+    final tickets = <_TicketHistorial>[];
+
+    for (final venta in ventas) {
+      final servicios = <ServicioYastasRegistrado>[
+        ...serviciosPorFolio.remove(venta.folio) ?? [],
+        ..._serviciosCercanosAVenta(
+          venta,
+          serviciosSinFolio,
+          consumidosSinFolio,
+        ),
+      ];
+
+      tickets.add(_TicketHistorial(venta: venta, serviciosYastas: servicios));
+    }
+
+    for (final servicios in serviciosPorFolio.values) {
+      for (final servicio in servicios) {
+        tickets.add(_TicketHistorial(serviciosYastas: [servicio]));
+      }
+    }
+
+    for (final servicio in serviciosSinFolio) {
+      if (!consumidosSinFolio.contains(servicio.idServicioOperacion)) {
+        tickets.add(_TicketHistorial(serviciosYastas: [servicio]));
+      }
+    }
+
+    tickets.sort((a, b) {
+      final fechaA = a.fecha;
+      final fechaB = b.fecha;
+
+      if (fechaA == null && fechaB == null) return 0;
+      if (fechaA == null) return 1;
+      if (fechaB == null) return -1;
+
+      return fechaB.compareTo(fechaA);
+    });
+
+    return tickets;
+  }
+
+  String? _folioVentaDesdeObservaciones(String observaciones) {
+    final match = RegExp(r'\[VENTA_FOLIO:([^\]]+)\]').firstMatch(
+      observaciones,
+    );
+
+    return match?.group(1);
+  }
+
+  List<ServicioYastasRegistrado> _serviciosCercanosAVenta(
+    VentaResumen venta,
+    List<ServicioYastasRegistrado> servicios,
+    Set<int> consumidos,
+  ) {
+    final fechaVenta = venta.fecha;
+
+    if (fechaVenta == null) {
+      return [];
+    }
+
+    final encontrados = <ServicioYastasRegistrado>[];
+
+    for (final servicio in servicios) {
+      if (consumidos.contains(servicio.idServicioOperacion)) {
+        continue;
+      }
+
+      final fechaServicio = servicio.fecha;
+
+      if (fechaServicio == null) {
+        continue;
+      }
+
+      final mismoUsuario = venta.usuario.trim().toLowerCase() ==
+          servicio.usuario.trim().toLowerCase();
+      final diferencia = fechaServicio.difference(fechaVenta).inSeconds.abs();
+
+      if (mismoUsuario && diferencia <= 120) {
+        consumidos.add(servicio.idServicioOperacion);
+        encontrados.add(servicio);
+      }
+    }
+
+    return encontrados;
+  }
+
+  Future<_DetalleTicketHistorial> _cargarDetalleTicket(
+    _TicketHistorial ticket,
+  ) async {
+    final venta = await _ventasApiService.obtenerVenta(ticket.venta!.idVenta);
+    final serviciosYastas = await _serviciosYastasApiService.listarServicios(
+      limite: 500,
+    );
+    final ventaActualizada = VentaResumen(
+      idVenta: venta.idVenta,
+      folio: venta.folio,
+      usuario: venta.usuario,
+      fecha: venta.fecha,
+      total: venta.total,
+      estatus: venta.estatus,
+    );
+    final tickets = _construirTickets([ventaActualizada], serviciosYastas);
+    final ticketActualizado = tickets.firstWhere(
+      (item) => item.venta?.idVenta == venta.idVenta,
+      orElse: () => _TicketHistorial(
+        venta: ventaActualizada,
+        serviciosYastas: ticket.serviciosYastas,
+      ),
+    );
+
+    return _DetalleTicketHistorial(
+      ticket: ticketActualizado,
+      venta: venta,
+    );
+  }
+
+  void _mostrarDetalle(_TicketHistorial venta) {
     showDialog<void>(
       context: context,
       builder: (context) {
         return _DialogoDetalleVenta(
-          folio: venta.folio,
-          future: _ventasApiService.obtenerVenta(venta.idVenta),
+          ticket: venta,
+          future: venta.venta == null ? null : _cargarDetalleTicket(venta),
         );
       },
     );
@@ -415,6 +654,15 @@ class _PanelFiltros extends StatelessWidget {
                         value: 'CANCELADA',
                         child: Text('Cancelada'),
                       ),
+                      DropdownMenuItem(
+                        value: 'REALIZADA',
+                        child: Text('Realizada'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'FALLIDA',
+                        child: Text('Fallida'),
+                      ),
+                      DropdownMenuItem(value: 'MIXTO', child: Text('Mixto')),
                     ],
                     onChanged: onEstatusChanged,
                   ),
@@ -611,8 +859,8 @@ class _TarjetaTotalTurno extends StatelessWidget {
 }
 
 class _TablaHistorialVentas extends StatelessWidget {
-  final List<VentaResumen> ventas;
-  final ValueChanged<VentaResumen> onVerDetalle;
+  final List<_TicketHistorial> ventas;
+  final ValueChanged<_TicketHistorial> onVerDetalle;
 
   const _TablaHistorialVentas({
     required this.ventas,
@@ -697,7 +945,7 @@ class _HeaderTexto extends StatelessWidget {
 }
 
 class _FilaVenta extends StatelessWidget {
-  final VentaResumen venta;
+  final _TicketHistorial venta;
   final VoidCallback onVerDetalle;
 
   const _FilaVenta({
@@ -743,11 +991,11 @@ class _FilaVenta extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Venta de mostrador',
+                      Text(
+                        venta.titulo,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Color(0xFF56605A),
                           fontSize: 13,
                           fontWeight: FontWeight.w900,
@@ -956,79 +1204,95 @@ class _EstadoHistorial extends StatelessWidget {
 }
 
 class _DialogoDetalleVenta extends StatelessWidget {
-  final String folio;
-  final Future<VentaDetalleCompleta> future;
+  final _TicketHistorial ticket;
+  final Future<_DetalleTicketHistorial>? future;
 
   const _DialogoDetalleVenta({
-    required this.folio,
+    required this.ticket,
     required this.future,
   });
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('Detalle $folio'),
+      title: Text('Detalle ${ticket.folio}'),
       content: SizedBox(
         width: 760,
-        child: FutureBuilder<VentaDetalleCompleta>(
-          future: future,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState != ConnectionState.done) {
-              return const SizedBox(
-                height: 180,
-                child: Center(child: CircularProgressIndicator()),
-              );
-            }
+        child: future == null
+            ? _ContenidoDetalleTicket(ticket: ticket)
+            : FutureBuilder<_DetalleTicketHistorial>(
+                future: future,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return const SizedBox(
+                      height: 180,
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
 
-            if (snapshot.hasError) {
-              return SizedBox(
-                height: 180,
-                child: Center(
-                  child: Text(
-                    'No se pudo cargar el detalle: ${snapshot.error}',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: _rojo,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              );
-            }
-
-            final venta = snapshot.data!;
-
-            return SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _ResumenDetalleVenta(venta: venta),
-                  const SizedBox(height: 18),
-                  const _SubtituloDetalle('Productos'),
-                  const SizedBox(height: 8),
-                  _TablaDetalleProductos(detalles: venta.detalles),
-                  const SizedBox(height: 18),
-                  const _SubtituloDetalle('Pagos'),
-                  const SizedBox(height: 8),
-                  _TablaDetallePagos(pagos: venta.pagos),
-                  if ((venta.observaciones ?? '').isNotEmpty) ...[
-                    const SizedBox(height: 18),
-                    const _SubtituloDetalle('Observaciones'),
-                    const SizedBox(height: 6),
-                    Text(
-                      venta.observaciones!,
-                      style: const TextStyle(
-                        color: _textoPrincipal,
-                        fontSize: 12,
+                  if (snapshot.hasError) {
+                    return SizedBox(
+                      height: 180,
+                      child: Center(
+                        child: Text(
+                          'No se pudo cargar el detalle: ${snapshot.error}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: _rojo,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                       ),
+                    );
+                  }
+
+                  final detalle = snapshot.data!;
+                  final venta = detalle.venta;
+                  final ticketActualizado = detalle.ticket;
+
+                  return SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _ResumenDetalleVenta(
+                          venta: venta,
+                          totalTicket: ticketActualizado.total,
+                          totalYastas: ticketActualizado.totalYastas,
+                        ),
+                        const SizedBox(height: 18),
+                        const _SubtituloDetalle('Productos'),
+                        const SizedBox(height: 8),
+                        _TablaDetalleProductos(detalles: venta.detalles),
+                        const SizedBox(height: 18),
+                        const _SubtituloDetalle('Pagos'),
+                        const SizedBox(height: 8),
+                        _TablaDetallePagos(pagos: venta.pagos),
+                        if (ticketActualizado.serviciosYastas.isNotEmpty) ...[
+                          const SizedBox(height: 18),
+                          const _SubtituloDetalle('Servicios Yastas'),
+                          const SizedBox(height: 8),
+                          _TablaDetalleYastas(
+                            servicios: ticketActualizado.serviciosYastas,
+                          ),
+                        ],
+                        if ((venta.observaciones ?? '').isNotEmpty) ...[
+                          const SizedBox(height: 18),
+                          const _SubtituloDetalle('Observaciones'),
+                          const SizedBox(height: 6),
+                          Text(
+                            venta.observaciones!,
+                            style: const TextStyle(
+                              color: _textoPrincipal,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                  ],
-                ],
+                  );
+                },
               ),
-            );
-          },
-        ),
       ),
       actions: [
         TextButton(
@@ -1042,13 +1306,20 @@ class _DialogoDetalleVenta extends StatelessWidget {
 
 class _ResumenDetalleVenta extends StatelessWidget {
   final VentaDetalleCompleta venta;
+  final double totalTicket;
+  final double totalYastas;
 
   const _ResumenDetalleVenta({
     required this.venta,
+    required this.totalTicket,
+    required this.totalYastas,
   });
 
   @override
   Widget build(BuildContext context) {
+    final tieneYastas = totalYastas > 0.005;
+    final recibidoTicket = venta.montoRecibido + totalYastas;
+
     return Wrap(
       spacing: 10,
       runSpacing: 10,
@@ -1058,17 +1329,25 @@ class _ResumenDetalleVenta extends StatelessWidget {
         _DatoDetalle(label: 'Fecha', value: _formatoFechaHora(venta.fecha)),
         _DatoDetalle(label: 'Estatus', value: venta.estatus),
         _DatoDetalle(
-          label: 'Subtotal',
+          label: 'Total venta',
+          value: ConfigMoneda.formato(totalTicket),
+        ),
+        _DatoDetalle(
+          label: tieneYastas ? 'Productos' : 'Subtotal',
           value: ConfigMoneda.formato(venta.subtotal),
         ),
+        if (tieneYastas)
+          _DatoDetalle(
+            label: 'Yastas',
+            value: ConfigMoneda.formato(totalYastas),
+          ),
         _DatoDetalle(
           label: 'Descuento',
           value: ConfigMoneda.formato(venta.descuento),
         ),
-        _DatoDetalle(label: 'Total', value: ConfigMoneda.formato(venta.total)),
         _DatoDetalle(
           label: 'Recibido',
-          value: ConfigMoneda.formato(venta.montoRecibido),
+          value: ConfigMoneda.formato(recibidoTicket),
         ),
         _DatoDetalle(
           label: 'Cambio',
@@ -1079,6 +1358,59 @@ class _ResumenDetalleVenta extends StatelessWidget {
   }
 
   String _formatoFechaHora(DateTime? fecha) {
+    if (fecha == null) {
+      return 'Sin fecha';
+    }
+
+    final dia = fecha.day.toString().padLeft(2, '0');
+    final mes = fecha.month.toString().padLeft(2, '0');
+    final hora = fecha.hour.toString().padLeft(2, '0');
+    final minuto = fecha.minute.toString().padLeft(2, '0');
+    return '$dia/$mes/${fecha.year} $hora:$minuto';
+  }
+}
+
+class _ContenidoDetalleTicket extends StatelessWidget {
+  final _TicketHistorial ticket;
+
+  const _ContenidoDetalleTicket({
+    required this.ticket,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _DatoDetalle(label: 'Folio', value: ticket.folio),
+              _DatoDetalle(label: 'Usuario', value: ticket.usuario),
+              _DatoDetalle(
+                label: 'Fecha',
+                value: _formatoFechaHoraTicket(ticket.fecha),
+              ),
+              _DatoDetalle(label: 'Estatus', value: ticket.estatus),
+              _DatoDetalle(
+                label: 'Total ticket',
+                value: ConfigMoneda.formato(ticket.total),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          const _SubtituloDetalle('Servicios Yastas'),
+          const SizedBox(height: 8),
+          _TablaDetalleYastas(servicios: ticket.serviciosYastas),
+        ],
+      ),
+    );
+  }
+
+  String _formatoFechaHoraTicket(DateTime? fecha) {
     if (fecha == null) {
       return 'Sin fecha';
     }
@@ -1304,6 +1636,237 @@ class _TablaDetallePagos extends StatelessWidget {
           ),
       ],
     );
+  }
+}
+
+class _TablaDetalleYastas extends StatelessWidget {
+  final List<ServicioYastasRegistrado> servicios;
+
+  const _TablaDetalleYastas({
+    required this.servicios,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (servicios.isEmpty) {
+      return const _TextoDetalleVacio('Sin servicios Yastas registrados');
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _ResumenYastas(servicios: servicios),
+        const SizedBox(height: 10),
+        for (final servicio in servicios) ...[
+          _DetalleOperacionYastas(servicio: servicio),
+          const SizedBox(height: 10),
+        ],
+      ],
+    );
+  }
+}
+
+class _ResumenYastas extends StatelessWidget {
+  final List<ServicioYastasRegistrado> servicios;
+
+  const _ResumenYastas({
+    required this.servicios,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final totalCobrado = servicios.fold<double>(
+      0,
+      (total, servicio) => total + servicio.totalCobradoCliente,
+    );
+    final totalOperado = servicios.fold<double>(
+      0,
+      (total, servicio) => total + servicio.montoServicio,
+    );
+    final comisionCliente = servicios.fold<double>(
+      0,
+      (total, servicio) => total + servicio.comisionCliente,
+    );
+    final comisionYastas = servicios.fold<double>(
+      0,
+      (total, servicio) => total + servicio.comisionYastas,
+    );
+    final regaliaYastas = servicios.fold<double>(
+      0,
+      (total, servicio) => total + servicio.regaliaYastas,
+    );
+    final gananciaFarmacia = servicios.fold<double>(
+      0,
+      (total, servicio) => total + servicio.gananciaFarmacia,
+    );
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        _DatoDetalle(
+          label: 'Total cobrado',
+          value: ConfigMoneda.formato(totalCobrado),
+        ),
+        _DatoDetalle(
+          label: 'Operado',
+          value: ConfigMoneda.formato(totalOperado),
+        ),
+        _DatoDetalle(
+          label: 'Comision cliente',
+          value: ConfigMoneda.formato(comisionCliente),
+        ),
+        _DatoDetalle(
+          label: 'Comision Yastas',
+          value: ConfigMoneda.formato(comisionYastas),
+        ),
+        _DatoDetalle(
+          label: 'Regalia Yastas',
+          value: ConfigMoneda.formato(regaliaYastas),
+        ),
+        _DatoDetalle(
+          label: 'Ganancia farmacia',
+          value: ConfigMoneda.formato(gananciaFarmacia),
+        ),
+      ],
+    );
+  }
+}
+
+class _DetalleOperacionYastas extends StatelessWidget {
+  final ServicioYastasRegistrado servicio;
+
+  const _DetalleOperacionYastas({
+    required this.servicio,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final distribuido = servicio.montoServicio +
+        servicio.comisionYastas +
+        servicio.regaliaYastas +
+        servicio.gananciaFarmacia;
+    final diferencia = servicio.totalCobradoCliente - distribuido;
+    final observaciones = _observacionesLimpias(servicio.observaciones);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: _bordeSuave),
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _nombreServicio,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _textoPrincipal,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              _BadgeEstatus(estatus: servicio.estatus),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _DatoDetalle(
+                label: 'Referencia',
+                value: servicio.referenciaOperacion.isEmpty
+                    ? '-'
+                    : servicio.referenciaOperacion,
+              ),
+              _DatoDetalle(
+                label: 'Fecha',
+                value: _formatoFechaHora(servicio.fecha),
+              ),
+              _DatoDetalle(
+                label: 'Total cobrado',
+                value: ConfigMoneda.formato(servicio.totalCobradoCliente),
+              ),
+              _DatoDetalle(
+                label: 'Operacion',
+                value: ConfigMoneda.formato(servicio.montoServicio),
+              ),
+              _DatoDetalle(
+                label: 'Comision cliente',
+                value: ConfigMoneda.formato(servicio.comisionCliente),
+              ),
+              _DatoDetalle(
+                label: 'Comision Yastas',
+                value: ConfigMoneda.formato(servicio.comisionYastas),
+              ),
+              _DatoDetalle(
+                label: 'Regalia Yastas',
+                value: ConfigMoneda.formato(servicio.regaliaYastas),
+              ),
+              _DatoDetalle(
+                label: 'Ganancia farmacia',
+                value: ConfigMoneda.formato(servicio.gananciaFarmacia),
+              ),
+              if (diferencia.abs() > 0.005)
+                _DatoDetalle(
+                  label: 'No clasificado',
+                  value: ConfigMoneda.formato(diferencia),
+                ),
+            ],
+          ),
+          if (observaciones.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Observaciones: $observaciones',
+              style: const TextStyle(
+                color: Color(0xFF667085),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String get _nombreServicio {
+    if (servicio.nombreServicio.isNotEmpty) {
+      return servicio.nombreServicio;
+    }
+
+    if (servicio.tipoServicio.isNotEmpty) {
+      return servicio.tipoServicio;
+    }
+
+    return 'Servicio Yastas';
+  }
+
+  String _formatoFechaHora(DateTime? fecha) {
+    if (fecha == null) {
+      return 'Sin fecha';
+    }
+
+    final dia = fecha.day.toString().padLeft(2, '0');
+    final mes = fecha.month.toString().padLeft(2, '0');
+    final hora = fecha.hour.toString().padLeft(2, '0');
+    final minuto = fecha.minute.toString().padLeft(2, '0');
+    return '$dia/$mes/${fecha.year} $hora:$minuto';
+  }
+
+  String _observacionesLimpias(String observaciones) {
+    return observaciones
+        .replaceAll(RegExp(r'\[VENTA_FOLIO:[^\]]+\]\s*'), '')
+        .trim();
   }
 }
 

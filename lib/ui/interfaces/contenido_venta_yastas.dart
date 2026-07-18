@@ -167,10 +167,6 @@ class _TarjetaServicioYastas extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final monto = tarifa.montoBase > 0
-        ? ConfigMoneda.formato(tarifa.montoBase)
-        : 'Capturar';
-
     return Container(
       width: 150,
       height: 242,
@@ -228,7 +224,7 @@ class _TarjetaServicioYastas extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  monto,
+                  'Capturar',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(

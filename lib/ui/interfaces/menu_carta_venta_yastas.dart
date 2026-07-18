@@ -80,9 +80,6 @@ class _DialogoServicioYastasState extends State<DialogoServicioYastas> {
   @override
   void initState() {
     super.initState();
-    _montoController.text = widget.tarifa.montoBase > 0
-        ? widget.tarifa.montoBase.toStringAsFixed(2)
-        : '';
     _montoController.addListener(() {
       setState(() {});
     });

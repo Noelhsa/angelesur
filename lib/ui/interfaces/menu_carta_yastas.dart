@@ -10,7 +10,6 @@ const Color _grisCampo = Color(0xFFF2F2F2);
 class DatosMenuTarifaYastas {
   final String tipoServicio;
   final String nombreServicio;
-  final double montoBase;
   final double comisionCliente;
   final double comisionYastas;
   final double regaliaYastas;
@@ -19,7 +18,6 @@ class DatosMenuTarifaYastas {
   const DatosMenuTarifaYastas({
     required this.tipoServicio,
     required this.nombreServicio,
-    required this.montoBase,
     required this.comisionCliente,
     required this.comisionYastas,
     required this.regaliaYastas,
@@ -45,15 +43,11 @@ class MenuCartaYastas extends StatefulWidget {
 
 class _MenuCartaYastasState extends State<MenuCartaYastas> {
   final TextEditingController _nombreController = TextEditingController();
-  final TextEditingController _montoController = TextEditingController(
-    text: '0.00',
-  );
   final TextEditingController _comisionClienteController =
       TextEditingController(
     text: '0.00',
   );
-  final TextEditingController _comisionYastasController =
-      TextEditingController(
+  final TextEditingController _comisionYastasController = TextEditingController(
     text: '0.00',
   );
   final TextEditingController _regaliaController = TextEditingController(
@@ -69,7 +63,6 @@ class _MenuCartaYastasState extends State<MenuCartaYastas> {
   @override
   void dispose() {
     _nombreController.dispose();
-    _montoController.dispose();
     _comisionClienteController.dispose();
     _comisionYastasController.dispose();
     _regaliaController.dispose();
@@ -79,7 +72,6 @@ class _MenuCartaYastasState extends State<MenuCartaYastas> {
 
   void _guardar() {
     final nombre = _nombreController.text.trim();
-    final monto = _leerMonto(_montoController);
     final comisionCliente = _leerMonto(_comisionClienteController);
     final comisionYastas = _leerMonto(_comisionYastasController);
     final regalia = _leerMonto(_regaliaController);
@@ -92,10 +84,18 @@ class _MenuCartaYastasState extends State<MenuCartaYastas> {
       return;
     }
 
-    if ([monto, comisionCliente, comisionYastas, regalia, ganancia]
+    if ([comisionCliente, comisionYastas, regalia, ganancia]
         .any((value) => value == null || value < 0)) {
       setState(() {
         _error = 'Los importes deben ser mayores o iguales a cero';
+      });
+      return;
+    }
+
+    final reparto = comisionYastas! + regalia! + ganancia!;
+    if (reparto > comisionCliente! + 0.005) {
+      setState(() {
+        _error = 'El reparto no puede superar la comision cobrada al cliente';
       });
       return;
     }
@@ -108,11 +108,10 @@ class _MenuCartaYastasState extends State<MenuCartaYastas> {
       DatosMenuTarifaYastas(
         tipoServicio: _tipoServicio,
         nombreServicio: nombre,
-        montoBase: monto!,
-        comisionCliente: comisionCliente!,
-        comisionYastas: comisionYastas!,
-        regaliaYastas: regalia!,
-        gananciaFarmacia: ganancia!,
+        comisionCliente: comisionCliente,
+        comisionYastas: comisionYastas,
+        regaliaYastas: regalia,
+        gananciaFarmacia: ganancia,
       ),
     );
   }
@@ -211,11 +210,6 @@ class _MenuCartaYastasState extends State<MenuCartaYastas> {
                   ),
                   const SizedBox(height: 18),
                   _CampoDineroYastas(
-                    etiqueta: 'Monto base',
-                    controller: _montoController,
-                  ),
-                  const SizedBox(height: 18),
-                  _CampoDineroYastas(
                     etiqueta: 'Comisión cliente',
                     controller: _comisionClienteController,
                   ),
@@ -277,8 +271,7 @@ class _MenuCartaYastasState extends State<MenuCartaYastas> {
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _verdeOscuro,
-                        disabledBackgroundColor:
-                            _verdeOscuro.withOpacity(0.55),
+                        disabledBackgroundColor: _verdeOscuro.withOpacity(0.55),
                         elevation: 4,
                         shadowColor: _verdeOscuro.withOpacity(0.25),
                         shape: RoundedRectangleBorder(

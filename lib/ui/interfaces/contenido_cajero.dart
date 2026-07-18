@@ -34,11 +34,15 @@ class _ContenidoCajeroState extends State<ContenidoCajero> {
 
   bool _cargando = true;
   bool _cargandoMovimientos = false;
+  bool _cargandoElectronico = false;
   bool _procesando = false;
   String? _error;
   String? _errorMovimientos;
+  String? _errorElectronico;
   CorteResumen? _corte;
   List<MovimientoCaja> _movimientos = [];
+  List<MovimientoCaja> _movimientosElectronico = [];
+  int _tabHistorialCaja = 0;
 
   @override
   void initState() {
@@ -60,7 +64,10 @@ class _ContenidoCajeroState extends State<ContenidoCajero> {
         _corte = corte;
         _cargando = false;
       });
-      await _cargarMovimientos(corte?.idCorte);
+      await Future.wait([
+        _cargarMovimientos(corte?.idCorte),
+        _cargarElectronico(corte?.idCorte),
+      ]);
     } on ApiException catch (error) {
       _mostrarError(error.message);
     } catch (_) {
@@ -102,12 +109,58 @@ class _ContenidoCajeroState extends State<ContenidoCajero> {
     }
   }
 
+  Future<void> _cargarElectronico(int? idCorte) async {
+    if (idCorte == null) {
+      if (!mounted) return;
+      setState(() {
+        _movimientosElectronico = [];
+        _errorElectronico = null;
+        _cargandoElectronico = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _cargandoElectronico = true;
+      _errorElectronico = null;
+    });
+
+    try {
+      final movimientos = await _cajaApiService.listarMovimientos(
+        idCorte: idCorte,
+        medio: 'ELECTRONICO',
+        limite: 120,
+      );
+      if (!mounted) return;
+
+      setState(() {
+        _movimientosElectronico = movimientos;
+        _cargandoElectronico = false;
+      });
+    } on ApiException catch (error) {
+      _mostrarErrorElectronico(error.message);
+    } catch (_) {
+      _mostrarErrorElectronico(
+        'No se pudo cargar el historial electronico',
+      );
+    }
+  }
+
   void _mostrarErrorMovimientos(String mensaje) {
     if (!mounted) return;
 
     setState(() {
       _errorMovimientos = mensaje;
       _cargandoMovimientos = false;
+    });
+  }
+
+  void _mostrarErrorElectronico(String mensaje) {
+    if (!mounted) return;
+
+    setState(() {
+      _errorElectronico = mensaje;
+      _cargandoElectronico = false;
     });
   }
 
@@ -280,11 +333,22 @@ class _ContenidoCajeroState extends State<ContenidoCajero> {
                       _MovimientosCajaCard(
                         corte: _corte,
                         movimientos: _movimientos,
+                        movimientosElectronico: _movimientosElectronico,
                         cargando: _cargandoMovimientos,
+                        cargandoElectronico: _cargandoElectronico,
                         procesando: _procesando,
                         error: _errorMovimientos,
+                        errorElectronico: _errorElectronico,
+                        tabSeleccionado: _tabHistorialCaja,
+                        onTabSeleccionado: (tab) {
+                          setState(() {
+                            _tabHistorialCaja = tab;
+                          });
+                        },
                         onNuevoMovimiento: _registrarMovimiento,
                         onRefrescar: () => _cargarMovimientos(_corte?.idCorte),
+                        onRefrescarElectronico: () =>
+                            _cargarElectronico(_corte?.idCorte),
                       ),
                     ],
                   ),
@@ -296,25 +360,45 @@ class _ContenidoCajeroState extends State<ContenidoCajero> {
 class _MovimientosCajaCard extends StatelessWidget {
   final CorteResumen? corte;
   final List<MovimientoCaja> movimientos;
+  final List<MovimientoCaja> movimientosElectronico;
   final bool cargando;
+  final bool cargandoElectronico;
   final bool procesando;
   final String? error;
+  final String? errorElectronico;
+  final int tabSeleccionado;
+  final ValueChanged<int> onTabSeleccionado;
   final VoidCallback onNuevoMovimiento;
   final VoidCallback onRefrescar;
+  final VoidCallback onRefrescarElectronico;
 
   const _MovimientosCajaCard({
     required this.corte,
     required this.movimientos,
+    required this.movimientosElectronico,
     required this.cargando,
+    required this.cargandoElectronico,
     required this.procesando,
     required this.error,
+    required this.errorElectronico,
+    required this.tabSeleccionado,
+    required this.onTabSeleccionado,
     required this.onNuevoMovimiento,
     required this.onRefrescar,
+    required this.onRefrescarElectronico,
   });
 
   @override
   Widget build(BuildContext context) {
     final abierto = corte != null;
+    final mostrandoElectronico = tabSeleccionado == 1;
+    final electronicoEntrada = movimientosElectronico
+        .where((movimiento) => movimiento.esEntrada)
+        .fold<double>(0, (total, movimiento) => total + movimiento.monto);
+    final electronicoSalida = movimientosElectronico
+        .where((movimiento) => !movimiento.esEntrada)
+        .fold<double>(0, (total, movimiento) => total + movimiento.monto);
+    final electronicoBalance = electronicoEntrada - electronicoSalida;
 
     return Container(
       width: double.infinity,
@@ -325,71 +409,279 @@ class _MovimientosCajaCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(
-                child: Text(
-                  'Movimientos de Caja',
-                  style: TextStyle(
-                    color: _textoPrincipal,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                  ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Historial de Caja',
+                      style: TextStyle(
+                        color: _textoPrincipal,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      mostrandoElectronico
+                          ? 'Seguimiento separado del dinero electronico.'
+                          : 'Entradas y salidas manuales del corte.',
+                      style: const TextStyle(
+                        color: _textoSecundario,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
+              _TabsHistorialCaja(
+                seleccionado: tabSeleccionado,
+                onSeleccionar: onTabSeleccionado,
+              ),
+              const SizedBox(width: 8),
               IconButton(
-                onPressed: abierto ? onRefrescar : null,
+                onPressed: abierto
+                    ? mostrandoElectronico
+                        ? onRefrescarElectronico
+                        : onRefrescar
+                    : null,
                 tooltip: 'Actualizar',
                 icon: const Icon(Icons.refresh, color: _textoSecundario),
               ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: abierto && !procesando ? onNuevoMovimiento : null,
-                icon: const Icon(Icons.add, size: 18, color: Colors.white),
-                label: Text(
-                  procesando ? 'Guardando...' : 'Nuevo movimiento',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
+              if (!mostrandoElectronico) ...[
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: abierto && !procesando ? onNuevoMovimiento : null,
+                  icon: const Icon(Icons.add, size: 18, color: Colors.white),
+                  label: Text(
+                    procesando ? 'Guardando...' : 'Nuevo movimiento',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _verdeOscuro,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _verdeOscuro,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
+              ],
             ],
           ),
           const SizedBox(height: 14),
+          if (mostrandoElectronico)
+            _ResumenElectronicoCaja(
+              entradas: electronicoEntrada,
+              salidas: electronicoSalida,
+              balance: electronicoBalance,
+              esperado: corte?.electronicoEsperado ?? 0,
+            ),
+          if (mostrandoElectronico) const SizedBox(height: 14),
           if (!abierto)
-            const _MensajeMovimientos(
-              icono: Icons.lock_outline,
-              titulo: 'Abre un corte para ver movimientos',
-              subtitulo:
-                  'Los movimientos manuales se registran en el corte abierto.',
-            )
-          else if (cargando)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (error != null)
             _MensajeMovimientos(
-              icono: Icons.error_outline,
-              titulo: error!,
-              subtitulo: 'Revisa que la API este encendida e intenta de nuevo.',
+              icono: Icons.lock_outline,
+              titulo: mostrandoElectronico
+                  ? 'Abre un corte para ver dinero electronico'
+                  : 'Abre un corte para ver movimientos',
+              subtitulo: mostrandoElectronico
+                  ? 'Los pagos y movimientos electronicos se agrupan por corte.'
+                  : 'Los movimientos manuales se registran en el corte abierto.',
             )
-          else if (movimientos.isEmpty)
-            const _MensajeMovimientos(
-              icono: Icons.receipt_long_outlined,
-              titulo: 'Sin movimientos registrados',
-              subtitulo: 'Las ventas, compras y ajustes apareceran aqui.',
+          else if (mostrandoElectronico)
+            _ContenidoHistorialMovimientos(
+              movimientos: movimientosElectronico,
+              cargando: cargandoElectronico,
+              error: errorElectronico,
+              vacioTitulo: 'Sin dinero electronico registrado',
+              vacioSubtitulo:
+                  'Los pagos electronicos, tarjetas y transferencias apareceran aqui.',
             )
           else
-            _ListaMovimientosCaja(movimientos: movimientos),
+            _ContenidoHistorialMovimientos(
+              movimientos: movimientos,
+              cargando: cargando,
+              error: error,
+              vacioTitulo: 'Sin movimientos registrados',
+              vacioSubtitulo: 'Las ventas, compras y ajustes apareceran aqui.',
+            ),
         ],
       ),
     );
+  }
+}
+
+class _TabsHistorialCaja extends StatelessWidget {
+  final int seleccionado;
+  final ValueChanged<int> onSeleccionar;
+
+  const _TabsHistorialCaja({
+    required this.seleccionado,
+    required this.onSeleccionar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 36,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F4EE),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _bordeSuave),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _TabHistorialCaja(
+            texto: 'Movimientos',
+            icono: Icons.receipt_long_outlined,
+            activo: seleccionado == 0,
+            onTap: () => onSeleccionar(0),
+          ),
+          _TabHistorialCaja(
+            texto: 'Electronico',
+            icono: Icons.credit_card,
+            activo: seleccionado == 1,
+            onTap: () => onSeleccionar(1),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TabHistorialCaja extends StatelessWidget {
+  final String texto;
+  final IconData icono;
+  final bool activo;
+  final VoidCallback onTap;
+
+  const _TabHistorialCaja({
+    required this.texto,
+    required this.icono,
+    required this.activo,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 30,
+      child: TextButton.icon(
+        onPressed: onTap,
+        icon: Icon(
+          icono,
+          size: 15,
+          color: activo ? Colors.white : _textoSecundario,
+        ),
+        label: Text(
+          texto,
+          style: TextStyle(
+            color: activo ? Colors.white : _textoSecundario,
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        style: TextButton.styleFrom(
+          backgroundColor: activo ? _azul : Colors.transparent,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ResumenElectronicoCaja extends StatelessWidget {
+  final double entradas;
+  final double salidas;
+  final double balance;
+  final double esperado;
+
+  const _ResumenElectronicoCaja({
+    required this.entradas,
+    required this.salidas,
+    required this.balance,
+    required this.esperado,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        _DatoCorte(
+          label: 'Entradas electronicas',
+          value: ConfigMoneda.formato(entradas),
+          valueColor: _verdeOscuro,
+        ),
+        _DatoCorte(
+          label: 'Salidas electronicas',
+          value: ConfigMoneda.formato(salidas),
+          valueColor: _rojo,
+        ),
+        _DatoCorte(
+          label: 'Balance electronico',
+          value: ConfigMoneda.formato(balance),
+          valueColor: balance >= 0 ? _verdeOscuro : _rojo,
+        ),
+        _DatoCorte(
+          label: 'Esperado en corte',
+          value: ConfigMoneda.formato(esperado),
+          valueColor: _azul,
+        ),
+      ],
+    );
+  }
+}
+
+class _ContenidoHistorialMovimientos extends StatelessWidget {
+  final List<MovimientoCaja> movimientos;
+  final bool cargando;
+  final String? error;
+  final String vacioTitulo;
+  final String vacioSubtitulo;
+
+  const _ContenidoHistorialMovimientos({
+    required this.movimientos,
+    required this.cargando,
+    required this.error,
+    required this.vacioTitulo,
+    required this.vacioSubtitulo,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (cargando) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (error != null) {
+      return _MensajeMovimientos(
+        icono: Icons.error_outline,
+        titulo: error!,
+        subtitulo: 'Revisa que la API este encendida e intenta de nuevo.',
+      );
+    }
+
+    if (movimientos.isEmpty) {
+      return _MensajeMovimientos(
+        icono: Icons.receipt_long_outlined,
+        titulo: vacioTitulo,
+        subtitulo: vacioSubtitulo,
+      );
+    }
+
+    return _ListaMovimientosCaja(movimientos: movimientos);
   }
 }
 

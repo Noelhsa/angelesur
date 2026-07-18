@@ -111,7 +111,7 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
       await _apiService.crearTarifa(
         tipoServicio: datos.tipoServicio,
         nombreServicio: datos.nombreServicio,
-        montoBase: datos.montoBase,
+        montoBase: 0,
         comisionCliente: datos.comisionCliente,
         comisionYastas: datos.comisionYastas,
         regaliaYastas: datos.regaliaYastas,
@@ -166,7 +166,7 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
         idTarifa: tarifa.idTarifa,
         tipoServicio: datos.tipoServicio,
         nombreServicio: datos.nombreServicio,
-        montoBase: datos.montoBase,
+        montoBase: 0,
         comisionCliente: datos.comisionCliente,
         comisionYastas: datos.comisionYastas,
         regaliaYastas: datos.regaliaYastas,
@@ -447,12 +447,6 @@ class _TarjetaTarifaYastas extends StatelessWidget {
             ),
           ),
           _MetricaTarifa(
-            titulo: 'Monto',
-            valor: tarifa.montoBase > 0
-                ? ConfigMoneda.formato(tarifa.montoBase)
-                : 'Variable',
-          ),
-          _MetricaTarifa(
             titulo: 'Com. cliente',
             valor: ConfigMoneda.formato(tarifa.comisionCliente),
           ),
@@ -551,7 +545,6 @@ class _MetricaTarifa extends StatelessWidget {
 class _DatosTarifaYastas {
   final String tipoServicio;
   final String nombreServicio;
-  final double montoBase;
   final double comisionCliente;
   final double comisionYastas;
   final double regaliaYastas;
@@ -560,7 +553,6 @@ class _DatosTarifaYastas {
   const _DatosTarifaYastas({
     required this.tipoServicio,
     required this.nombreServicio,
-    required this.montoBase,
     required this.comisionCliente,
     required this.comisionYastas,
     required this.regaliaYastas,
@@ -581,7 +573,6 @@ class _DialogoTarifaYastas extends StatefulWidget {
 
 class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
   final TextEditingController _nombreController = TextEditingController();
-  final TextEditingController _montoController = TextEditingController();
   final TextEditingController _comisionClienteController =
       TextEditingController();
   final TextEditingController _comisionYastasController =
@@ -599,7 +590,6 @@ class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
     final tarifa = widget.tarifa;
     _tipoServicio = tarifa.tipoServicio;
     _nombreController.text = tarifa.nombreServicio;
-    _montoController.text = tarifa.montoBase.toStringAsFixed(2);
     _comisionClienteController.text = tarifa.comisionCliente.toStringAsFixed(2);
     _comisionYastasController.text = tarifa.comisionYastas.toStringAsFixed(2);
     _regaliaController.text = tarifa.regaliaYastas.toStringAsFixed(2);
@@ -609,7 +599,6 @@ class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
   @override
   void dispose() {
     _nombreController.dispose();
-    _montoController.dispose();
     _comisionClienteController.dispose();
     _comisionYastasController.dispose();
     _regaliaController.dispose();
@@ -619,7 +608,6 @@ class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
 
   void _guardar() {
     final nombre = _nombreController.text.trim();
-    final monto = _leerMonto(_montoController);
     final comisionCliente = _leerMonto(_comisionClienteController);
     final comisionYastas = _leerMonto(_comisionYastasController);
     final regalia = _leerMonto(_regaliaController);
@@ -632,10 +620,18 @@ class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
       return;
     }
 
-    if ([monto, comisionCliente, comisionYastas, regalia, ganancia]
+    if ([comisionCliente, comisionYastas, regalia, ganancia]
         .any((value) => value == null || value < 0)) {
       setState(() {
         _error = 'Los importes deben ser numeros mayores o iguales a cero';
+      });
+      return;
+    }
+
+    final reparto = comisionYastas! + regalia! + ganancia!;
+    if (reparto > comisionCliente! + 0.005) {
+      setState(() {
+        _error = 'El reparto no puede superar la comision cobrada al cliente';
       });
       return;
     }
@@ -644,11 +640,10 @@ class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
       _DatosTarifaYastas(
         tipoServicio: _tipoServicio,
         nombreServicio: nombre,
-        montoBase: monto!,
-        comisionCliente: comisionCliente!,
-        comisionYastas: comisionYastas!,
-        regaliaYastas: regalia!,
-        gananciaFarmacia: ganancia!,
+        comisionCliente: comisionCliente,
+        comisionYastas: comisionYastas,
+        regaliaYastas: regalia,
+        gananciaFarmacia: ganancia,
       ),
     );
   }
@@ -703,22 +698,9 @@ class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
                 ),
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _CampoDinero(
-                      controller: _montoController,
-                      label: 'Monto base',
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _CampoDinero(
-                      controller: _comisionClienteController,
-                      label: 'Comision cliente',
-                    ),
-                  ),
-                ],
+              _CampoDinero(
+                controller: _comisionClienteController,
+                label: 'Comision cliente',
               ),
               const SizedBox(height: 12),
               Row(
