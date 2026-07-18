@@ -11,6 +11,851 @@ const Color _textoSuave = Color(0xFF707A83);
 const Color _grisLinea = Color(0xFFE0E0E0);
 const Color _rojo = Color(0xFFE21F1F);
 
+const Color _fondoMontoPago = Color(0xFFF1F8E8);
+const Color _fondoBotonRapido = Color(0xFFE9EAEC);
+const Color _fondoCambio = Color(0xFFF0F1F2);
+const Color _bordeDialogo = Color(0xFFD8DDD3);
+const Color _bordeCampoPago = Color(0xFFBBC6B3);
+const Color _fondoAccionesPago = Color(0xFFF6F7F5);
+
+class DatosPagoVenta {
+  final String medio;
+  final double? montoRecibido;
+  final String? referencia;
+
+  const DatosPagoVenta({
+    required this.medio,
+    required this.montoRecibido,
+    required this.referencia,
+  });
+}
+
+Future<DatosPagoVenta?> mostrarDialogoPagoVenta({
+  required BuildContext context,
+  required double total,
+}) {
+  return showDialog<DatosPagoVenta>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => _DialogoPagoVenta(
+      total: total,
+    ),
+  );
+}
+
+class _DialogoPagoVenta extends StatefulWidget {
+  final double total;
+
+  const _DialogoPagoVenta({
+    required this.total,
+  });
+
+  @override
+  State<_DialogoPagoVenta> createState() => _DialogoPagoVentaState();
+}
+
+class _DialogoPagoVentaState extends State<_DialogoPagoVenta> {
+  final TextEditingController _montoController = TextEditingController();
+  final TextEditingController _referenciaController = TextEditingController();
+
+  String _medio = 'EFECTIVO';
+  String? _error;
+  bool _imprimirTicket = true;
+
+  bool get _esEfectivo => _medio == 'EFECTIVO';
+
+  double? get _montoRecibido {
+    final texto = _montoController.text
+        .trim()
+        .replaceAll(',', '')
+        .replaceAll('\$', '');
+
+    return double.tryParse(texto);
+  }
+
+  double get _cambio {
+    final recibido = _montoRecibido ?? 0;
+    final cambio = recibido - widget.total;
+
+    return cambio > 0 ? cambio : 0;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    _montoController.text = '0.00';
+  }
+
+  @override
+  void dispose() {
+    _montoController.dispose();
+    _referenciaController.dispose();
+    super.dispose();
+  }
+
+  void _cambiarMedioPago(String? value) {
+    if (value == null) {
+      return;
+    }
+
+    setState(() {
+      _medio = value;
+      _error = null;
+
+      if (_esEfectivo && _montoController.text.trim().isEmpty) {
+        _montoController.text = widget.total.toStringAsFixed(2);
+      }
+    });
+  }
+
+  void _seleccionarMontoRapido(double monto) {
+    setState(() {
+      _montoController.text = monto.toStringAsFixed(2);
+
+      _montoController.selection = TextSelection.collapsed(
+        offset: _montoController.text.length,
+      );
+
+      _error = null;
+    });
+  }
+
+  void _confirmar() {
+    final montoRecibido = _montoRecibido;
+
+    if (_esEfectivo &&
+        (montoRecibido == null || montoRecibido < widget.total)) {
+      setState(() {
+        _error = 'El efectivo recibido debe cubrir el total';
+      });
+      return;
+    }
+
+    Navigator.of(context).pop(
+      DatosPagoVenta(
+        medio: _medio,
+        montoRecibido: _esEfectivo ? montoRecibido : null,
+        referencia: _limpiarReferencia(_referenciaController.text),
+      ),
+    );
+  }
+
+  String? _limpiarReferencia(String value) {
+    final referencia = value.trim();
+
+    return referencia.isEmpty ? null : referencia;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: _blanco,
+      insetPadding: const EdgeInsets.all(24),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: const BorderSide(
+          color: _bordeDialogo,
+          width: 1,
+        ),
+      ),
+      child: SizedBox(
+        width: 410,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const _EncabezadoDialogoPago(),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _TarjetaMontoTotal(
+                      total: widget.total,
+                    ),
+                    const SizedBox(height: 26),
+                    const _EtiquetaCampoPago(
+                      texto: 'Método de pago',
+                    ),
+                    const SizedBox(height: 6),
+                    _SelectorMetodoPago(
+                      medio: _medio,
+                      onChanged: _cambiarMedioPago,
+                    ),
+                    const SizedBox(height: 18),
+                    if (_esEfectivo) ...[
+                      const _EtiquetaCampoPago(
+                        texto: 'Acceso rápido (Efectivo)',
+                      ),
+                      const SizedBox(height: 10),
+                      _AccesosRapidosPago(
+                        onSeleccionar: _seleccionarMontoRapido,
+                      ),
+                      const SizedBox(height: 18),
+                      const _EtiquetaCampoPago(
+                        texto: 'Cantidad recibida',
+                      ),
+                      const SizedBox(height: 6),
+                      _CampoCantidadRecibida(
+                        controller: _montoController,
+                        onChanged: (_) {
+                          setState(() {
+                            _error = null;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 26),
+                      _TarjetaCambio(
+                        cambio: _cambio,
+                      ),
+                    ] else ...[
+                      const _EtiquetaCampoPago(
+                        texto: 'Referencia',
+                      ),
+                      const SizedBox(height: 6),
+                      _CampoReferenciaPago(
+                        controller: _referenciaController,
+                        onChanged: (_) {
+                          setState(() {
+                            _error = null;
+                          });
+                        },
+                      ),
+                    ],
+                    if (_error != null) ...[
+                      const SizedBox(height: 14),
+                      _MensajeErrorPago(
+                        mensaje: _error!,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            _OpcionImprimirTicket(
+              activo: _imprimirTicket,
+              onChanged: (value) {
+                setState(() {
+                  _imprimirTicket = value;
+                });
+              },
+            ),
+            _AccionesDialogoPago(
+              onCancelar: () => Navigator.of(context).pop(),
+              onConfirmar: _confirmar,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EncabezadoDialogoPago extends StatelessWidget {
+  const _EncabezadoDialogoPago();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: const BoxDecoration(
+        color: _blanco,
+        border: Border(
+          bottom: BorderSide(
+            color: _grisLinea,
+            width: 1,
+          ),
+        ),
+      ),
+      child: const Row(
+        children: [
+          Icon(
+            Icons.payments_outlined,
+            color: _verdeOscuro,
+            size: 18,
+          ),
+          SizedBox(width: 8),
+          Text(
+            'Registrar pago',
+            style: TextStyle(
+              color: _texto,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TarjetaMontoTotal extends StatelessWidget {
+  final double total;
+
+  const _TarjetaMontoTotal({
+    required this.total,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: 82,
+      decoration: BoxDecoration(
+        color: _fondoMontoPago,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: const Color(0xFFDCECCF),
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text(
+            'Monto Total',
+            style: TextStyle(
+              color: _verdeOscuro,
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            ConfigMoneda.formato(total),
+            style: const TextStyle(
+              color: _verdeOscuro,
+              fontSize: 21,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EtiquetaCampoPago extends StatelessWidget {
+  final String texto;
+
+  const _EtiquetaCampoPago({
+    required this.texto,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      texto,
+      style: const TextStyle(
+        color: _textoSuave,
+        fontSize: 9,
+        fontWeight: FontWeight.w800,
+      ),
+    );
+  }
+}
+
+class _SelectorMetodoPago extends StatelessWidget {
+  final String medio;
+  final ValueChanged<String?> onChanged;
+
+  const _SelectorMetodoPago({
+    required this.medio,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<String>(
+      initialValue: medio,
+      isExpanded: true,
+      icon: const Icon(
+        Icons.keyboard_arrow_down,
+        color: _textoSuave,
+        size: 19,
+      ),
+      style: const TextStyle(
+        color: _texto,
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+      ),
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: _blanco,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 13,
+          vertical: 12,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(5),
+          borderSide: const BorderSide(
+            color: _bordeCampoPago,
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(5),
+          borderSide: const BorderSide(
+            color: _verdeOscuro,
+            width: 1.4,
+          ),
+        ),
+        isDense: true,
+      ),
+      items: const [
+        DropdownMenuItem(
+          value: 'EFECTIVO',
+          child: Text('Efectivo'),
+        ),
+        DropdownMenuItem(
+          value: 'TARJETA',
+          child: Text('Tarjeta'),
+        ),
+        DropdownMenuItem(
+          value: 'TRANSFERENCIA',
+          child: Text('Transferencia'),
+        ),
+        DropdownMenuItem(
+          value: 'ELECTRONICO',
+          child: Text('Electrónico'),
+        ),
+        DropdownMenuItem(
+          value: 'OTRO',
+          child: Text('Otro'),
+        ),
+      ],
+      onChanged: onChanged,
+    );
+  }
+}
+
+class _AccesosRapidosPago extends StatelessWidget {
+  final ValueChanged<double> onSeleccionar;
+
+  const _AccesosRapidosPago({
+    required this.onSeleccionar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const montos = <double>[
+      20,
+      50,
+      100,
+      200,
+      500,
+      1000,
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const separacion = 8.0;
+
+        final anchoBoton =
+            (constraints.maxWidth - (separacion * 2)) / 3;
+
+        return Wrap(
+          spacing: separacion,
+          runSpacing: separacion,
+          children: [
+            for (final monto in montos)
+              SizedBox(
+                width: anchoBoton,
+                child: _BotonMontoRapido(
+                  monto: monto,
+                  onTap: () => onSeleccionar(monto),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _BotonMontoRapido extends StatelessWidget {
+  final double monto;
+  final VoidCallback onTap;
+
+  const _BotonMontoRapido({
+    required this.monto,
+    required this.onTap,
+  });
+
+  String get _texto {
+    if (monto == 1000) {
+      return '\$ 1,000';
+    }
+
+    return '\$ ${monto.toStringAsFixed(0)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 45,
+      child: Material(
+        color: _fondoBotonRapido,
+        borderRadius: BorderRadius.circular(5),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(5),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Text(
+                _texto,
+                style: const TextStyle(
+                  color: Color(0xFF525B63),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CampoCantidadRecibida extends StatelessWidget {
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+
+  const _CampoCantidadRecibida({
+    required this.controller,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
+      keyboardType: const TextInputType.numberWithOptions(
+        decimal: true,
+      ),
+      style: const TextStyle(
+        color: _verdeOscuro,
+        fontSize: 17,
+        fontWeight: FontWeight.w900,
+      ),
+      decoration: InputDecoration(
+        prefixText: '\$  ',
+        prefixStyle: const TextStyle(
+          color: _texto,
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+        ),
+        filled: true,
+        fillColor: _blanco,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 13,
+          vertical: 14,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(5),
+          borderSide: const BorderSide(
+            color: _bordeCampoPago,
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(5),
+          borderSide: const BorderSide(
+            color: _verdeOscuro,
+            width: 1.4,
+          ),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(5),
+          borderSide: const BorderSide(
+            color: _rojo,
+          ),
+        ),
+        isDense: true,
+      ),
+    );
+  }
+}
+
+class _CampoReferenciaPago extends StatelessWidget {
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+
+  const _CampoReferenciaPago({
+    required this.controller,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
+      style: const TextStyle(
+        color: _texto,
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+      ),
+      decoration: InputDecoration(
+        hintText: 'Número de autorización, folio o referencia',
+        hintStyle: const TextStyle(
+          color: Color(0xFF9AA19B),
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+        ),
+        filled: true,
+        fillColor: _blanco,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 13,
+          vertical: 14,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(5),
+          borderSide: const BorderSide(
+            color: _bordeCampoPago,
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(5),
+          borderSide: const BorderSide(
+            color: _verdeOscuro,
+            width: 1.4,
+          ),
+        ),
+        isDense: true,
+      ),
+    );
+  }
+}
+
+class _TarjetaCambio extends StatelessWidget {
+  final double cambio;
+
+  const _TarjetaCambio({
+    required this.cambio,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: 58,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: _fondoCambio,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: const Color(0xFFE0E2E3),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text(
+              'Cambio a entregar:',
+              style: TextStyle(
+                color: _textoSuave,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Text(
+            ConfigMoneda.formato(cambio),
+            style: const TextStyle(
+              color: _verdeOscuro,
+              fontSize: 17,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MensajeErrorPago extends StatelessWidget {
+  final String mensaje;
+
+  const _MensajeErrorPago({
+    required this.mensaje,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(
+          Icons.error_outline,
+          color: _rojo,
+          size: 16,
+        ),
+        const SizedBox(width: 7),
+        Expanded(
+          child: Text(
+            mensaje,
+            style: const TextStyle(
+              color: _rojo,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _OpcionImprimirTicket extends StatelessWidget {
+  final bool activo;
+  final ValueChanged<bool> onChanged;
+
+  const _OpcionImprimirTicket({
+    required this.activo,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 22),
+      decoration: const BoxDecoration(
+        color: _blanco,
+        border: Border(
+          top: BorderSide(
+            color: _grisLinea,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.print_outlined,
+            color: _verdeOscuro,
+            size: 17,
+          ),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              '¿Imprimir ticket?',
+              style: TextStyle(
+                color: _texto,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          Transform.scale(
+            scale: 0.78,
+            child: Switch(
+              value: activo,
+              onChanged: onChanged,
+              activeThumbColor: _blanco,
+              activeTrackColor: _verdeOscuro,
+              inactiveThumbColor: _blanco,
+              inactiveTrackColor: const Color(0xFFBFC4BD),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccionesDialogoPago extends StatelessWidget {
+  final VoidCallback onCancelar;
+  final VoidCallback onConfirmar;
+
+  const _AccionesDialogoPago({
+    required this.onCancelar,
+    required this.onConfirmar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 66,
+      padding: const EdgeInsets.fromLTRB(22, 12, 22, 12),
+      decoration: const BoxDecoration(
+        color: _fondoAccionesPago,
+        border: Border(
+          top: BorderSide(
+            color: _grisLinea,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: SizedBox(
+              height: 40,
+              child: OutlinedButton(
+                onPressed: onCancelar,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _texto,
+                  side: const BorderSide(
+                    color: Color(0xFF9EA79A),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                ),
+                child: const Text(
+                  'Cancelar venta',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: SizedBox(
+              height: 40,
+              child: ElevatedButton.icon(
+                onPressed: onConfirmar,
+                icon: const Icon(
+                  Icons.check_circle_outline,
+                  color: _blanco,
+                  size: 17,
+                ),
+                label: const Text(
+                  'Confirmar venta',
+                  style: TextStyle(
+                    color: _blanco,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  elevation: 4,
+                  shadowColor: _verdeOscuro.withOpacity(0.30),
+                  backgroundColor: _verdeOscuro,
+                  foregroundColor: _blanco,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class MenuCartaCarrito extends StatelessWidget {
   final List<Medicamento> medicamentos;
   final Map<int, int> cantidades;
@@ -112,9 +957,15 @@ class MenuCartaCarrito extends StatelessWidget {
                       return _ItemCarrito(
                         medicamento: medicamento,
                         cantidad: cantidad,
-                        onIncrementar: () => onIncrementar(medicamento.id),
-                        onDisminuir: () => onDisminuir(medicamento.id),
-                        onEliminar: () => onEliminar(medicamento.id),
+                        onIncrementar: () {
+                          onIncrementar(medicamento.id);
+                        },
+                        onDisminuir: () {
+                          onDisminuir(medicamento.id);
+                        },
+                        onEliminar: () {
+                          onEliminar(medicamento.id);
+                        },
                       );
                     },
                   ),
@@ -368,7 +1219,9 @@ class _ResumenCarrito extends StatelessWidget {
             width: double.infinity,
             height: 36,
             child: ElevatedButton.icon(
-              onPressed: total <= 0 || procesandoPago ? null : onPagar,
+              onPressed: total <= 0 || procesandoPago
+                  ? null
+                  : onPagar,
               icon: const Icon(
                 Icons.payments_outlined,
                 size: 15,
@@ -422,7 +1275,9 @@ class _FilaResumen extends StatelessWidget {
             style: TextStyle(
               color: color,
               fontSize: grande ? 14 : 8,
-              fontWeight: grande ? FontWeight.w900 : FontWeight.w600,
+              fontWeight: grande
+                  ? FontWeight.w900
+                  : FontWeight.w600,
             ),
           ),
         ),
@@ -431,7 +1286,9 @@ class _FilaResumen extends StatelessWidget {
           style: TextStyle(
             color: color,
             fontSize: grande ? 14 : 8,
-            fontWeight: grande ? FontWeight.w900 : FontWeight.w700,
+            fontWeight: grande
+                ? FontWeight.w900
+                : FontWeight.w700,
           ),
         ),
       ],
@@ -483,14 +1340,19 @@ class _ImagenCarrito extends StatelessWidget {
     switch (id) {
       case 1:
         return const Color(0xFFF3F5F5);
+
       case 2:
         return const Color(0xFFEFEFEA);
+
       case 3:
         return const Color(0xFFF4F4F0);
+
       case 4:
         return const Color(0xFF0B4B43);
+
       case 5:
         return const Color(0xFFB9D9D4);
+
       default:
         return const Color(0xFFF3F5F5);
     }
@@ -516,29 +1378,33 @@ class _IlustracionCarrito extends StatelessWidget {
             colorSecundario: const Color(0xFFE9F6FA),
           ),
         );
+
       case 2:
         return Transform.scale(
           scale: .42,
           child: const _FrascoCarrito(),
         );
+
       case 3:
         return Transform.scale(
           scale: .42,
           child: _CajaCarrito(
             texto: 'Ibuprofeno',
-            colorPrincipal: Color(0xFFFF8500),
-            colorSecundario: Color(0xFFFFF0DE),
+            colorPrincipal: const Color(0xFFFF8500),
+            colorSecundario: const Color(0xFFFFF0DE),
           ),
         );
+
       case 4:
         return Transform.scale(
           scale: .42,
           child: _CajaCarrito(
             texto: 'Ome',
-            colorPrincipal: Color(0xFF0F8B70),
-            colorSecundario: Color(0xFFE7FFF8),
+            colorPrincipal: const Color(0xFF0F8B70),
+            colorSecundario: const Color(0xFFE7FFF8),
           ),
         );
+
       case 5:
         return Transform.rotate(
           angle: -0.2,
@@ -548,6 +1414,7 @@ class _IlustracionCarrito extends StatelessWidget {
             color: Color(0xFF4E7B78),
           ),
         );
+
       default:
         return const Icon(
           Icons.medication_outlined,
