@@ -66,7 +66,7 @@ class _DialogoPagoVentaState extends State<_DialogoPagoVenta> {
 
   String _medio = 'EFECTIVO';
   String? _error;
-  bool _imprimirTicket = true;
+  bool _imprimirTicket = false;
 
   bool get _esEfectivo => _medio == 'EFECTIVO';
 

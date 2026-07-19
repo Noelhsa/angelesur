@@ -42,9 +42,11 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
   @override
   void initState() {
     super.initState();
+
     _busquedaController.addListener(() {
       setState(() {});
     });
+
     _cargarUsuarios();
   }
 
@@ -63,6 +65,7 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
           usuario.username.toLowerCase().contains(texto) ||
           (usuario.telefono ?? '').toLowerCase().contains(texto) ||
           usuario.rol.toLowerCase().contains(texto);
+
       final coincideRol = _rolSeleccionado == 'Todos' ||
           usuario.rol.toUpperCase() == _rolSeleccionado;
 
@@ -88,7 +91,10 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
       final usuarios = await _usuariosApiService.listarUsuarios(
         incluirInactivos: true,
       );
-      if (!mounted) return;
+
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _usuarios = usuarios;
@@ -102,7 +108,9 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
   }
 
   void _mostrarError(String mensaje) {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       _error = mensaje;
@@ -133,7 +141,10 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
       }
 
       await _cargarUsuarios();
-      if (!mounted) return;
+
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _mostrarMenuNuevoUsuario = false;
@@ -143,6 +154,7 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
       _mostrarSnack('Usuario creado.');
     } on ApiException catch (error) {
       _mostrarSnack(error.message);
+
       if (mounted) {
         setState(() {
           _guardando = false;
@@ -150,6 +162,7 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
       }
     } catch (_) {
       _mostrarSnack('No se pudo guardar el usuario');
+
       if (mounted) {
         setState(() {
           _guardando = false;
@@ -158,9 +171,14 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
     }
   }
 
-  Future<void> _guardarEdicionUsuario(DatosFormularioUsuario datos) async {
+  Future<void> _guardarEdicionUsuario(
+    DatosFormularioUsuario datos,
+  ) async {
     final usuarioEditando = _usuarioEditando;
-    if (usuarioEditando == null) return;
+
+    if (usuarioEditando == null) {
+      return;
+    }
 
     if (usuarioEditando.id == widget.usuario.id && !datos.activo) {
       _mostrarSnack('No puedes desactivar tu propia sesion.');
@@ -189,7 +207,10 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
       }
 
       await _cargarUsuarios();
-      if (!mounted) return;
+
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _mostrarMenuNuevoUsuario = false;
@@ -200,6 +221,7 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
       _mostrarSnack('Usuario actualizado.');
     } on ApiException catch (error) {
       _mostrarSnack(error.message);
+
       if (mounted) {
         setState(() {
           _guardando = false;
@@ -207,6 +229,7 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
       }
     } catch (_) {
       _mostrarSnack('No se pudo actualizar el usuario');
+
       if (mounted) {
         setState(() {
           _guardando = false;
@@ -243,6 +266,7 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
         idUsuario: usuario.id,
         activo: !usuario.activo,
       );
+
       await _cargarUsuarios();
     } on ApiException catch (error) {
       _mostrarSnack(error.message);
@@ -252,9 +276,15 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
   }
 
   void _mostrarSnack(String mensaje) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(mensaje)));
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensaje),
+      ),
+    );
   }
 
   @override
@@ -262,10 +292,16 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
     return Container(
       color: _fondoPagina,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(26, 26, 26, 34),
+              padding: const EdgeInsets.fromLTRB(
+                26,
+                26,
+                26,
+                34,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -282,7 +318,9 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
                   ),
                   const SizedBox(height: 24),
                   if (_cargando)
-                    const _EstadoUsuarios(mensaje: 'Cargando usuarios...')
+                    const _EstadoUsuarios(
+                      mensaje: 'Cargando usuarios...',
+                    )
                   else if (_error != null)
                     _EstadoUsuarios(
                       mensaje: _error!,
@@ -293,7 +331,10 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
                       busquedaController: _busquedaController,
                       rolSeleccionado: _rolSeleccionado,
                       onRolChanged: (value) {
-                        if (value == null) return;
+                        if (value == null) {
+                          return;
+                        }
+
                         setState(() {
                           _rolSeleccionado = value;
                         });
@@ -362,7 +403,10 @@ class _EncabezadoUsuarios extends StatelessWidget {
         IconButton(
           onPressed: onRefrescar,
           tooltip: 'Actualizar',
-          icon: const Icon(Icons.refresh, color: _textoSecundario),
+          icon: const Icon(
+            Icons.refresh,
+            color: _textoSecundario,
+          ),
         ),
         const SizedBox(width: 8),
         SizedBox(
@@ -385,8 +429,12 @@ class _EncabezadoUsuarios extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: _verdeOscuro,
               elevation: 6,
-              shadowColor: _verdeOscuro.withValues(alpha: 0.25),
-              padding: const EdgeInsets.symmetric(horizontal: 28),
+              shadowColor: _verdeOscuro.withValues(
+                alpha: 0.25,
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 28,
+              ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(7),
               ),
@@ -478,14 +526,23 @@ class _TarjetaResumenUsuario extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 86,
-      padding: const EdgeInsets.fromLTRB(18, 15, 18, 15),
+      padding: const EdgeInsets.fromLTRB(
+        18,
+        15,
+        18,
+        15,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: _bordeSuave),
+        border: Border.all(
+          color: _bordeSuave,
+        ),
         borderRadius: BorderRadius.circular(9),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(
+              alpha: 0.04,
+            ),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -527,7 +584,11 @@ class _TarjetaResumenUsuario extends StatelessWidget {
               color: fondoIcono,
               shape: BoxShape.circle,
             ),
-            child: Icon(icono, color: colorIcono, size: 22),
+            child: Icon(
+              icono,
+              color: colorIcono,
+              size: 22,
+            ),
           ),
         ],
       ),
@@ -559,13 +620,20 @@ class _PanelUsuarios extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: _fondoPagina,
-        border: Border.all(color: _bordeSuave),
+        border: Border.all(
+          color: _bordeSuave,
+        ),
         borderRadius: BorderRadius.circular(9),
       ),
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+            padding: const EdgeInsets.fromLTRB(
+              22,
+              18,
+              22,
+              18,
+            ),
             child: Row(
               children: [
                 SizedBox(
@@ -579,7 +647,8 @@ class _PanelUsuarios extends StatelessWidget {
                       fontSize: 12,
                     ),
                     decoration: _inputDecoration(
-                      hintText: 'Buscar por nombre, usuario, telefono o rol...',
+                      hintText:
+                          'Buscar por nombre, usuario, telefono o rol...',
                     ),
                   ),
                 ),
@@ -602,8 +671,14 @@ class _PanelUsuarios extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                     items: const [
-                      DropdownMenuItem(value: 'Todos', child: Text('Todos')),
-                      DropdownMenuItem(value: 'JEFE', child: Text('JEFE')),
+                      DropdownMenuItem(
+                        value: 'Todos',
+                        child: Text('Todos'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'JEFE',
+                        child: Text('JEFE'),
+                      ),
                       DropdownMenuItem(
                         value: 'EMPLEADO',
                         child: Text('EMPLEADO'),
@@ -617,8 +692,9 @@ class _PanelUsuarios extends StatelessWidget {
           ),
           LayoutBuilder(
             builder: (context, constraints) {
-              final anchoTabla =
-                  constraints.maxWidth < 930 ? 930.0 : constraints.maxWidth;
+              final anchoTabla = constraints.maxWidth < 930
+                  ? 930.0
+                  : constraints.maxWidth;
 
               return SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -639,7 +715,9 @@ class _PanelUsuarios extends StatelessWidget {
     );
   }
 
-  InputDecoration _inputDecoration({String? hintText}) {
+  InputDecoration _inputDecoration({
+    String? hintText,
+  }) {
     return InputDecoration(
       filled: true,
       fillColor: const Color(0xFFF6F4F1),
@@ -648,18 +726,28 @@ class _PanelUsuarios extends StatelessWidget {
         color: Color(0xFF7E8790),
         fontSize: 12,
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 14,
+        vertical: 9,
+      ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(6),
-        borderSide: const BorderSide(color: Color(0xFFC8D6C0)),
+        borderSide: const BorderSide(
+          color: Color(0xFFC8D6C0),
+        ),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(6),
-        borderSide: const BorderSide(color: Color(0xFFC8D6C0)),
+        borderSide: const BorderSide(
+          color: Color(0xFFC8D6C0),
+        ),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(6),
-        borderSide: const BorderSide(color: _verdeOscuro, width: 1.2),
+        borderSide: const BorderSide(
+          color: _verdeOscuro,
+          width: 1.2,
+        ),
       ),
     );
   }
@@ -690,8 +778,12 @@ class _TablaUsuarios extends StatelessWidget {
             _FilaUsuario(
               usuario: usuario,
               esUsuarioActual: usuario.id == usuarioActualId,
-              onCambiarEstado: () => onCambiarEstado(usuario),
-              onEditar: () => onEditar(usuario),
+              onCambiarEstado: () {
+                onCambiarEstado(usuario);
+              },
+              onEditar: () {
+                onEditar(usuario);
+              },
             ),
       ],
     );
@@ -709,12 +801,30 @@ class _HeaderTablaUsuarios extends StatelessWidget {
       child: const Row(
         children: [
           SizedBox(width: 22),
-          Expanded(flex: 24, child: _TextoHeaderTabla('Usuario')),
-          Expanded(flex: 18, child: _TextoHeaderTabla('Username')),
-          Expanded(flex: 18, child: _TextoHeaderTabla('Telefono')),
-          Expanded(flex: 14, child: _TextoHeaderTabla('Rol')),
-          Expanded(flex: 14, child: _TextoHeaderTabla('Estado')),
-          Expanded(flex: 16, child: _TextoHeaderTabla('Acciones')),
+          Expanded(
+            flex: 24,
+            child: _TextoHeaderTabla('Usuario'),
+          ),
+          Expanded(
+            flex: 18,
+            child: _TextoHeaderTabla('Username'),
+          ),
+          Expanded(
+            flex: 18,
+            child: _TextoHeaderTabla('Telefono'),
+          ),
+          Expanded(
+            flex: 14,
+            child: _TextoHeaderTabla('Rol'),
+          ),
+          Expanded(
+            flex: 14,
+            child: _TextoHeaderTabla('Estado'),
+          ),
+          Expanded(
+            flex: 16,
+            child: _TextoHeaderTabla('Acciones'),
+          ),
           SizedBox(width: 16),
         ],
       ),
@@ -759,7 +869,11 @@ class _FilaUsuario extends StatelessWidget {
       height: 72,
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFE0E8D8))),
+        border: Border(
+          top: BorderSide(
+            color: Color(0xFFE0E8D8),
+          ),
+        ),
       ),
       child: Row(
         children: [
@@ -822,14 +936,18 @@ class _FilaUsuario extends StatelessWidget {
             flex: 14,
             child: Align(
               alignment: Alignment.centerLeft,
-              child: _BadgeRol(rol: usuario.rol),
+              child: _BadgeRol(
+                rol: usuario.rol,
+              ),
             ),
           ),
           Expanded(
             flex: 14,
             child: Align(
               alignment: Alignment.centerLeft,
-              child: _BadgeEstadoUsuario(activo: usuario.activo),
+              child: _BadgeEstadoUsuario(
+                activo: usuario.activo,
+              ),
             ),
           ),
           Expanded(
@@ -838,20 +956,26 @@ class _FilaUsuario extends StatelessWidget {
               children: [
                 IconButton(
                   onPressed: onEditar,
-                  icon: const Icon(Icons.edit_outlined),
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                  ),
                   iconSize: 18,
                   color: _azul,
                   tooltip: 'Editar',
                 ),
                 IconButton(
-                  onPressed: esUsuarioActual ? null : onCambiarEstado,
+                  onPressed: esUsuarioActual
+                      ? null
+                      : onCambiarEstado,
                   icon: Icon(
                     usuario.activo
                         ? Icons.visibility_off_outlined
                         : Icons.visibility_outlined,
                   ),
                   iconSize: 18,
-                  color: esUsuarioActual ? _textoSecundario : _verdeOscuro,
+                  color: esUsuarioActual
+                      ? _textoSecundario
+                      : _verdeOscuro,
                   tooltip: esUsuarioActual
                       ? 'No puedes desactivar tu propia sesion'
                       : usuario.activo
@@ -868,9 +992,20 @@ class _FilaUsuario extends StatelessWidget {
   }
 
   String _iniciales(String nombre) {
-    final partes = nombre.trim().split(RegExp(r'\s+'));
-    if (partes.isEmpty || partes.first.isEmpty) return 'US';
-    if (partes.length == 1) return partes.first.substring(0, 1).toUpperCase();
+    final partes = nombre.trim().split(
+          RegExp(r'\s+'),
+        );
+
+    if (partes.isEmpty || partes.first.isEmpty) {
+      return 'US';
+    }
+
+    if (partes.length == 1) {
+      return partes.first
+          .substring(0, 1)
+          .toUpperCase();
+    }
+
     return '${partes[0][0]}${partes[1][0]}'.toUpperCase();
   }
 }
@@ -887,15 +1022,22 @@ class _BadgeRol extends StatelessWidget {
     final jefe = rol == 'JEFE';
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 5,
+      ),
       decoration: BoxDecoration(
-        color: jefe ? const Color(0xFFE8F1FF) : const Color(0xFFE4E4E4),
+        color: jefe
+            ? const Color(0xFFE8F1FF)
+            : const Color(0xFFE4E4E4),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Text(
         rol,
         style: TextStyle(
-          color: jefe ? _azul : const Color(0xFF555D66),
+          color: jefe
+              ? _azul
+              : const Color(0xFF555D66),
           fontSize: 10,
           fontWeight: FontWeight.w900,
         ),
@@ -914,9 +1056,14 @@ class _BadgeEstadoUsuario extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 5,
+      ),
       decoration: BoxDecoration(
-        color: activo ? const Color(0xFFE8F5DD) : const Color(0xFFFFE8E8),
+        color: activo
+            ? const Color(0xFFE8F5DD)
+            : const Color(0xFFFFE8E8),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Text(
@@ -944,7 +1091,9 @@ class _EstadoUsuarios extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 42),
+        padding: const EdgeInsets.symmetric(
+          vertical: 42,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -960,8 +1109,12 @@ class _EstadoUsuarios extends StatelessWidget {
               const SizedBox(height: 12),
               ElevatedButton.icon(
                 onPressed: onReintentar,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Reintentar'),
+                icon: const Icon(
+                  Icons.refresh,
+                ),
+                label: const Text(
+                  'Reintentar',
+                ),
               ),
             ],
           ],
