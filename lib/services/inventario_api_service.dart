@@ -55,6 +55,44 @@ class InventarioApiService {
 
     return InventarioItem.fromJson(response as Map<String, dynamic>);
   }
+
+  Future<UbicacionInventarioSugerida> obtenerUbicacionSugerida(
+    int idProducto,
+  ) async {
+    final response = await _apiClient.get(
+      '/inventario/ubicacion-sugerida?idProducto=$idProducto',
+    );
+
+    return UbicacionInventarioSugerida.fromJson(
+      response as Map<String, dynamic>,
+    );
+  }
+}
+
+class UbicacionInventarioSugerida {
+  final int idProducto;
+  final String ubicacionLetra;
+  final int? ubicacionNumero;
+  final String ubicacionEstante;
+
+  const UbicacionInventarioSugerida({
+    required this.idProducto,
+    required this.ubicacionLetra,
+    required this.ubicacionNumero,
+    required this.ubicacionEstante,
+  });
+
+  factory UbicacionInventarioSugerida.fromJson(Map<String, dynamic> map) {
+    return UbicacionInventarioSugerida(
+      idProducto: InventarioItem._asInt(map['idProducto']),
+      ubicacionLetra: map['ubicacionLetra']?.toString() ?? '',
+      ubicacionNumero: InventarioItem._asNullableInt(map['ubicacionNumero']),
+      ubicacionEstante: map['ubicacionEstante']?.toString() ?? '',
+    );
+  }
+
+  bool get tieneUbicacion =>
+      ubicacionLetra.trim().isNotEmpty && ubicacionNumero != null;
 }
 
 class InventarioItem {

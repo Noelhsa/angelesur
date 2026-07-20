@@ -193,6 +193,41 @@ def listar_historial_precios(
     return fetch_all(sql, params)
 
 
+@router.get("/ubicacion-sugerida")
+def obtener_ubicacion_sugerida(
+    id_producto: int = Query(..., alias="idProducto"),
+):
+    ubicacion = fetch_one(
+        """
+        SELECT
+            idProducto,
+            ubicacionLetra,
+            ubicacionNumero,
+            ubicacionEstante
+        FROM vw_inventario_actual
+        WHERE idProducto = %s
+            AND ubicacionLetra IS NOT NULL
+            AND ubicacionNumero IS NOT NULL
+        ORDER BY inventarioActivo DESC,
+            stockActual DESC,
+            fechaLlegada DESC,
+            idInventario DESC
+        LIMIT 1
+        """,
+        [id_producto],
+    )
+
+    if ubicacion:
+        return ubicacion
+
+    return {
+        "idProducto": id_producto,
+        "ubicacionLetra": None,
+        "ubicacionNumero": None,
+        "ubicacionEstante": None,
+    }
+
+
 @router.get("/{id_inventario}")
 def obtener_inventario(id_inventario: int):
     inventario = _obtener_inventario_actual(id_inventario)

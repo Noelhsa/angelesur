@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../services/api_client.dart';
 import '../../services/compras_api_service.dart';
+import '../../services/inventario_api_service.dart';
 import '../../services/productos_api_service.dart';
 import '../../services/proveedores_api_service.dart';
 import '../../utils/config_moneda.dart';
@@ -35,6 +36,7 @@ class MenuCartaPedidos extends StatefulWidget {
 class _MenuCartaPedidosState extends State<MenuCartaPedidos> {
   final ProveedoresApiService _proveedoresApiService = ProveedoresApiService();
   final ProductosApiService _productosApiService = ProductosApiService();
+  final InventarioApiService _inventarioApiService = InventarioApiService();
   final TextEditingController _folioController = TextEditingController();
   final TextEditingController _descuentoController =
       TextEditingController(text: '0');
@@ -140,6 +142,45 @@ class _MenuCartaPedidosState extends State<MenuCartaPedidos> {
     });
   }
 
+  Future<void> _seleccionarProductoLinea(
+    _LineaCompraForm linea,
+    int? idProducto,
+  ) async {
+    final producto =
+        _productos.where((item) => item.idProducto == idProducto).firstOrNull;
+
+    setState(() {
+      linea.idProducto = idProducto;
+      linea.ubicacionLetraController.clear();
+      linea.ubicacionNumeroController.clear();
+      linea.cargandoUbicacion = producto?.esMedicamento ?? false;
+    });
+
+    if (idProducto == null || producto == null || !producto.esMedicamento) {
+      return;
+    }
+
+    try {
+      final ubicacion =
+          await _inventarioApiService.obtenerUbicacionSugerida(idProducto);
+      if (!mounted || linea.idProducto != idProducto) return;
+
+      setState(() {
+        if (ubicacion.tieneUbicacion) {
+          linea.ubicacionLetraController.text = ubicacion.ubicacionLetra;
+          linea.ubicacionNumeroController.text =
+              ubicacion.ubicacionNumero.toString();
+        }
+        linea.cargandoUbicacion = false;
+      });
+    } catch (_) {
+      if (!mounted || linea.idProducto != idProducto) return;
+      setState(() {
+        linea.cargandoUbicacion = false;
+      });
+    }
+  }
+
   void _guardar() {
     final detalles = <CompraDetallePayload>[];
 
@@ -150,12 +191,39 @@ class _MenuCartaPedidosState extends State<MenuCartaPedidos> {
       final precio = double.tryParse(linea.precioController.text.trim()) ?? -1;
       final lote = linea.loteController.text.trim();
       final caducidad = linea.caducidadController.text.trim();
+      final producto =
+          _productos.where((item) => item.idProducto == idProducto).firstOrNull;
 
       if (idProducto == null || cantidad <= 0 || costo < 0 || precio < 0) {
         _mostrarMensaje(
           'Completa producto, cantidad, costo y precio en cada renglon',
         );
         return;
+      }
+
+      String? ubicacionLetra;
+      int? ubicacionNumero;
+
+      if (producto?.esMedicamento ?? false) {
+        final letra = linea.ubicacionLetraController.text.trim().toUpperCase();
+        final numeroTexto = linea.ubicacionNumeroController.text.trim();
+
+        if (letra.isNotEmpty || numeroTexto.isNotEmpty) {
+          final numero = int.tryParse(numeroTexto);
+          final letraValida = letra.length == 1 &&
+              letra.codeUnitAt(0) >= 65 &&
+              letra.codeUnitAt(0) <= 90;
+
+          if (!letraValida || numero == null || numero < 1 || numero > 999) {
+            _mostrarMensaje(
+              'Completa la ubicacion del medicamento con letra A-Z y numero 1-999',
+            );
+            return;
+          }
+
+          ubicacionLetra = letra;
+          ubicacionNumero = numero;
+        }
       }
 
       detalles.add(
@@ -166,6 +234,8 @@ class _MenuCartaPedidosState extends State<MenuCartaPedidos> {
           precioVenta: precio,
           codigoLote: lote.isEmpty ? 'SIN_LOTE' : lote,
           fechaCaducidad: caducidad.isEmpty ? null : caducidad,
+          ubicacionLetra: ubicacionLetra,
+          ubicacionNumero: ubicacionNumero,
         ),
       );
     }
@@ -259,6 +329,7 @@ class _MenuCartaPedidosState extends State<MenuCartaPedidos> {
                                 productos: _productos,
                                 puedeQuitar: _lineas.length > 1,
                                 onChanged: () => setState(() {}),
+                                onProductoChanged: _seleccionarProductoLinea,
                                 onQuitar: () => _quitarLinea(i),
                               ),
                               const SizedBox(height: 10),
@@ -310,6 +381,11 @@ class _LineaCompraForm {
   final TextEditingController precioController = TextEditingController();
   final TextEditingController loteController = TextEditingController();
   final TextEditingController caducidadController = TextEditingController();
+  final TextEditingController ubicacionLetraController =
+      TextEditingController();
+  final TextEditingController ubicacionNumeroController =
+      TextEditingController();
+  bool cargandoUbicacion = false;
 
   double get subtotal {
     final cantidad = int.tryParse(cantidadController.text.trim()) ?? 0;
@@ -323,6 +399,8 @@ class _LineaCompraForm {
     precioController.dispose();
     loteController.dispose();
     caducidadController.dispose();
+    ubicacionLetraController.dispose();
+    ubicacionNumeroController.dispose();
   }
 }
 
@@ -528,6 +606,8 @@ class _LineaCompraWidget extends StatelessWidget {
   final List<ProductoCatalogoApi> productos;
   final bool puedeQuitar;
   final VoidCallback onChanged;
+  final Future<void> Function(_LineaCompraForm linea, int? idProducto)
+      onProductoChanged;
   final VoidCallback onQuitar;
 
   const _LineaCompraWidget({
@@ -536,6 +616,7 @@ class _LineaCompraWidget extends StatelessWidget {
     required this.productos,
     required this.puedeQuitar,
     required this.onChanged,
+    required this.onProductoChanged,
     required this.onQuitar,
   });
 
@@ -545,6 +626,7 @@ class _LineaCompraWidget extends StatelessWidget {
         .where((item) => item.idProducto == linea.idProducto)
         .firstOrNull;
     final manejaCaducidad = producto?.manejaCaducidad ?? false;
+    final esMedicamento = producto?.esMedicamento ?? false;
 
     return Container(
       padding: const EdgeInsets.all(10),
@@ -573,10 +655,7 @@ class _LineaCompraWidget extends StatelessWidget {
                         ),
                       ),
                   ],
-                  onChanged: (value) {
-                    linea.idProducto = value;
-                    onChanged();
-                  },
+                  onChanged: (value) => onProductoChanged(linea, value),
                 ),
               ),
               const SizedBox(width: 6),
@@ -618,6 +697,31 @@ class _LineaCompraWidget extends StatelessWidget {
               ),
             ],
           ),
+          if (esMedicamento) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _MiniCampo(
+                    etiqueta: 'Estante',
+                    controller: linea.ubicacionLetraController,
+                    onChanged: onChanged,
+                    keyboardType: TextInputType.text,
+                    hintText: linea.cargandoUbicacion ? 'Cargando...' : 'A-Z',
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _MiniCampo(
+                    etiqueta: 'No.',
+                    controller: linea.ubicacionNumeroController,
+                    onChanged: onChanged,
+                    hintText: linea.cargandoUbicacion ? 'Cargando...' : '1-999',
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 8),
           Row(
             children: [
@@ -662,6 +766,7 @@ class _MiniCampo extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onChanged;
   final String? prefixText;
+  final String? hintText;
   final TextInputType keyboardType;
 
   const _MiniCampo({
@@ -669,6 +774,7 @@ class _MiniCampo extends StatelessWidget {
     required this.controller,
     required this.onChanged,
     this.prefixText,
+    this.hintText,
     this.keyboardType = const TextInputType.numberWithOptions(decimal: true),
   });
 
@@ -683,6 +789,7 @@ class _MiniCampo extends StatelessWidget {
         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
         decoration: _decoracionCampo(
           prefixText: prefixText,
+          hintText: hintText,
         ),
       ),
     );
