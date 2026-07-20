@@ -3,7 +3,7 @@ from decimal import Decimal
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from app.database import call_procedure, fetch_all, fetch_one
+from app.database import call_procedure, db_connection, fetch_all, fetch_one
 
 router = APIRouter(prefix="/inventario", tags=["inventario"])
 
@@ -21,6 +21,11 @@ class CambiarPrecioInventarioRequest(BaseModel):
     idInventario: int
     precioNuevo: Decimal = Field(ge=0)
     motivo: str | None = Field(default=None, max_length=255)
+
+
+class ActualizarUbicacionInventarioRequest(BaseModel):
+    ubicacionLetra: str | None = Field(default=None, max_length=1)
+    ubicacionNumero: int | None = Field(default=None, ge=1, le=999)
 
 
 @router.get("/disponible")
@@ -70,9 +75,12 @@ def listar_inventario_actual(
         params.append(id_producto)
 
     if busqueda:
-        filtros.append("(nombre LIKE %s OR codigoBarras LIKE %s OR codigoLote LIKE %s)")
+        filtros.append(
+            "(nombre LIKE %s OR codigoBarras LIKE %s OR codigoLote LIKE %s "
+            "OR ubicacionEstante LIKE %s)"
+        )
         like = f"%{busqueda}%"
-        params.extend([like, like, like])
+        params.extend([like, like, like, like])
 
     if filtros:
         sql += " WHERE " + " AND ".join(filtros)
@@ -230,6 +238,44 @@ def cambiar_precio_inventario(request: CambiarPrecioInventarioRequest):
     )
 
     return _obtener_inventario_actual(request.idInventario)
+
+
+@router.patch("/{id_inventario}/ubicacion")
+def actualizar_ubicacion_inventario(
+    id_inventario: int,
+    request: ActualizarUbicacionInventarioRequest,
+):
+    if not _obtener_inventario_actual(id_inventario):
+        raise HTTPException(status_code=404, detail="Inventario no encontrado")
+
+    letra = request.ubicacionLetra.strip().upper() if request.ubicacionLetra else None
+    numero = request.ubicacionNumero
+
+    if (letra is None) != (numero is None):
+        raise HTTPException(
+            status_code=400,
+            detail="La ubicacion debe incluir letra y numero, o dejar ambos vacios.",
+        )
+
+    if letra is not None and (len(letra) != 1 or letra < "A" or letra > "Z"):
+        raise HTTPException(
+            status_code=400,
+            detail="La letra del estante debe ser una letra de la A a la Z.",
+        )
+
+    with db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE inventario_producto
+                SET ubicacionLetra = %s,
+                    ubicacionNumero = %s
+                WHERE idInventario = %s
+                """,
+                [letra, numero, id_inventario],
+            )
+
+    return _obtener_inventario_actual(id_inventario)
 
 
 def _obtener_inventario_actual(id_inventario: int):

@@ -135,7 +135,17 @@ def _select_movimientos_sql() -> str:
             m.idCompra,
             m.idDevolucionCliente,
             m.idDevolucionProveedor,
-            m.observaciones
+            NULLIF(
+                TRIM(
+                    CONCAT_WS(
+                        ' | ',
+                        NULLIF(m.observaciones, ''),
+                        NULLIF(v.observaciones, '')
+                    )
+                ),
+                ''
+            ) AS observaciones
         FROM movimiento_dinero m
         INNER JOIN usuario u ON u.idUsuario = m.idUsuario
+        LEFT JOIN venta v ON v.idVenta = m.idVenta
     """

@@ -39,6 +39,7 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 - `GET /inventario/caducidad`: lee `vw_productos_por_caducar`.
 - `GET /inventario/movimientos`: lista movimientos de inventario.
 - `GET /inventario/historial-precios`: lista cambios de precio.
+- `PATCH /inventario/{idInventario}/ubicacion`: actualiza la ubicacion de estante del lote.
 - `POST /inventario/ajuste`: llama `sp_ajustar_inventario`.
 - `POST /inventario/precio`: llama `sp_cambiar_precio_inventario`.
 - `GET /usuarios`: lista usuarios activos.
@@ -101,3 +102,9 @@ Durante la primera prueba local se creo, si la tabla estaba vacia:
 ## Nota importante
 
 MariaDB no es una base embebida como SQLite. Para que la app "lleve todo adentro", el instalador final tendra que incluir o preparar un MariaDB local, cargar `BaseActual.sql`, iniciar el servicio local y luego arrancar esta API junto con Flutter.
+
+## Migraciones
+
+Los cambios incrementales de estructura de base se guardan en `backend/migrations`.
+
+- `20260720_inventario_ubicacion_estante.sql`: agrega `ubicacionLetra` y `ubicacionNumero` a `inventario_producto`, y expone `ubicacionEstante` en las vistas de inventario.

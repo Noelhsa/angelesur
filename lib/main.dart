@@ -22,6 +22,7 @@ import 'ui/interfaces/menu_carta_venta_yastas.dart';
 import 'ui/interfaces/menu_superior_catalogo.dart';
 import 'ui/login/login_screen.dart';
 import 'ui/interfaces/contenido_devolucion.dart';
+import 'utils/config_moneda.dart';
 
 const Color _fondoApp = Color(0xFF181A20);
 const Color _fondoContenido = Color(0xFFE2E2E2);
@@ -154,6 +155,7 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
   bool _cargandoInventario = true;
   bool _procesandoVenta = false;
   String? _errorInventario;
+  double _descuentoVenta = 0;
 
   List<Medicamento> _medicamentos = [];
   final Map<int, int> _carrito = {};
@@ -251,10 +253,25 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     return total;
   }
 
-  double get _descuento => 0;
+  double get _subtotalYastas => _subtotal - _subtotalProductos;
+
+  double get _descuento {
+    if (_descuentoVenta <= 0) {
+      return 0;
+    }
+
+    return _descuentoVenta > _subtotalProductos
+        ? _subtotalProductos
+        : _descuentoVenta;
+  }
+
+  double get _totalProductos {
+    final total = _subtotalProductos - _descuento;
+    return total < 0 ? 0 : total;
+  }
 
   double get _total {
-    final total = _subtotal - _descuento;
+    final total = _totalProductos + _subtotalYastas;
     return total < 0 ? 0 : total;
   }
 
@@ -307,6 +324,12 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
 
     setState(() {
       _carrito[producto.id] = cantidadActual + 1;
+    });
+  }
+
+  void _actualizarDescuento(double descuento) {
+    setState(() {
+      _descuentoVenta = descuento < 0 ? 0 : descuento;
     });
   }
 
@@ -363,6 +386,7 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
       } else {
         _carrito[productoId] = cantidadActual - 1;
       }
+      _limpiarDescuentoSiNoHayProductos();
     });
   }
 
@@ -370,7 +394,18 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     setState(() {
       _carrito.remove(productoId);
       _serviciosYastasCarrito.remove(productoId);
+      _limpiarDescuentoSiNoHayProductos();
     });
+  }
+
+  void _limpiarDescuentoSiNoHayProductos() {
+    final tieneProductos = _carrito.keys.any(
+      (id) => !_serviciosYastasCarrito.containsKey(id),
+    );
+
+    if (!tieneProductos) {
+      _descuentoVenta = 0;
+    }
   }
 
   Future<void> _pagarVenta() async {
@@ -409,11 +444,11 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
       VentaRegistrada? venta;
 
       if (_itemsProductosCarrito.isNotEmpty) {
-        final totalYastas = _total - _subtotalProductos;
+        final totalYastas = _subtotalYastas;
         final montoRecibidoProductos = datosPago.montoRecibido == null
             ? null
-            : (datosPago.montoRecibido! - totalYastas < _subtotalProductos
-                ? _subtotalProductos
+            : (datosPago.montoRecibido! - totalYastas < _totalProductos
+                ? _totalProductos
                 : datosPago.montoRecibido! - totalYastas);
 
         venta = await _ventasApiService.registrarVenta(
@@ -422,12 +457,11 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
           cantidades: Map<int, int>.from(_carrito),
           descuentoGeneral: _descuento,
           medioPago: datosPago.medio,
-          total: _subtotalProductos,
+          total: _totalProductos,
           montoRecibido:
               datosPago.medio == 'EFECTIVO' ? montoRecibidoProductos : null,
           referencia: datosPago.referencia,
-          observaciones:
-              _carritoTieneYastas ? 'Ticket mixto con servicios Yastas.' : null,
+          observaciones: _observacionesVentaProductos(),
         );
       }
 
@@ -442,6 +476,7 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
       setState(() {
         _carrito.clear();
         _serviciosYastasCarrito.clear();
+        _descuentoVenta = 0;
         _procesandoVenta = false;
       });
 
@@ -500,6 +535,16 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     }
 
     return partes.join(' ');
+  }
+
+  String? _observacionesVentaProductos() {
+    final partes = <String>[
+      if (_carritoTieneYastas) 'Ticket mixto con servicios Yastas.',
+      if (_descuento > 0)
+        'Descuento aplicado: ${ConfigMoneda.formato(_descuento)}.',
+    ];
+
+    return partes.isEmpty ? null : partes.join(' ');
   }
 
   String _mensajeVentaRegistrada(
@@ -574,6 +619,7 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
           subtotal: _subtotal,
           descuento: _descuento,
           total: _total,
+          onDescuentoChanged: _actualizarDescuento,
           onIncrementar: _incrementarCantidad,
           onDisminuir: _disminuirCantidad,
           onEliminar: _eliminarDelCarrito,

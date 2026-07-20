@@ -75,7 +75,7 @@ class _MenuCartaDevolucionClienteState
 
     try {
       final ventas = await widget.ventasApiService.listarVentas(
-        estatus: 'REGISTRADA',
+        estatus: 'PAGADA',
         limite: 300,
       );
 

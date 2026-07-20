@@ -39,6 +39,22 @@ class InventarioApiService {
         .map((item) => InventarioItem.fromJson(item as Map<String, dynamic>))
         .toList();
   }
+
+  Future<InventarioItem> actualizarUbicacion({
+    required int idInventario,
+    required String? ubicacionLetra,
+    required int? ubicacionNumero,
+  }) async {
+    final response = await _apiClient.patch(
+      '/inventario/$idInventario/ubicacion',
+      {
+        'ubicacionLetra': ubicacionLetra,
+        'ubicacionNumero': ubicacionNumero,
+      },
+    );
+
+    return InventarioItem.fromJson(response as Map<String, dynamic>);
+  }
 }
 
 class InventarioItem {
@@ -51,6 +67,9 @@ class InventarioItem {
   final String unidad;
   final int stockActual;
   final double precioVenta;
+  final String ubicacionLetra;
+  final int? ubicacionNumero;
+  final String ubicacionEstante;
   final bool inventarioActivo;
   final bool productoActivo;
   final DateTime? fechaCaducidad;
@@ -65,6 +84,9 @@ class InventarioItem {
     required this.unidad,
     required this.stockActual,
     required this.precioVenta,
+    required this.ubicacionLetra,
+    required this.ubicacionNumero,
+    required this.ubicacionEstante,
     required this.inventarioActivo,
     required this.productoActivo,
     required this.fechaCaducidad,
@@ -88,6 +110,9 @@ class InventarioItem {
           '',
       stockActual: _asInt(map['stockActual']),
       precioVenta: _asDouble(map['precioVenta']),
+      ubicacionLetra: map['ubicacionLetra']?.toString() ?? '',
+      ubicacionNumero: _asNullableInt(map['ubicacionNumero']),
+      ubicacionEstante: map['ubicacionEstante']?.toString() ?? '',
       inventarioActivo: _asBool(map['inventarioActivo']),
       productoActivo: _asBool(map['productoActivo']),
       fechaCaducidad:
@@ -103,6 +128,16 @@ class InventarioItem {
       return codigoLote;
     }
     return '#$idInventario';
+  }
+
+  String get ubicacionVisible {
+    if (ubicacionEstante.trim().isNotEmpty) {
+      return ubicacionEstante;
+    }
+    if (ubicacionLetra.trim().isNotEmpty && ubicacionNumero != null) {
+      return '$ubicacionLetra$ubicacionNumero';
+    }
+    return '-';
   }
 
   EstadoStockInventario get estadoStock {

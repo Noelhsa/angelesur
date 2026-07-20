@@ -65,10 +65,8 @@ class _DialogoPagoVentaState extends State<_DialogoPagoVenta> {
   bool get _esEfectivo => _medio == 'EFECTIVO';
 
   double? get _montoRecibido {
-    final texto = _montoController.text
-        .trim()
-        .replaceAll(',', '')
-        .replaceAll('\$', '');
+    final texto =
+        _montoController.text.trim().replaceAll(',', '').replaceAll('\$', '');
 
     return double.tryParse(texto);
   }
@@ -452,8 +450,7 @@ class _AccesosRapidosPago extends StatelessWidget {
       builder: (context, constraints) {
         const separacion = 8.0;
 
-        final anchoBoton =
-            (constraints.maxWidth - (separacion * 2)) / 3;
+        final anchoBoton = (constraints.maxWidth - (separacion * 2)) / 3;
 
         return Wrap(
           spacing: separacion,
@@ -862,6 +859,7 @@ class MenuCartaCarrito extends StatelessWidget {
   final double subtotal;
   final double descuento;
   final double total;
+  final ValueChanged<double> onDescuentoChanged;
   final ValueChanged<int> onIncrementar;
   final ValueChanged<int> onDisminuir;
   final ValueChanged<int> onEliminar;
@@ -875,6 +873,7 @@ class MenuCartaCarrito extends StatelessWidget {
     required this.subtotal,
     required this.descuento,
     required this.total,
+    required this.onDescuentoChanged,
     required this.onIncrementar,
     required this.onDisminuir,
     required this.onEliminar,
@@ -974,6 +973,7 @@ class MenuCartaCarrito extends StatelessWidget {
             subtotal: subtotal,
             descuento: descuento,
             total: total,
+            onDescuentoChanged: onDescuentoChanged,
             onPagar: onPagar,
             procesandoPago: procesandoPago,
           ),
@@ -1164,6 +1164,7 @@ class _ResumenCarrito extends StatelessWidget {
   final double subtotal;
   final double descuento;
   final double total;
+  final ValueChanged<double> onDescuentoChanged;
   final VoidCallback onPagar;
   final bool procesandoPago;
 
@@ -1171,6 +1172,7 @@ class _ResumenCarrito extends StatelessWidget {
     required this.subtotal,
     required this.descuento,
     required this.total,
+    required this.onDescuentoChanged,
     required this.onPagar,
     required this.procesandoPago,
   });
@@ -1178,7 +1180,7 @@ class _ResumenCarrito extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 178,
+      height: 198,
       padding: const EdgeInsets.fromLTRB(15, 18, 15, 20),
       decoration: const BoxDecoration(
         color: _blanco,
@@ -1197,10 +1199,9 @@ class _ResumenCarrito extends StatelessWidget {
             color: _texto,
           ),
           const SizedBox(height: 11),
-          _FilaResumen(
-            texto: 'Descuento (Cupón: SALUD10)',
-            valor: '-${ConfigMoneda.formato(descuento)}',
-            color: _rojo,
+          _CampoDescuentoCarrito(
+            descuento: descuento,
+            onChanged: onDescuentoChanged,
           ),
           const SizedBox(height: 9),
           Container(
@@ -1214,14 +1215,12 @@ class _ResumenCarrito extends StatelessWidget {
             color: _verdeOscuro,
             grande: true,
           ),
-          const SizedBox(height: 30),
+          const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             height: 36,
             child: ElevatedButton.icon(
-              onPressed: total <= 0 || procesandoPago
-                  ? null
-                  : onPagar,
+              onPressed: procesandoPago ? null : onPagar,
               icon: const Icon(
                 Icons.payments_outlined,
                 size: 15,
@@ -1275,9 +1274,7 @@ class _FilaResumen extends StatelessWidget {
             style: TextStyle(
               color: color,
               fontSize: grande ? 14 : 8,
-              fontWeight: grande
-                  ? FontWeight.w900
-                  : FontWeight.w600,
+              fontWeight: grande ? FontWeight.w900 : FontWeight.w600,
             ),
           ),
         ),
@@ -1286,9 +1283,99 @@ class _FilaResumen extends StatelessWidget {
           style: TextStyle(
             color: color,
             fontSize: grande ? 14 : 8,
-            fontWeight: grande
-                ? FontWeight.w900
-                : FontWeight.w700,
+            fontWeight: grande ? FontWeight.w900 : FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CampoDescuentoCarrito extends StatefulWidget {
+  final double descuento;
+  final ValueChanged<double> onChanged;
+
+  const _CampoDescuentoCarrito({
+    required this.descuento,
+    required this.onChanged,
+  });
+
+  @override
+  State<_CampoDescuentoCarrito> createState() => _CampoDescuentoCarritoState();
+}
+
+class _CampoDescuentoCarritoState extends State<_CampoDescuentoCarrito> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+      text: widget.descuento == 0 ? '' : widget.descuento.toStringAsFixed(2),
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _CampoDescuentoCarrito oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final actual = double.tryParse(_controller.text.trim()) ?? 0;
+    if ((actual - widget.descuento).abs() > 0.009) {
+      _controller.text =
+          widget.descuento == 0 ? '' : widget.descuento.toStringAsFixed(2);
+      _controller.selection = TextSelection.collapsed(
+        offset: _controller.text.length,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Expanded(
+          child: Text(
+            'Descuento',
+            style: TextStyle(
+              color: _rojo,
+              fontSize: 8,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        SizedBox(
+          width: 82,
+          height: 28,
+          child: TextField(
+            controller: _controller,
+            keyboardType: const TextInputType.numberWithOptions(
+              decimal: true,
+            ),
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              color: _rojo,
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+            ),
+            decoration: const InputDecoration(
+              prefixText: '\$',
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 7,
+              ),
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (value) {
+              final limpio = value.trim().replaceAll(',', '');
+              widget.onChanged(double.tryParse(limpio) ?? 0);
+            },
           ),
         ),
       ],

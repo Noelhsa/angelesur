@@ -171,7 +171,7 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
     }
   }
 
-  Future<void> _guardarMedicamentoDesdeCarta(ProductoPayload datos) async {
+  Future<void> _guardarProductoDesdeCarta(ProductoPayload datos) async {
     setState(() {
       _procesando = true;
     });
@@ -182,12 +182,16 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
       setState(() {
         _mostrarMenuNuevoProducto = false;
       });
-      _mostrarMensaje('Medicamento registrado');
+      _mostrarMensaje(
+        datos.tipo == 'MEDICAMENTO'
+            ? 'Medicamento registrado'
+            : 'Producto registrado',
+      );
       await _cargarProductos();
     } on ApiException catch (error) {
       _mostrarMensaje(error.message);
     } catch (_) {
-      _mostrarMensaje('No se pudo registrar el medicamento');
+      _mostrarMensaje('No se pudo registrar el producto');
     } finally {
       if (mounted) {
         setState(() {
@@ -309,7 +313,7 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
                   _mostrarMenuNuevoProducto = false;
                 });
               },
-              onGuardarMedicamento: _guardarMedicamentoDesdeCarta,
+              onGuardarProducto: _guardarProductoDesdeCarta,
             ),
         ],
       ),
