@@ -7,6 +7,7 @@ import 'menu_carta_yastas.dart';
 
 const Color _blanco = Color(0xFFFFFFFF);
 const Color _verdeOscuro = Color(0xFF2F6E00);
+const Color _azul = Color(0xFF0B63CE);
 const Color _texto = Color(0xFF101010);
 const Color _textoSuave = Color(0xFF707A83);
 const Color _grisLinea = Color(0xFFE0E0E0);
@@ -19,22 +20,29 @@ class ContenidoYastas extends StatefulWidget {
 }
 
 class _ContenidoYastasState extends State<ContenidoYastas> {
-  final ServiciosYastasApiService _apiService = ServiciosYastasApiService();
-  final TextEditingController _busquedaController = TextEditingController();
+  final ServiciosYastasApiService _apiService =
+      ServiciosYastasApiService();
+
+  final TextEditingController _busquedaController =
+      TextEditingController();
 
   bool _cargando = true;
   bool _guardandoTarifa = false;
   bool _mostrarMenuNuevaTarifa = false;
+
   String? _error;
   String _estadoTarifas = 'Activas';
+
   List<TarifaServicioYastas> _tarifas = [];
 
   @override
   void initState() {
     super.initState();
+
     _busquedaController.addListener(() {
       setState(() {});
     });
+
     _cargarTarifas();
   }
 
@@ -45,7 +53,8 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
   }
 
   List<TarifaServicioYastas> get _tarifasFiltradas {
-    final texto = _busquedaController.text.trim().toLowerCase();
+    final texto =
+        _busquedaController.text.trim().toLowerCase();
 
     return _tarifas.where((tarifa) {
       final coincideEstado = switch (_estadoTarifas) {
@@ -62,9 +71,15 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
         return true;
       }
 
-      return tarifa.nombreServicio.toLowerCase().contains(texto) ||
-          tarifa.tipoServicio.toLowerCase().contains(texto) ||
-          tarifa.tipoVisible.toLowerCase().contains(texto);
+      return tarifa.nombreServicio
+              .toLowerCase()
+              .contains(texto) ||
+          tarifa.tipoServicio
+              .toLowerCase()
+              .contains(texto) ||
+          tarifa.tipoVisible
+              .toLowerCase()
+              .contains(texto);
     }).toList();
   }
 
@@ -79,7 +94,9 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
         incluirInactivas: true,
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _tarifas = tarifas;
@@ -88,12 +105,16 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
     } on ApiException catch (error) {
       _mostrarError(error.message);
     } catch (_) {
-      _mostrarError('No se pudieron cargar las tarifas Yastas');
+      _mostrarError(
+        'No se pudieron cargar las tarifas Yastas',
+      );
     }
   }
 
   void _mostrarError(String mensaje) {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       _error = mensaje;
@@ -113,7 +134,9 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
     });
   }
 
-  Future<void> _guardarNuevaTarifa(DatosMenuTarifaYastas datos) async {
+  Future<void> _guardarNuevaTarifa(
+    DatosMenuTarifaYastas datos,
+  ) async {
     setState(() {
       _guardandoTarifa = true;
     });
@@ -131,7 +154,9 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
 
       await _cargarTarifas();
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _mostrarMenuNuevaTarifa = false;
@@ -144,7 +169,9 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
         ),
       );
     } on ApiException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _guardandoTarifa = false;
@@ -152,20 +179,30 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
 
       _mostrarSnack(error.message);
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _guardandoTarifa = false;
       });
 
-      _mostrarSnack('No se pudo guardar la tarifa');
+      _mostrarSnack(
+        'No se pudo guardar la tarifa',
+      );
     }
   }
 
-  Future<void> _abrirFormularioEditar(TarifaServicioYastas tarifa) async {
+  Future<void> _abrirFormularioEditar(
+    TarifaServicioYastas tarifa,
+  ) async {
     final datos = await showDialog<_DatosTarifaYastas>(
       context: context,
-      builder: (context) => _DialogoTarifaYastas(tarifa: tarifa),
+      builder: (context) {
+        return _DialogoTarifaYastas(
+          tarifa: tarifa,
+        );
+      },
     );
 
     if (datos == null) {
@@ -186,7 +223,9 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
 
       await _cargarTarifas();
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -196,29 +235,40 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
     } on ApiException catch (error) {
       _mostrarSnack(error.message);
     } catch (_) {
-      _mostrarSnack('No se pudo guardar la tarifa');
+      _mostrarSnack(
+        'No se pudo guardar la tarifa',
+      );
     }
   }
 
-  Future<void> _cambiarEstado(TarifaServicioYastas tarifa) async {
+  Future<void> _cambiarEstado(
+    TarifaServicioYastas tarifa,
+  ) async {
     try {
       await _apiService.cambiarEstadoTarifa(
         idTarifa: tarifa.idTarifa,
         activo: !tarifa.activo,
       );
+
       await _cargarTarifas();
     } on ApiException catch (error) {
       _mostrarSnack(error.message);
     } catch (_) {
-      _mostrarSnack('No se pudo cambiar el estado de la tarifa');
+      _mostrarSnack(
+        'No se pudo cambiar el estado de la tarifa',
+      );
     }
   }
 
   void _mostrarSnack(String mensaje) {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(mensaje)),
+      SnackBar(
+        content: Text(mensaje),
+      ),
     );
   }
 
@@ -228,25 +278,38 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
       children: [
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(28, 24, 28, 24),
+            padding: const EdgeInsets.fromLTRB(
+              28,
+              24,
+              28,
+              24,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _EncabezadoYastas(
-                  busquedaController: _busquedaController,
-                  estadoSeleccionado: _estadoTarifas,
+                  busquedaController:
+                      _busquedaController,
+                  estadoSeleccionado:
+                      _estadoTarifas,
                   onEstadoChanged: (value) {
-                    if (value == null) return;
+                    if (value == null) {
+                      return;
+                    }
+
                     setState(() {
                       _estadoTarifas = value;
                     });
                   },
-                  onNuevo: _abrirMenuNuevaTarifa,
-                  onActualizar: _cargarTarifas,
+                  onNuevo:
+                      _abrirMenuNuevaTarifa,
+                  onActualizar:
+                      _cargarTarifas,
                 ),
                 const SizedBox(height: 20),
                 Expanded(
-                  child: _construirContenido(),
+                  child:
+                      _construirContenido(),
                 ),
               ],
             ),
@@ -254,11 +317,19 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
         ),
         if (_mostrarMenuNuevaTarifa)
           Padding(
-            padding: const EdgeInsets.fromLTRB(0, 20, 14, 20),
+            padding: const EdgeInsets.fromLTRB(
+              0,
+              20,
+              14,
+              20,
+            ),
             child: MenuCartaYastas(
-              guardando: _guardandoTarifa,
-              onCerrar: _cerrarMenuNuevaTarifa,
-              onGuardarTarifa: _guardarNuevaTarifa,
+              guardando:
+                  _guardandoTarifa,
+              onCerrar:
+                  _cerrarMenuNuevaTarifa,
+              onGuardarTarifa:
+                  _guardarNuevaTarifa,
             ),
           ),
       ],
@@ -267,7 +338,9 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
 
   Widget _construirContenido() {
     if (_cargando) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
     }
 
     if (_error != null) {
@@ -286,8 +359,12 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
             const SizedBox(height: 12),
             ElevatedButton.icon(
               onPressed: _cargarTarifas,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Reintentar'),
+              icon: const Icon(
+                Icons.refresh,
+              ),
+              label: const Text(
+                'Reintentar',
+              ),
             ),
           ],
         ),
@@ -311,13 +388,26 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
 
     return ListView.separated(
       itemCount: tarifas.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      separatorBuilder: (_, __) {
+        return const SizedBox(
+          height: 10,
+        );
+      },
       itemBuilder: (context, index) {
         final tarifa = tarifas[index];
+
         return _TarjetaTarifaYastas(
           tarifa: tarifa,
-          onEditar: () => _abrirFormularioEditar(tarifa),
-          onCambiarEstado: () => _cambiarEstado(tarifa),
+          onEditar: () {
+            _abrirFormularioEditar(
+              tarifa,
+            );
+          },
+          onCambiarEstado: () {
+            _cambiarEstado(
+              tarifa,
+            );
+          },
         );
       },
     );
@@ -345,14 +435,16 @@ class _EncabezadoYastas extends StatelessWidget {
       children: [
         const Expanded(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
             children: [
               Text(
                 'Yastas',
                 style: TextStyle(
                   color: _texto,
                   fontSize: 24,
-                  fontWeight: FontWeight.w900,
+                  fontWeight:
+                      FontWeight.w900,
                 ),
               ),
               SizedBox(height: 4),
@@ -361,7 +453,8 @@ class _EncabezadoYastas extends StatelessWidget {
                 style: TextStyle(
                   color: _textoSuave,
                   fontSize: 12,
-                  fontWeight: FontWeight.w600,
+                  fontWeight:
+                      FontWeight.w600,
                 ),
               ),
             ],
@@ -371,11 +464,18 @@ class _EncabezadoYastas extends StatelessWidget {
           width: 260,
           height: 40,
           child: TextField(
-            controller: busquedaController,
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.search, size: 18),
-              hintText: 'Buscar tarifa',
-              border: OutlineInputBorder(),
+            controller:
+                busquedaController,
+            decoration:
+                const InputDecoration(
+              prefixIcon: Icon(
+                Icons.search,
+                size: 18,
+              ),
+              hintText:
+                  'Buscar tarifa',
+              border:
+                  OutlineInputBorder(),
               isDense: true,
             ),
           ),
@@ -384,18 +484,35 @@ class _EncabezadoYastas extends StatelessWidget {
         SizedBox(
           width: 135,
           height: 40,
-          child: DropdownButtonFormField<String>(
-            initialValue: estadoSeleccionado,
+          child:
+              DropdownButtonFormField<String>(
+            initialValue:
+                estadoSeleccionado,
             isExpanded: true,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
+            decoration:
+                const InputDecoration(
+              border:
+                  OutlineInputBorder(),
               isDense: true,
-              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+              contentPadding:
+                  EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 9,
+              ),
             ),
             items: const [
-              DropdownMenuItem(value: 'Activas', child: Text('Activas')),
-              DropdownMenuItem(value: 'Inactivas', child: Text('Inactivas')),
-              DropdownMenuItem(value: 'Todas', child: Text('Todas')),
+              DropdownMenuItem(
+                value: 'Activas',
+                child: Text('Activas'),
+              ),
+              DropdownMenuItem(
+                value: 'Inactivas',
+                child: Text('Inactivas'),
+              ),
+              DropdownMenuItem(
+                value: 'Todas',
+                child: Text('Todas'),
+              ),
             ],
             onChanged: onEstadoChanged,
           ),
@@ -403,21 +520,28 @@ class _EncabezadoYastas extends StatelessWidget {
         const SizedBox(width: 10),
         IconButton.filledTonal(
           onPressed: onActualizar,
-          icon: const Icon(Icons.refresh),
+          icon: const Icon(
+            Icons.refresh,
+          ),
           tooltip: 'Actualizar',
         ),
         const SizedBox(width: 10),
         FilledButton.icon(
           onPressed: onNuevo,
-          icon: const Icon(Icons.add),
-          label: const Text('Nueva tarifa'),
+          icon: const Icon(
+            Icons.add,
+          ),
+          label: const Text(
+            'Nueva tarifa',
+          ),
         ),
       ],
     );
   }
 }
 
-class _TarjetaTarifaYastas extends StatelessWidget {
+class _TarjetaTarifaYastas
+    extends StatelessWidget {
   final TarifaServicioYastas tarifa;
   final VoidCallback onEditar;
   final VoidCallback onCambiarEstado;
@@ -431,14 +555,24 @@ class _TarjetaTarifaYastas extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+      padding: const EdgeInsets.fromLTRB(
+        18,
+        16,
+        14,
+        16,
+      ),
       decoration: BoxDecoration(
         color: _blanco,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _grisLinea),
+        borderRadius:
+            BorderRadius.circular(8),
+        border: Border.all(
+          color: _grisLinea,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(
+              0.05,
+            ),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -451,38 +585,52 @@ class _TarjetaTarifaYastas extends StatelessWidget {
             height: 42,
             decoration: BoxDecoration(
               color: tarifa.activo
-                  ? const Color(0xFFEAF7DF)
-                  : const Color(0xFFECECEC),
-              borderRadius: BorderRadius.circular(8),
+                  ? const Color(
+                      0xFFEAF7DF,
+                    )
+                  : const Color(
+                      0xFFECECEC,
+                    ),
+              borderRadius:
+                  BorderRadius.circular(8),
             ),
             child: Icon(
-              _iconoServicio(tarifa.tipoServicio),
-              color: tarifa.activo ? _verdeOscuro : _textoSuave,
+              _iconoServicio(
+                tarifa.tipoServicio,
+              ),
+              color: tarifa.activo
+                  ? _verdeOscuro
+                  : _textoSuave,
             ),
           ),
           const SizedBox(width: 14),
           Expanded(
             flex: 2,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
                 Text(
                   tarifa.nombreServicio,
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  overflow:
+                      TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: _texto,
                     fontSize: 15,
-                    fontWeight: FontWeight.w900,
+                    fontWeight:
+                        FontWeight.w900,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${tarifa.tipoVisible} · ${tarifa.activo ? 'Activa' : 'Inactiva'}',
+                  '${tarifa.tipoVisible} · '
+                  '${tarifa.activo ? 'Activa' : 'Inactiva'}',
                   style: const TextStyle(
                     color: _textoSuave,
                     fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                    fontWeight:
+                        FontWeight.w700,
                   ),
                 ),
               ],
@@ -490,34 +638,53 @@ class _TarjetaTarifaYastas extends StatelessWidget {
           ),
           _MetricaTarifa(
             titulo: 'Com. cliente',
-            valor: ConfigMoneda.formato(tarifa.comisionCliente),
+            valor: ConfigMoneda.formato(
+              tarifa.comisionCliente,
+            ),
           ),
           _MetricaTarifa(
             titulo: 'Com. Yastas',
-            valor: ConfigMoneda.formato(tarifa.comisionYastas),
+            valor: ConfigMoneda.formato(
+              tarifa.comisionYastas,
+            ),
           ),
           _MetricaTarifa(
             titulo: 'Regalia',
-            valor: ConfigMoneda.formato(tarifa.regaliaYastas),
+            valor: ConfigMoneda.formato(
+              tarifa.regaliaYastas,
+            ),
           ),
           _MetricaTarifa(
             titulo: 'Ganancia',
-            valor: ConfigMoneda.formato(tarifa.gananciaFarmacia),
+            valor: ConfigMoneda.formato(
+              tarifa.gananciaFarmacia,
+            ),
           ),
           const SizedBox(width: 8),
           IconButton(
             onPressed: onEditar,
-            icon: const Icon(Icons.edit_outlined),
+            icon: const Icon(
+              Icons.edit_outlined,
+            ),
+            iconSize: 18,
+            color: _azul,
             tooltip: 'Editar',
           ),
           IconButton(
-            onPressed: onCambiarEstado,
+            onPressed:
+                onCambiarEstado,
             icon: Icon(
               tarifa.activo
-                  ? Icons.visibility_off_outlined
-                  : Icons.visibility_outlined,
+                  ? Icons
+                      .visibility_off_outlined
+                  : Icons
+                      .visibility_outlined,
             ),
-            tooltip: tarifa.activo ? 'Desactivar' : 'Activar',
+            iconSize: 18,
+            color: _verdeOscuro,
+            tooltip: tarifa.activo
+                ? 'Desactivar'
+                : 'Activar',
           ),
         ],
       ),
@@ -527,23 +694,32 @@ class _TarjetaTarifaYastas extends StatelessWidget {
   IconData _iconoServicio(String tipo) {
     switch (tipo) {
       case 'RECARGA':
-        return Icons.phone_android_outlined;
+        return Icons
+            .phone_android_outlined;
+
       case 'RETIRO':
         return Icons.payments_outlined;
+
       case 'DEPOSITO':
-        return Icons.account_balance_outlined;
+        return Icons
+            .account_balance_outlined;
+
       case 'CFE':
         return Icons.flash_on_outlined;
+
       case 'TELMEX':
       case 'INTERNET':
         return Icons.router_outlined;
+
       default:
-        return Icons.point_of_sale_outlined;
+        return Icons
+            .point_of_sale_outlined;
     }
   }
 }
 
-class _MetricaTarifa extends StatelessWidget {
+class _MetricaTarifa
+    extends StatelessWidget {
   final String titulo;
   final String valor;
 
@@ -557,25 +733,29 @@ class _MetricaTarifa extends StatelessWidget {
     return SizedBox(
       width: 94,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           Text(
             titulo,
             style: const TextStyle(
               color: _textoSuave,
               fontSize: 10,
-              fontWeight: FontWeight.w700,
+              fontWeight:
+                  FontWeight.w700,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             valor,
             maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            overflow:
+                TextOverflow.ellipsis,
             style: const TextStyle(
               color: _texto,
               fontSize: 12,
-              fontWeight: FontWeight.w900,
+              fontWeight:
+                  FontWeight.w900,
             ),
           ),
         ],
@@ -602,7 +782,8 @@ class _DatosTarifaYastas {
   });
 }
 
-class _DialogoTarifaYastas extends StatefulWidget {
+class _DialogoTarifaYastas
+    extends StatefulWidget {
   final TarifaServicioYastas tarifa;
 
   const _DialogoTarifaYastas({
@@ -610,17 +791,28 @@ class _DialogoTarifaYastas extends StatefulWidget {
   });
 
   @override
-  State<_DialogoTarifaYastas> createState() => _DialogoTarifaYastasState();
+  State<_DialogoTarifaYastas> createState() =>
+      _DialogoTarifaYastasState();
 }
 
-class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
-  final TextEditingController _nombreController = TextEditingController();
-  final TextEditingController _comisionClienteController =
+class _DialogoTarifaYastasState
+    extends State<_DialogoTarifaYastas> {
+  final TextEditingController _nombreController =
       TextEditingController();
-  final TextEditingController _comisionYastasController =
+
+  final TextEditingController
+      _comisionClienteController =
       TextEditingController();
-  final TextEditingController _regaliaController = TextEditingController();
-  final TextEditingController _gananciaController = TextEditingController();
+
+  final TextEditingController
+      _comisionYastasController =
+      TextEditingController();
+
+  final TextEditingController _regaliaController =
+      TextEditingController();
+
+  final TextEditingController _gananciaController =
+      TextEditingController();
 
   late String _tipoServicio;
   String? _error;
@@ -630,12 +822,27 @@ class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
     super.initState();
 
     final tarifa = widget.tarifa;
+
     _tipoServicio = tarifa.tipoServicio;
-    _nombreController.text = tarifa.nombreServicio;
-    _comisionClienteController.text = tarifa.comisionCliente.toStringAsFixed(2);
-    _comisionYastasController.text = tarifa.comisionYastas.toStringAsFixed(2);
-    _regaliaController.text = tarifa.regaliaYastas.toStringAsFixed(2);
-    _gananciaController.text = tarifa.gananciaFarmacia.toStringAsFixed(2);
+
+    _nombreController.text =
+        tarifa.nombreServicio;
+
+    _comisionClienteController.text =
+        tarifa.comisionCliente
+            .toStringAsFixed(2);
+
+    _comisionYastasController.text =
+        tarifa.comisionYastas
+            .toStringAsFixed(2);
+
+    _regaliaController.text =
+        tarifa.regaliaYastas
+            .toStringAsFixed(2);
+
+    _gananciaController.text =
+        tarifa.gananciaFarmacia
+            .toStringAsFixed(2);
   }
 
   @override
@@ -645,36 +852,68 @@ class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
     _comisionYastasController.dispose();
     _regaliaController.dispose();
     _gananciaController.dispose();
+
     super.dispose();
   }
 
   void _guardar() {
-    final nombre = _nombreController.text.trim();
-    final comisionCliente = _leerMonto(_comisionClienteController);
-    final comisionYastas = _leerMonto(_comisionYastasController);
-    final regalia = _leerMonto(_regaliaController);
-    final ganancia = _leerMonto(_gananciaController);
+    final nombre =
+        _nombreController.text.trim();
+
+    final comisionCliente = _leerMonto(
+      _comisionClienteController,
+    );
+
+    final comisionYastas = _leerMonto(
+      _comisionYastasController,
+    );
+
+    final regalia = _leerMonto(
+      _regaliaController,
+    );
+
+    final ganancia = _leerMonto(
+      _gananciaController,
+    );
 
     if (nombre.isEmpty) {
       setState(() {
-        _error = 'El nombre del servicio es obligatorio';
+        _error =
+            'El nombre del servicio es obligatorio';
       });
+
       return;
     }
 
-    if ([comisionCliente, comisionYastas, regalia, ganancia]
-        .any((value) => value == null || value < 0)) {
+    if ([
+      comisionCliente,
+      comisionYastas,
+      regalia,
+      ganancia,
+    ].any(
+      (value) =>
+          value == null || value < 0,
+    )) {
       setState(() {
-        _error = 'Los importes deben ser numeros mayores o iguales a cero';
+        _error =
+            'Los importes deben ser numeros mayores o iguales a cero';
       });
+
       return;
     }
 
-    final reparto = comisionYastas! + regalia! + ganancia!;
-    if (reparto > comisionCliente! + 0.005) {
+    final reparto =
+        comisionYastas! +
+            regalia! +
+            ganancia!;
+
+    if (reparto >
+        comisionCliente! + 0.005) {
       setState(() {
-        _error = 'El reparto no puede superar la comision cobrada al cliente';
+        _error =
+            'El reparto no puede superar la comision cobrada al cliente';
       });
+
       return;
     }
 
@@ -682,50 +921,110 @@ class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
       _DatosTarifaYastas(
         tipoServicio: _tipoServicio,
         nombreServicio: nombre,
-        comisionCliente: comisionCliente,
-        comisionYastas: comisionYastas,
+        comisionCliente:
+            comisionCliente,
+        comisionYastas:
+            comisionYastas,
         regaliaYastas: regalia,
-        gananciaFarmacia: ganancia,
+        gananciaFarmacia:
+            ganancia,
       ),
     );
   }
 
-  double? _leerMonto(TextEditingController controller) {
-    return double.tryParse(controller.text.trim());
+  double? _leerMonto(
+    TextEditingController controller,
+  ) {
+    return double.tryParse(
+      controller.text.trim(),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Editar tarifa'),
+      title: const Text(
+        'Editar tarifa',
+      ),
       content: SizedBox(
         width: 520,
         child: SingleChildScrollView(
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize:
+                MainAxisSize.min,
             children: [
               DropdownButtonFormField<String>(
-                initialValue: _tipoServicio,
-                decoration: const InputDecoration(
-                  labelText: 'Tipo de servicio',
-                  border: OutlineInputBorder(),
+                initialValue:
+                    _tipoServicio,
+                decoration:
+                    const InputDecoration(
+                  labelText:
+                      'Tipo de servicio',
+                  border:
+                      OutlineInputBorder(),
                 ),
                 items: const [
-                  DropdownMenuItem(value: 'RECARGA', child: Text('Recarga')),
-                  DropdownMenuItem(value: 'DEPOSITO', child: Text('Deposito')),
-                  DropdownMenuItem(value: 'RETIRO', child: Text('Retiro')),
                   DropdownMenuItem(
-                    value: 'PAGO_SERVICIO',
-                    child: Text('Pago de servicio'),
+                    value: 'RECARGA',
+                    child: Text(
+                      'Recarga',
+                    ),
                   ),
-                  DropdownMenuItem(value: 'CFE', child: Text('CFE')),
-                  DropdownMenuItem(value: 'TELMEX', child: Text('Telmex')),
-                  DropdownMenuItem(value: 'IZZI', child: Text('Izzi')),
-                  DropdownMenuItem(value: 'INTERNET', child: Text('Internet')),
-                  DropdownMenuItem(value: 'OTRO', child: Text('Otro')),
+                  DropdownMenuItem(
+                    value: 'DEPOSITO',
+                    child: Text(
+                      'Deposito',
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'RETIRO',
+                    child: Text(
+                      'Retiro',
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value:
+                        'PAGO_SERVICIO',
+                    child: Text(
+                      'Pago de servicio',
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'CFE',
+                    child: Text(
+                      'CFE',
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'TELMEX',
+                    child: Text(
+                      'Telmex',
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'IZZI',
+                    child: Text(
+                      'Izzi',
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'INTERNET',
+                    child: Text(
+                      'Internet',
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'OTRO',
+                    child: Text(
+                      'Otro',
+                    ),
+                  ),
                 ],
                 onChanged: (value) {
-                  if (value == null) return;
+                  if (value == null) {
+                    return;
+                  }
+
                   setState(() {
                     _tipoServicio = value;
                   });
@@ -733,50 +1032,66 @@ class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
               ),
               const SizedBox(height: 12),
               TextField(
-                controller: _nombreController,
-                decoration: const InputDecoration(
-                  labelText: 'Nombre del servicio',
-                  border: OutlineInputBorder(),
+                controller:
+                    _nombreController,
+                decoration:
+                    const InputDecoration(
+                  labelText:
+                      'Nombre del servicio',
+                  border:
+                      OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
               _CampoDinero(
-                controller: _comisionClienteController,
-                label: 'Comision cliente',
+                controller:
+                    _comisionClienteController,
+                label:
+                    'Comision cliente',
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
                     child: _CampoDinero(
-                      controller: _comisionYastasController,
-                      label: 'Comision Yastas',
+                      controller:
+                          _comisionYastasController,
+                      label:
+                          'Comision Yastas',
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: _CampoDinero(
-                      controller: _regaliaController,
-                      label: 'Regalia Yastas',
+                      controller:
+                          _regaliaController,
+                      label:
+                          'Regalia Yastas',
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
               _CampoDinero(
-                controller: _gananciaController,
-                label: 'Ganancia farmacia',
+                controller:
+                    _gananciaController,
+                label:
+                    'Ganancia farmacia',
               ),
               if (_error != null) ...[
                 const SizedBox(height: 12),
                 Align(
-                  alignment: Alignment.centerLeft,
+                  alignment:
+                      Alignment.centerLeft,
                   child: Text(
                     _error!,
-                    style: const TextStyle(
-                      color: Color(0xFFE21F1F),
+                    style:
+                        const TextStyle(
+                      color:
+                          Color(0xFFE21F1F),
                       fontSize: 12,
-                      fontWeight: FontWeight.w700,
+                      fontWeight:
+                          FontWeight.w700,
                     ),
                   ),
                 ),
@@ -787,12 +1102,18 @@ class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancelar'),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: const Text(
+            'Cancelar',
+          ),
         ),
         FilledButton(
           onPressed: _guardar,
-          child: const Text('Guardar'),
+          child: const Text(
+            'Guardar',
+          ),
         ),
       ],
     );
@@ -812,10 +1133,14 @@ class _CampoDinero extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      keyboardType:
+          const TextInputType.numberWithOptions(
+        decimal: true,
+      ),
       decoration: InputDecoration(
         labelText: label,
-        border: const OutlineInputBorder(),
+        border:
+            const OutlineInputBorder(),
         prefixText: '\$',
       ),
     );

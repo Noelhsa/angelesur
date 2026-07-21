@@ -12,7 +12,6 @@ const Color _azul = Color(0xFF0B63CE);
 const Color _textoPrincipal = Color(0xFF101828);
 const Color _textoSecundario = Color(0xFF667085);
 const Color _bordeSuave = Color(0xFFD9E6D3);
-const Color _grisCabeceraTabla = Color(0xFFE7E3E3);
 const Color _rojo = Color(0xFFE02020);
 
 class ContenidoUsuarios extends StatefulWidget {
@@ -24,18 +23,24 @@ class ContenidoUsuarios extends StatefulWidget {
   });
 
   @override
-  State<ContenidoUsuarios> createState() => _ContenidoUsuariosState();
+  State<ContenidoUsuarios> createState() =>
+      _ContenidoUsuariosState();
 }
 
 class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
-  final UsuariosApiService _usuariosApiService = UsuariosApiService();
-  final TextEditingController _busquedaController = TextEditingController();
+  final UsuariosApiService _usuariosApiService =
+      UsuariosApiService();
+
+  final TextEditingController _busquedaController =
+      TextEditingController();
 
   bool _cargando = true;
   bool _guardando = false;
   bool _mostrarMenuNuevoUsuario = false;
+
   String? _error;
   String _rolSeleccionado = 'Todos';
+
   List<Usuario> _usuarios = [];
   Usuario? _usuarioEditando;
 
@@ -57,13 +62,16 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
   }
 
   List<Usuario> get _usuariosFiltrados {
-    final texto = _busquedaController.text.trim().toLowerCase();
+    final texto =
+        _busquedaController.text.trim().toLowerCase();
 
     return _usuarios.where((usuario) {
       final coincideTexto = texto.isEmpty ||
           usuario.nombre.toLowerCase().contains(texto) ||
           usuario.username.toLowerCase().contains(texto) ||
-          (usuario.telefono ?? '').toLowerCase().contains(texto) ||
+          (usuario.telefono ?? '')
+              .toLowerCase()
+              .contains(texto) ||
           usuario.rol.toLowerCase().contains(texto);
 
       final coincideRol = _rolSeleccionado == 'Todos' ||
@@ -88,7 +96,8 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
     });
 
     try {
-      final usuarios = await _usuariosApiService.listarUsuarios(
+      final usuarios =
+          await _usuariosApiService.listarUsuarios(
         incluirInactivos: true,
       );
 
@@ -103,7 +112,9 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
     } on ApiException catch (error) {
       _mostrarError(error.message);
     } catch (_) {
-      _mostrarError('No se pudieron cargar los usuarios');
+      _mostrarError(
+        'No se pudieron cargar los usuarios',
+      );
     }
   }
 
@@ -119,18 +130,22 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
     });
   }
 
-  Future<void> _guardarUsuario(DatosFormularioUsuario datos) async {
+  Future<void> _guardarUsuario(
+    DatosFormularioUsuario datos,
+  ) async {
     setState(() {
       _guardando = true;
     });
 
     try {
-      final usuario = await _usuariosApiService.crearUsuario(
+      final usuario =
+          await _usuariosApiService.crearUsuario(
         nombre: datos.nombre,
         username: datos.username,
         password: datos.password,
         rol: datos.rol,
-        telefono: datos.telefono.isEmpty ? null : datos.telefono,
+        telefono:
+            datos.telefono.isEmpty ? null : datos.telefono,
       );
 
       if (!datos.activo) {
@@ -161,7 +176,9 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
         });
       }
     } catch (_) {
-      _mostrarSnack('No se pudo guardar el usuario');
+      _mostrarSnack(
+        'No se pudo guardar el usuario',
+      );
 
       if (mounted) {
         setState(() {
@@ -180,8 +197,11 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
       return;
     }
 
-    if (usuarioEditando.id == widget.usuario.id && !datos.activo) {
-      _mostrarSnack('No puedes desactivar tu propia sesion.');
+    if (usuarioEditando.id == widget.usuario.id &&
+        !datos.activo) {
+      _mostrarSnack(
+        'No puedes desactivar tu propia sesion.',
+      );
       return;
     }
 
@@ -194,7 +214,8 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
         idUsuario: usuarioEditando.id,
         nombre: datos.nombre,
         username: datos.username,
-        password: datos.password.isEmpty ? null : datos.password,
+        password:
+            datos.password.isEmpty ? null : datos.password,
         rol: datos.rol,
         telefono: datos.telefono,
       );
@@ -228,7 +249,9 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
         });
       }
     } catch (_) {
-      _mostrarSnack('No se pudo actualizar el usuario');
+      _mostrarSnack(
+        'No se pudo actualizar el usuario',
+      );
 
       if (mounted) {
         setState(() {
@@ -271,7 +294,9 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
     } on ApiException catch (error) {
       _mostrarSnack(error.message);
     } catch (_) {
-      _mostrarSnack('No se pudo cambiar el estado del usuario');
+      _mostrarSnack(
+        'No se pudo cambiar el estado del usuario',
+      );
     }
   }
 
@@ -328,8 +353,10 @@ class _ContenidoUsuariosState extends State<ContenidoUsuarios> {
                     )
                   else
                     _PanelUsuarios(
-                      busquedaController: _busquedaController,
-                      rolSeleccionado: _rolSeleccionado,
+                      busquedaController:
+                          _busquedaController,
+                      rolSeleccionado:
+                          _rolSeleccionado,
                       onRolChanged: (value) {
                         if (value == null) {
                           return;
@@ -525,7 +552,7 @@ class _TarjetaResumenUsuario extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 86,
+      height: 90,
       padding: const EdgeInsets.fromLTRB(
         18,
         15,
@@ -552,8 +579,10 @@ class _TarjetaResumenUsuario extends StatelessWidget {
         children: [
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
+              mainAxisAlignment:
+                  MainAxisAlignment.center,
               children: [
                 Text(
                   titulo,
@@ -565,12 +594,12 @@ class _TarjetaResumenUsuario extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
                   valor,
                   style: const TextStyle(
                     color: _textoPrincipal,
-                    fontSize: 24,
+                    fontSize: 22,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -617,101 +646,100 @@ class _PanelUsuarios extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _fondoPagina,
-        border: Border.all(
-          color: _bordeSuave,
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.fromLTRB(
+            22,
+            18,
+            22,
+            18,
+          ),
+          decoration: BoxDecoration(
+            color: _fondoPagina,
+            border: Border.all(
+              color: _bordeSuave,
+            ),
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 330,
+                height: 38,
+                child: TextField(
+                  controller: busquedaController,
+                  cursorColor: _verdeOscuro,
+                  style: const TextStyle(
+                    color: _textoPrincipal,
+                    fontSize: 12,
+                  ),
+                  decoration: _inputDecoration(
+                    hintText:
+                        'Buscar por nombre, usuario, telefono o rol...',
+                  ),
+                ),
+              ),
+              const Spacer(),
+              SizedBox(
+                width: 150,
+                height: 38,
+                child: DropdownButtonFormField<String>(
+                  initialValue: rolSeleccionado,
+                  isExpanded: true,
+                  decoration: _inputDecoration(),
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down,
+                    size: 17,
+                    color: _textoSecundario,
+                  ),
+                  style: const TextStyle(
+                    color: _textoPrincipal,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'Todos',
+                      child: Text('Todos'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'JEFE',
+                      child: Text('JEFE'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'EMPLEADO',
+                      child: Text('EMPLEADO'),
+                    ),
+                  ],
+                  onChanged: onRolChanged,
+                ),
+              ),
+            ],
+          ),
         ),
-        borderRadius: BorderRadius.circular(9),
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              22,
-              18,
-              22,
-              18,
-            ),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 330,
-                  height: 38,
-                  child: TextField(
-                    controller: busquedaController,
-                    cursorColor: _verdeOscuro,
-                    style: const TextStyle(
-                      color: _textoPrincipal,
-                      fontSize: 12,
-                    ),
-                    decoration: _inputDecoration(
-                      hintText:
-                          'Buscar por nombre, usuario, telefono o rol...',
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                SizedBox(
-                  width: 150,
-                  height: 38,
-                  child: DropdownButtonFormField<String>(
-                    initialValue: rolSeleccionado,
-                    isExpanded: true,
-                    decoration: _inputDecoration(),
-                    icon: const Icon(
-                      Icons.keyboard_arrow_down,
-                      size: 17,
-                      color: _textoSecundario,
-                    ),
-                    style: const TextStyle(
-                      color: _textoPrincipal,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'Todos',
-                        child: Text('Todos'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'JEFE',
-                        child: Text('JEFE'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'EMPLEADO',
-                        child: Text('EMPLEADO'),
-                      ),
-                    ],
-                    onChanged: onRolChanged,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final anchoTabla = constraints.maxWidth < 930
-                  ? 930.0
-                  : constraints.maxWidth;
+        const SizedBox(height: 18),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final anchoTabla = constraints.maxWidth < 930
+                ? 930.0
+                : constraints.maxWidth;
 
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: anchoTabla,
-                  child: _TablaUsuarios(
-                    usuarios: usuarios,
-                    usuarioActualId: usuarioActualId,
-                    onCambiarEstado: onCambiarEstado,
-                    onEditar: onEditar,
-                  ),
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: anchoTabla,
+                child: _TablaUsuarios(
+                  usuarios: usuarios,
+                  usuarioActualId: usuarioActualId,
+                  onCambiarEstado: onCambiarEstado,
+                  onEditar: onEditar,
                 ),
-              );
-            },
-          ),
-        ],
-      ),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -768,84 +796,30 @@ class _TablaUsuarios extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (usuarios.isEmpty) {
+      return const _EstadoUsuariosVacio();
+    }
+
     return Column(
       children: [
-        const _HeaderTablaUsuarios(),
-        if (usuarios.isEmpty)
-          const _EstadoUsuariosVacio()
-        else
-          for (final usuario in usuarios)
-            _FilaUsuario(
-              usuario: usuario,
-              esUsuarioActual: usuario.id == usuarioActualId,
-              onCambiarEstado: () {
-                onCambiarEstado(usuario);
-              },
-              onEditar: () {
-                onEditar(usuario);
-              },
-            ),
-      ],
-    );
-  }
-}
-
-class _HeaderTablaUsuarios extends StatelessWidget {
-  const _HeaderTablaUsuarios();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 54,
-      color: _grisCabeceraTabla,
-      child: const Row(
-        children: [
-          SizedBox(width: 22),
-          Expanded(
-            flex: 24,
-            child: _TextoHeaderTabla('Usuario'),
+        for (var index = 0;
+            index < usuarios.length;
+            index++) ...[
+          if (index > 0)
+            const SizedBox(height: 10),
+          _FilaUsuario(
+            usuario: usuarios[index],
+            esUsuarioActual:
+                usuarios[index].id == usuarioActualId,
+            onCambiarEstado: () {
+              onCambiarEstado(usuarios[index]);
+            },
+            onEditar: () {
+              onEditar(usuarios[index]);
+            },
           ),
-          Expanded(
-            flex: 18,
-            child: _TextoHeaderTabla('Username'),
-          ),
-          Expanded(
-            flex: 18,
-            child: _TextoHeaderTabla('Telefono'),
-          ),
-          Expanded(
-            flex: 14,
-            child: _TextoHeaderTabla('Rol'),
-          ),
-          Expanded(
-            flex: 14,
-            child: _TextoHeaderTabla('Estado'),
-          ),
-          Expanded(
-            flex: 16,
-            child: _TextoHeaderTabla('Acciones'),
-          ),
-          SizedBox(width: 16),
         ],
-      ),
-    );
-  }
-}
-
-class _TextoHeaderTabla extends StatelessWidget {
-  final String texto;
-
-  const _TextoHeaderTabla(this.texto);
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      texto,
-      style: const TextStyle(
-        color: Color(0xFF747B65),
-        fontSize: 11,
-        fontWeight: FontWeight.w900,
-      ),
+      ],
     );
   }
 }
@@ -866,24 +840,36 @@ class _FilaUsuario extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 72,
-      decoration: const BoxDecoration(
+      padding: const EdgeInsets.fromLTRB(
+        18,
+        14,
+        14,
+        14,
+      ),
+      decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(
-          top: BorderSide(
-            color: Color(0xFFE0E8D8),
-          ),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: _bordeSuave,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(
+              alpha: 0.05,
+            ),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          const SizedBox(width: 22),
           Expanded(
             flex: 24,
             child: Row(
               children: [
                 CircleAvatar(
-                  radius: 18,
+                  radius: 20,
                   backgroundColor: usuario.activo
                       ? const Color(0xFFE8F1FF)
                       : const Color(0xFFFFE8E8),
@@ -896,96 +882,138 @@ class _FilaUsuario extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
-                  child: Text(
-                    usuario.nombre,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF56605A),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        usuario.nombre,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF56605A),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Usuario #${usuario.id}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: _textoSecundario,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 17,
+            child: _MetricaUsuario(
+              titulo: 'Username',
+              child: Text(
+                usuario.username,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: _textoFila,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 17,
+            child: _MetricaUsuario(
+              titulo: 'Teléfono',
+              child: Text(
+                usuario.telefono?.isNotEmpty == true
+                    ? usuario.telefono!
+                    : 'Sin teléfono',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: _textoFila,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 13,
+            child: _MetricaUsuario(
+              titulo: 'Rol',
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _BadgeRol(
+                  rol: usuario.rol,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 13,
+            child: _MetricaUsuario(
+              titulo: 'Estado',
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _BadgeEstadoUsuario(
+                  activo: usuario.activo,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 15,
+            child: _MetricaUsuario(
+              titulo: 'Acciones',
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: onEditar,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 30,
                     ),
+                    icon: const Icon(
+                      Icons.edit_outlined,
+                    ),
+                    iconSize: 18,
+                    color: _azul,
+                    tooltip: 'Editar',
                   ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            flex: 18,
-            child: Text(
-              usuario.username,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: _textoFila,
-            ),
-          ),
-          Expanded(
-            flex: 18,
-            child: Text(
-              usuario.telefono?.isEmpty == false
-                  ? usuario.telefono!
-                  : 'Sin telefono',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: _textoFila,
-            ),
-          ),
-          Expanded(
-            flex: 14,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: _BadgeRol(
-                rol: usuario.rol,
+                  const SizedBox(width: 5),
+                  IconButton(
+                    onPressed: esUsuarioActual
+                        ? null
+                        : onCambiarEstado,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 30,
+                    ),
+                    icon: Icon(
+                      usuario.activo
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
+                    iconSize: 18,
+                    color: esUsuarioActual
+                        ? _textoSecundario
+                        : _verdeOscuro,
+                    tooltip: esUsuarioActual
+                        ? 'No puedes desactivar tu propia sesion'
+                        : usuario.activo
+                            ? 'Desactivar'
+                            : 'Activar',
+                  ),
+                ],
               ),
             ),
           ),
-          Expanded(
-            flex: 14,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: _BadgeEstadoUsuario(
-                activo: usuario.activo,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 16,
-            child: Row(
-              children: [
-                IconButton(
-                  onPressed: onEditar,
-                  icon: const Icon(
-                    Icons.edit_outlined,
-                  ),
-                  iconSize: 18,
-                  color: _azul,
-                  tooltip: 'Editar',
-                ),
-                IconButton(
-                  onPressed: esUsuarioActual
-                      ? null
-                      : onCambiarEstado,
-                  icon: Icon(
-                    usuario.activo
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                  ),
-                  iconSize: 18,
-                  color: esUsuarioActual
-                      ? _textoSecundario
-                      : _verdeOscuro,
-                  tooltip: esUsuarioActual
-                      ? 'No puedes desactivar tu propia sesion'
-                      : usuario.activo
-                          ? 'Desactivar'
-                          : 'Activar',
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
         ],
       ),
     );
@@ -1006,7 +1034,46 @@ class _FilaUsuario extends StatelessWidget {
           .toUpperCase();
     }
 
-    return '${partes[0][0]}${partes[1][0]}'.toUpperCase();
+    return '${partes[0][0]}${partes[1][0]}'
+        .toUpperCase();
+  }
+}
+
+class _MetricaUsuario extends StatelessWidget {
+  final String titulo;
+  final Widget child;
+
+  const _MetricaUsuario({
+    required this.titulo,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(
+        left: 8,
+        right: 8,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            titulo,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _textoSecundario,
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 5),
+          child,
+        ],
+      ),
+    );
   }
 }
 
@@ -1129,9 +1196,17 @@ class _EstadoUsuariosVacio extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(
+    return Container(
+      width: double.infinity,
       height: 90,
-      child: Center(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: _bordeSuave,
+        ),
+      ),
+      child: const Center(
         child: Text(
           'No hay usuarios para mostrar',
           style: TextStyle(
@@ -1146,7 +1221,7 @@ class _EstadoUsuariosVacio extends StatelessWidget {
 }
 
 const TextStyle _textoFila = TextStyle(
-  color: Color(0xFF6A736C),
+  color: Color(0xFF56605A),
   fontSize: 12,
-  fontWeight: FontWeight.w700,
+  fontWeight: FontWeight.w900,
 );
