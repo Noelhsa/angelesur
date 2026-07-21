@@ -11,12 +11,12 @@ const Color _grisCampo = Color(0xFFF8F7F4);
 
 class MenuCartaCatalogoProducto extends StatefulWidget {
   final VoidCallback onCerrar;
-  final ValueChanged<ProductoPayload> onGuardarMedicamento;
+  final ValueChanged<ProductoPayload> onGuardarProducto;
 
   const MenuCartaCatalogoProducto({
     super.key,
     required this.onCerrar,
-    required this.onGuardarMedicamento,
+    required this.onGuardarProducto,
   });
 
   @override
@@ -37,9 +37,18 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
   final TextEditingController _principioActivoController =
       TextEditingController();
 
-  String _tipoSeleccionado = 'Tableta';
+  final TextEditingController _dosisCantidadController =
+      TextEditingController();
+
+  String _claseSeleccionada = 'Producto';
+  String _tipoSeleccionado = 'Producto';
+  String _viaAdministracionSeleccionada = 'TABLETA';
+  String _edadSeleccionada = 'GENERAL';
+  String _dosisUnidadSeleccionada = 'mg';
   String? _error;
-  String _categoriaSeleccionada = 'Analgésicos';
+  String _categoriaSeleccionada = 'General';
+  bool _manejaCaducidad = false;
+  bool _requiereReceta = false;
 
   @override
   void dispose() {
@@ -48,11 +57,14 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
     _descripcionController.dispose();
     _fechaController.dispose();
     _principioActivoController.dispose();
+    _dosisCantidadController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final esMedicamento = _claseSeleccionada == 'Medicamento';
+
     return Container(
       width: 285,
       height: double.infinity,
@@ -69,6 +81,7 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
         children: [
           _EncabezadoNuevoMedicamento(
             onCerrar: widget.onCerrar,
+            esMedicamento: esMedicamento,
           ),
           Expanded(
             child: SingleChildScrollView(
@@ -77,21 +90,50 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _CampoTextoCatalogo(
-                    etiqueta: 'Código de barras',
+                    etiqueta: 'Codigo de barras',
                     controller: _codigoController,
                     suffixIcon: Icons.barcode_reader,
                   ),
                   const SizedBox(height: 14),
-                  _CampoTextoCatalogo(
-                    etiqueta: 'Nombre del medicamento',
-                    controller: _nombreController,
-                    hintText: 'Ej: Ibuprofeno 400mg',
+                  _CampoDropdownCatalogo(
+                    etiqueta: 'Tipo de registro',
+                    valor: _claseSeleccionada,
+                    opciones: const ['Producto', 'Medicamento'],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        _claseSeleccionada = value;
+                        if (value == 'Medicamento') {
+                          _tipoSeleccionado = 'Tableta';
+                          _viaAdministracionSeleccionada = 'TABLETA';
+                          _edadSeleccionada = 'GENERAL';
+                          _dosisUnidadSeleccionada = 'mg';
+                          _categoriaSeleccionada = 'Analgesicos';
+                          _manejaCaducidad = true;
+                          _requiereReceta = false;
+                        } else {
+                          _tipoSeleccionado = 'Producto';
+                          _categoriaSeleccionada = 'General';
+                          _manejaCaducidad = false;
+                        }
+                        _error = null;
+                      });
+                    },
                   ),
                   const SizedBox(height: 14),
                   _CampoTextoCatalogo(
-                    etiqueta: 'Descripción',
+                    etiqueta:
+                        esMedicamento ? 'Nombre del medicamento' : 'Nombre',
+                    controller: _nombreController,
+                    hintText: esMedicamento
+                        ? 'Ej: Ibuprofeno 400mg'
+                        : 'Ej: Shampoo, alcohol, jeringa',
+                  ),
+                  const SizedBox(height: 14),
+                  _CampoTextoCatalogo(
+                    etiqueta: 'Descripcion',
                     controller: _descripcionController,
-                    hintText: 'Indicaciones terapéuticas y detalles...',
+                    hintText: 'Indicaciones terapeuticas y detalles...',
                     maxLines: 3,
                   ),
                   const SizedBox(height: 14),
@@ -99,17 +141,31 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
                     children: [
                       Expanded(
                         child: _CampoDropdownCatalogo(
-                          etiqueta: 'Tipo',
+                          etiqueta: esMedicamento ? 'Presentacion' : 'Tipo',
                           valor: _tipoSeleccionado,
-                          opciones: const [
-                            'Tableta',
-                            'Cápsula',
-                            'Jarabe',
-                            'Suspensión',
-                            'Inyectable',
-                            'Crema',
-                            'Spray',
-                          ],
+                          opciones: esMedicamento
+                              ? const [
+                                  'Tableta',
+                                  'Capsula',
+                                  'Pastilla',
+                                  'Jarabe',
+                                  'Suspension',
+                                  'Gotas',
+                                  'Inyectable',
+                                  'Crema',
+                                  'Pomada',
+                                  'Spray',
+                                  'Solucion',
+                                  'Otro',
+                                ]
+                              : const [
+                                  'Producto',
+                                  'Higiene',
+                                  'Curacion',
+                                  'Bebida',
+                                  'Dispositivo',
+                                  'Otro',
+                                ],
                           onChanged: (value) {
                             if (value == null) return;
                             setState(() {
@@ -121,20 +177,42 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: _CampoDropdownCatalogo(
-                          etiqueta: 'Categoría',
-                          valor: _categoriaSeleccionada,
-                          opciones: const [
-                            'Analgésicos',
-                            'Antibióticos',
-                            'Diabetes',
-                            'Suplementos',
-                            'Gástrico',
-                            'Dispositivo',
-                          ],
+                          etiqueta:
+                              esMedicamento ? 'Via de Admin' : 'Categoria',
+                          valor: esMedicamento
+                              ? _viaAdministracionSeleccionada
+                              : _categoriaSeleccionada,
+                          opciones: esMedicamento
+                              ? const [
+                                  'CAPSULA',
+                                  'TABLETA',
+                                  'PASTILLA',
+                                  'SUSPENSION',
+                                  'GOTAS',
+                                  'INYECCION',
+                                  'JARABE',
+                                  'CREMA',
+                                  'POMADA',
+                                  'AEROSOL',
+                                  'SOLUCION',
+                                  'OTRO',
+                                ]
+                              : const [
+                                  'General',
+                                  'Higiene',
+                                  'Curacion',
+                                  'Bebidas',
+                                  'Dispositivo',
+                                  'Otro',
+                                ],
                           onChanged: (value) {
                             if (value == null) return;
                             setState(() {
-                              _categoriaSeleccionada = value;
+                              if (esMedicamento) {
+                                _viaAdministracionSeleccionada = value;
+                              } else {
+                                _categoriaSeleccionada = value;
+                              }
                             });
                           },
                         ),
@@ -142,24 +220,98 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _CampoFechaCatalogo(
-                          etiqueta: 'Fecha de caducidad',
-                          controller: _fechaController,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _CampoTextoCatalogo(
-                          etiqueta: 'Principio Activo',
-                          controller: _principioActivoController,
-                          hintText: 'Ej: Naproxeno',
-                        ),
-                      ),
-                    ],
+                  _OpcionCaducidadCatalogo(
+                    value: _manejaCaducidad,
+                    onChanged: (value) {
+                      setState(() {
+                        _manejaCaducidad = value;
+                      });
+                    },
                   ),
+                  if (esMedicamento) ...[
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _CampoFechaCatalogo(
+                            etiqueta: 'Fecha de caducidad',
+                            controller: _fechaController,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _CampoTextoCatalogo(
+                            etiqueta: 'Principio Activo',
+                            controller: _principioActivoController,
+                            hintText: 'Ej: Naproxeno',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    _CampoDropdownCatalogo(
+                      etiqueta: 'Edad',
+                      valor: _edadSeleccionada,
+                      opciones: const [
+                        'PEDIATRICO',
+                        'INFANTIL',
+                        'ADULTO',
+                        'GENERAL',
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() {
+                          _edadSeleccionada = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    _OpcionRecetaCatalogo(
+                      value: _requiereReceta,
+                      onChanged: (value) {
+                        setState(() {
+                          _requiereReceta = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _CampoTextoCatalogo(
+                            etiqueta: 'Cantidad',
+                            controller: _dosisCantidadController,
+                            hintText: 'Ej: 500',
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _CampoDropdownCatalogo(
+                            etiqueta: 'Unidad',
+                            valor: _dosisUnidadSeleccionada,
+                            opciones: const [
+                              'mg',
+                              'g',
+                              'mcg',
+                              'ml',
+                              'l',
+                              'UI',
+                              '%',
+                              'gotas',
+                              'tabletas',
+                              'capsulas',
+                            ],
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setState(() {
+                                _dosisUnidadSeleccionada = value;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 14),
                   const _AreaCargarFoto(),
                   if (_error != null) ...[
@@ -179,48 +331,67 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
           ),
           _AccionesNuevoMedicamento(
             onCancelar: widget.onCerrar,
-            onGuardar: _guardarMedicamento,
+            onGuardar: _guardarProducto,
+            esMedicamento: esMedicamento,
           ),
         ],
       ),
     );
   }
 
-  void _guardarMedicamento() {
+  void _guardarProducto() {
+    final esMedicamento = _claseSeleccionada == 'Medicamento';
     final nombre = _nombreController.text.trim();
+    final dosis = _dosisTexto();
     if (nombre.isEmpty) {
       setState(() {
-        _error = 'Ingresa el nombre del medicamento';
+        _error = esMedicamento
+            ? 'Ingresa el nombre del medicamento'
+            : 'Ingresa el nombre del producto';
       });
       return;
     }
 
-    widget.onGuardarMedicamento(
+    widget.onGuardarProducto(
       ProductoPayload(
         codigoBarras: _limpiar(_codigoController.text),
         nombre: nombre,
         descripcion: _limpiar(_descripcionController.text),
-        tipo: 'MEDICAMENTO',
-        categoria: _categoriaNormalizada(_categoriaSeleccionada),
-        manejaCaducidad: true,
-        infoMedicamento: {
-          'presentacion': _presentacionNormalizada(_tipoSeleccionado),
-          'viaAdministracion': _viaAdministracion(_tipoSeleccionado),
-          'edad': 'GENERAL',
-          'requiereReceta': false,
-          'sustanciaActiva': _limpiar(_principioActivoController.text),
-          'dosis': null,
-        },
+        tipo: esMedicamento ? 'MEDICAMENTO' : 'PRODUCTO',
+        categoria: esMedicamento
+            ? null
+            : _categoriaNormalizada(_categoriaSeleccionada),
+        manejaCaducidad: _manejaCaducidad,
+        infoMedicamento: esMedicamento
+            ? {
+                'presentacion': _presentacionNormalizada(_tipoSeleccionado),
+                'viaAdministracion': _viaAdministracionSeleccionada,
+                'edad': _edadSeleccionada,
+                'requiereReceta': _requiereReceta,
+                'sustanciaActiva': _limpiar(_principioActivoController.text),
+                'dosis': dosis,
+              }
+            : null,
       ),
     );
+  }
+
+  String? _dosisTexto() {
+    final cantidad = _dosisCantidadController.text.trim();
+    if (cantidad.isEmpty) {
+      return null;
+    }
+    return '$cantidad $_dosisUnidadSeleccionada';
   }
 }
 
 class _EncabezadoNuevoMedicamento extends StatelessWidget {
   final VoidCallback onCerrar;
+  final bool esMedicamento;
 
   const _EncabezadoNuevoMedicamento({
     required this.onCerrar,
+    required this.esMedicamento,
   });
 
   @override
@@ -238,16 +409,18 @@ class _EncabezadoNuevoMedicamento extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.medication_liquid_outlined,
+          Icon(
+            esMedicamento
+                ? Icons.medication_liquid_outlined
+                : Icons.inventory_2_outlined,
             color: _verdeOscuro,
             size: 19,
           ),
           const SizedBox(width: 8),
-          const Expanded(
+          Expanded(
             child: Text(
-              'Nuevo Medicamento',
-              style: TextStyle(
+              esMedicamento ? 'Nuevo Medicamento' : 'Nuevo Producto',
+              style: const TextStyle(
                 color: _textoPrincipal,
                 fontSize: 17,
                 fontWeight: FontWeight.w900,
@@ -304,6 +477,100 @@ class _CampoTextoCatalogo extends StatelessWidget {
         decoration: _decoracionCampo(
           hintText: hintText,
           suffixIcon: suffixIcon,
+        ),
+      ),
+    );
+  }
+}
+
+class _OpcionCaducidadCatalogo extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _OpcionCaducidadCatalogo({
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => onChanged(!value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: _grisCampo,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: _bordeSuave),
+        ),
+        child: Row(
+          children: [
+            Checkbox(
+              value: value,
+              activeColor: _verdeOscuro,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              onChanged: (checked) => onChanged(checked ?? false),
+            ),
+            const SizedBox(width: 6),
+            const Expanded(
+              child: Text(
+                'Maneja caducidad',
+                style: TextStyle(
+                  color: _textoPrincipal,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OpcionRecetaCatalogo extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _OpcionRecetaCatalogo({
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => onChanged(!value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: _grisCampo,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: _bordeSuave),
+        ),
+        child: Row(
+          children: [
+            Checkbox(
+              value: value,
+              activeColor: _verdeOscuro,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              onChanged: (checked) => onChanged(checked ?? false),
+            ),
+            const SizedBox(width: 6),
+            const Expanded(
+              child: Text(
+                'Requiere receta',
+                style: TextStyle(
+                  color: _textoPrincipal,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -377,7 +644,7 @@ class _CampoDropdownCatalogo extends StatelessWidget {
     return _ContenedorCampoCatalogo(
       etiqueta: etiqueta,
       child: DropdownButtonFormField<String>(
-        initialValue: valor,
+        initialValue: opciones.contains(valor) ? valor : opciones.first,
         isExpanded: true,
         icon: const Icon(
           Icons.keyboard_arrow_down,
@@ -463,9 +730,9 @@ class _AreaCargarFoto extends StatelessWidget {
               style: BorderStyle.solid,
             ),
           ),
-          child: CustomPaint(
+          child: const CustomPaint(
             painter: _DashedBorderPainter(),
-            child: const Center(
+            child: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -476,7 +743,7 @@ class _AreaCargarFoto extends StatelessWidget {
                   ),
                   SizedBox(height: 12),
                   Text(
-                    'Haz clic o arrastra la imagen del\nproducto aquí',
+                    'Haz clic o arrastra la imagen del\nproducto aqui',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: _textoPrincipal,
@@ -543,10 +810,12 @@ class _DashedBorderPainter extends CustomPainter {
 class _AccionesNuevoMedicamento extends StatelessWidget {
   final VoidCallback onCancelar;
   final VoidCallback onGuardar;
+  final bool esMedicamento;
 
   const _AccionesNuevoMedicamento({
     required this.onCancelar,
     required this.onGuardar,
+    required this.esMedicamento,
   });
 
   @override
@@ -601,10 +870,10 @@ class _AccionesNuevoMedicamento extends StatelessWidget {
                   color: _verdeOscuro,
                   size: 14,
                 ),
-                label: const Text(
-                  'Guardar\nMedicamento',
+                label: Text(
+                  esMedicamento ? 'Guardar\nMedicamento' : 'Guardar\nProducto',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: _verdeOscuro,
                     fontSize: 10,
                     height: 1.1,
@@ -634,30 +903,16 @@ String? _limpiar(String value) {
   return text.isEmpty ? null : text;
 }
 
-String _viaAdministracion(String presentacion) {
-  final normalizada = _presentacionNormalizada(presentacion);
-  return switch (normalizada) {
-    'Tableta' => 'TABLETA',
-    'Cápsula' => 'CAPSULA',
-    'Jarabe' => 'JARABE',
-    'Suspensión' => 'SUSPENSION',
-    'Inyectable' => 'INYECCION',
-    'Crema' => 'CREMA',
-    'Spray' => 'AEROSOL',
-    _ => 'OTRO',
-  };
-}
-
 String _presentacionNormalizada(String value) {
-  if (value.toLowerCase().contains('psula')) return 'Cápsula';
-  if (value.startsWith('Suspensi')) return 'Suspensión';
+  if (value.toLowerCase().contains('psula')) return 'Capsula';
+  if (value.startsWith('Suspensi')) return 'Suspension';
   return value;
 }
 
 String _categoriaNormalizada(String value) {
-  if (value.startsWith('Analg')) return 'Analgésicos';
-  if (value.startsWith('Antibi')) return 'Antibióticos';
-  if (value.startsWith('G')) return 'Gástrico';
+  if (value.startsWith('Analg')) return 'Analgesicos';
+  if (value.startsWith('Antibi')) return 'Antibioticos';
+  if (value.startsWith('G')) return 'Gastrico';
   return value;
 }
 

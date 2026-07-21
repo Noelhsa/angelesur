@@ -103,6 +103,9 @@ class CompraProductoDetalle {
   final double precioVentaSugerido;
   final DateTime? fechaCaducidad;
   final double subtotal;
+  final String ubicacionLetra;
+  final int? ubicacionNumero;
+  final String ubicacionEstante;
 
   const CompraProductoDetalle({
     required this.idCompraDetalle,
@@ -116,6 +119,9 @@ class CompraProductoDetalle {
     required this.precioVentaSugerido,
     required this.fechaCaducidad,
     required this.subtotal,
+    required this.ubicacionLetra,
+    required this.ubicacionNumero,
+    required this.ubicacionEstante,
   });
 
   factory CompraProductoDetalle.fromJson(Map<String, dynamic> map) {
@@ -132,6 +138,9 @@ class CompraProductoDetalle {
       fechaCaducidad:
           DateTime.tryParse(map['fechaCaducidad']?.toString() ?? ''),
       subtotal: _asDouble(map['subtotal']),
+      ubicacionLetra: map['ubicacionLetra']?.toString() ?? '',
+      ubicacionNumero: _asNullableInt(map['ubicacionNumero']),
+      ubicacionEstante: map['ubicacionEstante']?.toString() ?? '',
     );
   }
 }
@@ -143,6 +152,8 @@ class CompraDetallePayload {
   final double precioVenta;
   final String? codigoLote;
   final String? fechaCaducidad;
+  final String? ubicacionLetra;
+  final int? ubicacionNumero;
 
   const CompraDetallePayload({
     required this.idProducto,
@@ -151,6 +162,8 @@ class CompraDetallePayload {
     required this.precioVenta,
     required this.codigoLote,
     required this.fechaCaducidad,
+    this.ubicacionLetra,
+    this.ubicacionNumero,
   });
 
   Map<String, dynamic> toJson() {
@@ -161,6 +174,8 @@ class CompraDetallePayload {
       'precioVenta': precioVenta,
       'codigoLote': codigoLote,
       'fechaCaducidad': fechaCaducidad,
+      'ubicacionLetra': ubicacionLetra,
+      'ubicacionNumero': ubicacionNumero,
     };
   }
 }

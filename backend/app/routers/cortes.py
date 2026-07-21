@@ -74,6 +74,8 @@ def _select_cortes_resumen_sql() -> str:
             COALESCE(m.ventasEfectivo, 0) AS ventasEfectivo,
             COALESCE(m.ventasElectronico, 0) AS ventasElectronico,
             COALESCE(m.otrosIngresos, 0) AS otrosIngresos,
+            COALESCE(m.salidasEfectivo, 0) AS salidasEfectivo,
+            COALESCE(m.salidasElectronico, 0) AS salidasElectronico,
             COALESCE(m.salidas, 0) AS salidas,
             r.efectivoSistema AS efectivoEsperado,
             r.electronicoSistema AS electronicoEsperado,
@@ -108,6 +110,22 @@ def _select_cortes_resumen_sql() -> str:
                         ELSE 0
                     END
                 ) AS otrosIngresos,
+                SUM(
+                    CASE
+                        WHEN medio = 'EFECTIVO'
+                            AND tipo = 'SALIDA'
+                        THEN monto
+                        ELSE 0
+                    END
+                ) AS salidasEfectivo,
+                SUM(
+                    CASE
+                        WHEN medio = 'ELECTRONICO'
+                            AND tipo = 'SALIDA'
+                        THEN monto
+                        ELSE 0
+                    END
+                ) AS salidasElectronico,
                 SUM(
                     CASE
                         WHEN tipo = 'SALIDA'

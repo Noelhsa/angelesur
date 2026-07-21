@@ -26,6 +26,7 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
   bool _guardandoTarifa = false;
   bool _mostrarMenuNuevaTarifa = false;
   String? _error;
+  String _estadoTarifas = 'Activas';
   List<TarifaServicioYastas> _tarifas = [];
 
   @override
@@ -46,11 +47,21 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
   List<TarifaServicioYastas> get _tarifasFiltradas {
     final texto = _busquedaController.text.trim().toLowerCase();
 
-    if (texto.isEmpty) {
-      return _tarifas;
-    }
-
     return _tarifas.where((tarifa) {
+      final coincideEstado = switch (_estadoTarifas) {
+        'Activas' => tarifa.activo,
+        'Inactivas' => !tarifa.activo,
+        _ => true,
+      };
+
+      if (!coincideEstado) {
+        return false;
+      }
+
+      if (texto.isEmpty) {
+        return true;
+      }
+
       return tarifa.nombreServicio.toLowerCase().contains(texto) ||
           tarifa.tipoServicio.toLowerCase().contains(texto) ||
           tarifa.tipoVisible.toLowerCase().contains(texto);
@@ -223,6 +234,13 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
               children: [
                 _EncabezadoYastas(
                   busquedaController: _busquedaController,
+                  estadoSeleccionado: _estadoTarifas,
+                  onEstadoChanged: (value) {
+                    if (value == null) return;
+                    setState(() {
+                      _estadoTarifas = value;
+                    });
+                  },
                   onNuevo: _abrirMenuNuevaTarifa,
                   onActualizar: _cargarTarifas,
                 ),
@@ -308,11 +326,15 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
 
 class _EncabezadoYastas extends StatelessWidget {
   final TextEditingController busquedaController;
+  final String estadoSeleccionado;
+  final ValueChanged<String?> onEstadoChanged;
   final VoidCallback onNuevo;
   final VoidCallback onActualizar;
 
   const _EncabezadoYastas({
     required this.busquedaController,
+    required this.estadoSeleccionado,
+    required this.onEstadoChanged,
     required this.onNuevo,
     required this.onActualizar,
   });
@@ -356,6 +378,26 @@ class _EncabezadoYastas extends StatelessWidget {
               border: OutlineInputBorder(),
               isDense: true,
             ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        SizedBox(
+          width: 135,
+          height: 40,
+          child: DropdownButtonFormField<String>(
+            initialValue: estadoSeleccionado,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            ),
+            items: const [
+              DropdownMenuItem(value: 'Activas', child: Text('Activas')),
+              DropdownMenuItem(value: 'Inactivas', child: Text('Inactivas')),
+              DropdownMenuItem(value: 'Todas', child: Text('Todas')),
+            ],
+            onChanged: onEstadoChanged,
           ),
         ),
         const SizedBox(width: 10),

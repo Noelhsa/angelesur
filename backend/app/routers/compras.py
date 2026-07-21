@@ -5,7 +5,7 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from app.database import call_procedure, fetch_all, fetch_one
+from app.database import call_procedure, db_connection, fetch_all, fetch_one
 
 router = APIRouter(prefix="/compras", tags=["compras"])
 
@@ -19,6 +19,8 @@ class CompraDetalleRequest(BaseModel):
     precioVenta: Decimal = Field(ge=0)
     codigoLote: str | None = Field(default="SIN_LOTE", max_length=80)
     fechaCaducidad: str | None = None
+    ubicacionLetra: str | None = Field(default=None, max_length=1)
+    ubicacionNumero: int | None = Field(default=None, ge=1, le=999)
 
 
 class RegistrarCompraRequest(BaseModel):
@@ -100,7 +102,13 @@ def obtener_compra(id_compra: int):
             d.costoUnitario,
             d.precioVentaSugerido,
             d.fechaCaducidad,
-            d.subtotal
+            d.subtotal,
+            i.ubicacionLetra,
+            i.ubicacionNumero,
+            CASE
+                WHEN i.ubicacionLetra IS NULL OR i.ubicacionNumero IS NULL THEN NULL
+                ELSE CONCAT(i.ubicacionLetra, i.ubicacionNumero)
+            END AS ubicacionEstante
         FROM compra_detalle d
         INNER JOIN producto p ON p.idProducto = d.idProducto
         LEFT JOIN inventario_producto i ON i.idInventario = d.idInventario
@@ -114,6 +122,8 @@ def obtener_compra(id_compra: int):
 
 @router.post("", status_code=201)
 def registrar_compra(request: RegistrarCompraRequest):
+    _validar_ubicaciones_detalles(request.detalles)
+
     detalles_json = json.dumps(
         [
             {
@@ -143,6 +153,8 @@ def registrar_compra(request: RegistrarCompraRequest):
         out_count=1,
     )
     id_compra = result.get("out_0")
+    compra = obtener_compra(id_compra)
+    _actualizar_ubicaciones_compra(request.detalles, compra.get("detalles", []))
     return obtener_compra(id_compra)
 
 
@@ -185,3 +197,58 @@ def _obtener_compra(id_compra: int):
         """,
         [id_compra],
     )
+
+
+def _normalizar_ubicacion(detalle: CompraDetalleRequest):
+    letra = detalle.ubicacionLetra.strip().upper() if detalle.ubicacionLetra else None
+    numero = detalle.ubicacionNumero
+
+    if (letra is None) != (numero is None):
+        raise HTTPException(
+            status_code=400,
+            detail="La ubicacion debe incluir letra y numero, o dejar ambos vacios.",
+        )
+
+    if letra is not None and (len(letra) != 1 or letra < "A" or letra > "Z"):
+        raise HTTPException(
+            status_code=400,
+            detail="La letra del estante debe ser una letra de la A a la Z.",
+        )
+
+    return letra, numero
+
+
+def _validar_ubicaciones_detalles(detalles: list[CompraDetalleRequest]):
+    for detalle in detalles:
+        _normalizar_ubicacion(detalle)
+
+
+def _actualizar_ubicaciones_compra(
+    detalles_request: list[CompraDetalleRequest],
+    detalles_compra: list[dict],
+):
+    updates = []
+
+    for detalle_request, detalle_compra in zip(detalles_request, detalles_compra):
+        letra, numero = _normalizar_ubicacion(detalle_request)
+        id_inventario = detalle_compra.get("idInventario")
+
+        if letra is None or numero is None or id_inventario is None:
+            continue
+
+        updates.append((letra, numero, id_inventario))
+
+    if not updates:
+        return
+
+    with db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.executemany(
+                """
+                UPDATE inventario_producto
+                SET ubicacionLetra = %s,
+                    ubicacionNumero = %s
+                WHERE idInventario = %s
+                """,
+                updates,
+            )
