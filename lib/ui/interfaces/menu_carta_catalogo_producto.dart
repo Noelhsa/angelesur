@@ -8,6 +8,14 @@ const Color _textoPrincipal = Color(0xFF101828);
 const Color _textoSecundario = Color(0xFF667085);
 const Color _bordeSuave = Color(0xFFD9E6D3);
 const Color _grisCampo = Color(0xFFF8F7F4);
+const List<String> _categoriasProducto = [
+  'General',
+  'Higiene',
+  'Curacion',
+  'Bebidas',
+  'Dispositivo',
+  'Otro',
+];
 
 class MenuCartaCatalogoProducto extends StatefulWidget {
   final VoidCallback onCerrar;
@@ -112,7 +120,6 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
                           _manejaCaducidad = true;
                           _requiereReceta = false;
                         } else {
-                          _tipoSeleccionado = 'Producto';
                           _categoriaSeleccionada = 'General';
                           _manejaCaducidad = false;
                         }
@@ -137,88 +144,76 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
                     maxLines: 3,
                   ),
                   const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _CampoDropdownCatalogo(
-                          etiqueta: esMedicamento ? 'Presentacion' : 'Tipo',
-                          valor: _tipoSeleccionado,
-                          opciones: esMedicamento
-                              ? const [
-                                  'Tableta',
-                                  'Capsula',
-                                  'Pastilla',
-                                  'Jarabe',
-                                  'Suspension',
-                                  'Gotas',
-                                  'Inyectable',
-                                  'Crema',
-                                  'Pomada',
-                                  'Spray',
-                                  'Solucion',
-                                  'Otro',
-                                ]
-                              : const [
-                                  'Producto',
-                                  'Higiene',
-                                  'Curacion',
-                                  'Bebida',
-                                  'Dispositivo',
-                                  'Otro',
-                                ],
-                          onChanged: (value) {
-                            if (value == null) return;
-                            setState(() {
-                              _tipoSeleccionado = value;
-                            });
-                          },
+                  if (esMedicamento)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _CampoDropdownCatalogo(
+                            etiqueta: 'Presentacion',
+                            valor: _tipoSeleccionado,
+                            opciones: const [
+                              'Tableta',
+                              'Capsula',
+                              'Pastilla',
+                              'Jarabe',
+                              'Suspension',
+                              'Gotas',
+                              'Inyectable',
+                              'Crema',
+                              'Pomada',
+                              'Spray',
+                              'Solucion',
+                              'Otro',
+                            ],
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setState(() {
+                                _tipoSeleccionado = value;
+                              });
+                            },
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _CampoDropdownCatalogo(
-                          etiqueta:
-                              esMedicamento ? 'Via de Admin' : 'Categoria',
-                          valor: esMedicamento
-                              ? _viaAdministracionSeleccionada
-                              : _categoriaSeleccionada,
-                          opciones: esMedicamento
-                              ? const [
-                                  'CAPSULA',
-                                  'TABLETA',
-                                  'PASTILLA',
-                                  'SUSPENSION',
-                                  'GOTAS',
-                                  'INYECCION',
-                                  'JARABE',
-                                  'CREMA',
-                                  'POMADA',
-                                  'AEROSOL',
-                                  'SOLUCION',
-                                  'OTRO',
-                                ]
-                              : const [
-                                  'General',
-                                  'Higiene',
-                                  'Curacion',
-                                  'Bebidas',
-                                  'Dispositivo',
-                                  'Otro',
-                                ],
-                          onChanged: (value) {
-                            if (value == null) return;
-                            setState(() {
-                              if (esMedicamento) {
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _CampoDropdownCatalogo(
+                            etiqueta: 'Via de Admin',
+                            valor: _viaAdministracionSeleccionada,
+                            opciones: const [
+                              'CAPSULA',
+                              'TABLETA',
+                              'PASTILLA',
+                              'SUSPENSION',
+                              'GOTAS',
+                              'INYECCION',
+                              'JARABE',
+                              'CREMA',
+                              'POMADA',
+                              'AEROSOL',
+                              'SOLUCION',
+                              'OTRO',
+                            ],
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setState(() {
                                 _viaAdministracionSeleccionada = value;
-                              } else {
-                                _categoriaSeleccionada = value;
-                              }
-                            });
-                          },
+                              });
+                            },
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    )
+                  else
+                    _CampoDropdownCatalogo(
+                      etiqueta: 'Categoria',
+                      valor: _categoriaSeleccionada,
+                      opciones: _categoriasProducto,
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() {
+                          _categoriaSeleccionada = value;
+                        });
+                      },
+                    ),
                   const SizedBox(height: 14),
                   _OpcionCaducidadCatalogo(
                     value: _manejaCaducidad,
@@ -910,9 +905,6 @@ String _presentacionNormalizada(String value) {
 }
 
 String _categoriaNormalizada(String value) {
-  if (value.startsWith('Analg')) return 'Analgesicos';
-  if (value.startsWith('Antibi')) return 'Antibioticos';
-  if (value.startsWith('G')) return 'Gastrico';
   return value;
 }
 

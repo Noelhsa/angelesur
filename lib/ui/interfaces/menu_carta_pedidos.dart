@@ -151,6 +151,8 @@ class _MenuCartaPedidosState extends State<MenuCartaPedidos> {
 
     setState(() {
       linea.idProducto = idProducto;
+      linea.productoController.text =
+          producto == null ? '' : _etiquetaProductoPedido(producto);
       linea.ubicacionLetraController.clear();
       linea.ubicacionNumeroController.clear();
       linea.cargandoUbicacion = producto?.esMedicamento ?? false;
@@ -375,6 +377,8 @@ class _MenuCartaPedidosState extends State<MenuCartaPedidos> {
 
 class _LineaCompraForm {
   int? idProducto;
+  final TextEditingController productoController = TextEditingController();
+  final FocusNode productoFocusNode = FocusNode();
   final TextEditingController cantidadController =
       TextEditingController(text: '1');
   final TextEditingController costoController = TextEditingController();
@@ -394,6 +398,8 @@ class _LineaCompraForm {
   }
 
   void dispose() {
+    productoController.dispose();
+    productoFocusNode.dispose();
     cantidadController.dispose();
     costoController.dispose();
     precioController.dispose();
@@ -640,22 +646,12 @@ class _LineaCompraWidget extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: DropdownButtonFormField<int>(
-                  initialValue: linea.idProducto,
-                  isExpanded: true,
-                  hint: const Text('Producto'),
-                  decoration: _decoracionCampo(),
-                  items: [
-                    for (final item in productos)
-                      DropdownMenuItem(
-                        value: item.idProducto,
-                        child: Text(
-                          item.nombre,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                  ],
-                  onChanged: (value) => onProductoChanged(linea, value),
+                child: _SelectorProductoPedido(
+                  linea: linea,
+                  productos: productos,
+                  productoSeleccionado: producto,
+                  onProductoChanged: onProductoChanged,
+                  onChanged: onChanged,
                 ),
               ),
               const SizedBox(width: 6),
@@ -756,6 +752,164 @@ class _LineaCompraWidget extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SelectorProductoPedido extends StatelessWidget {
+  final _LineaCompraForm linea;
+  final List<ProductoCatalogoApi> productos;
+  final ProductoCatalogoApi? productoSeleccionado;
+  final Future<void> Function(_LineaCompraForm linea, int? idProducto)
+      onProductoChanged;
+  final VoidCallback onChanged;
+
+  const _SelectorProductoPedido({
+    required this.linea,
+    required this.productos,
+    required this.productoSeleccionado,
+    required this.onProductoChanged,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _ContenedorCampo(
+      etiqueta: 'Producto',
+      child: RawAutocomplete<ProductoCatalogoApi>(
+        textEditingController: linea.productoController,
+        focusNode: linea.productoFocusNode,
+        displayStringForOption: _etiquetaProductoPedido,
+        optionsBuilder: (value) {
+          final busqueda = value.text.trim().toLowerCase();
+          if (busqueda.isEmpty) {
+            return productos.take(20);
+          }
+
+          return productos.where((producto) {
+            final texto = [
+              producto.nombre,
+              producto.codigoBarras ?? '',
+              producto.categoria ?? '',
+              producto.tipo,
+            ].join(' ').toLowerCase();
+            return texto.contains(busqueda);
+          }).take(20);
+        },
+        onSelected: (producto) {
+          onProductoChanged(linea, producto.idProducto);
+        },
+        fieldViewBuilder: (
+          context,
+          controller,
+          focusNode,
+          onFieldSubmitted,
+        ) {
+          return TextField(
+            controller: controller,
+            focusNode: focusNode,
+            cursorColor: _verdeOscuro,
+            style: const TextStyle(
+              color: _textoPrincipal,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+            decoration: _decoracionCampo(
+              hintText: 'Buscar producto...',
+              suffixIcon: Icons.search,
+            ),
+            onChanged: (value) {
+              final texto = value.trim();
+              final seleccionado = productoSeleccionado == null
+                  ? ''
+                  : _etiquetaProductoPedido(productoSeleccionado!);
+
+              if (texto.isEmpty && linea.idProducto != null) {
+                linea.idProducto = null;
+                linea.ubicacionLetraController.clear();
+                linea.ubicacionNumeroController.clear();
+                linea.cargandoUbicacion = false;
+                onChanged();
+                return;
+              }
+
+              if (linea.idProducto != null && texto != seleccionado) {
+                linea.idProducto = null;
+                linea.ubicacionLetraController.clear();
+                linea.ubicacionNumeroController.clear();
+                linea.cargandoUbicacion = false;
+                onChanged();
+                return;
+              }
+
+              onChanged();
+            },
+          );
+        },
+        optionsViewBuilder: (context, onSelected, opciones) {
+          return Align(
+            alignment: Alignment.topLeft,
+            child: Material(
+              elevation: 8,
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: 280,
+                  maxHeight: 230,
+                ),
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  shrinkWrap: true,
+                  itemCount: opciones.length,
+                  separatorBuilder: (_, __) => const Divider(
+                    height: 1,
+                    color: _bordeSuave,
+                  ),
+                  itemBuilder: (context, index) {
+                    final producto = opciones.elementAt(index);
+                    return InkWell(
+                      onTap: () => onSelected(producto),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              producto.nombre,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: _textoPrincipal,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _detalleProductoPedido(producto),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: _textoSecundario,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -1132,4 +1286,22 @@ String _formatoFechaApi(DateTime fecha) {
   final mes = fecha.month.toString().padLeft(2, '0');
   final dia = fecha.day.toString().padLeft(2, '0');
   return '${fecha.year}-$mes-$dia';
+}
+
+String _etiquetaProductoPedido(ProductoCatalogoApi producto) {
+  final codigo = producto.codigoBarras?.trim();
+  if (codigo == null || codigo.isEmpty) {
+    return producto.nombre;
+  }
+  return '${producto.nombre} - $codigo';
+}
+
+String _detalleProductoPedido(ProductoCatalogoApi producto) {
+  final partes = <String>[
+    producto.esMedicamento ? 'Medicamento' : 'Producto',
+    if ((producto.categoria ?? '').trim().isNotEmpty) producto.categoria!,
+    if ((producto.codigoBarras ?? '').trim().isNotEmpty)
+      'Cod. ${producto.codigoBarras}',
+  ];
+  return partes.join(' | ');
 }

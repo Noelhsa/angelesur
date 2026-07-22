@@ -13,6 +13,14 @@ const Color _textoSecundario = Color(0xFF667085);
 const Color _bordeSuave = Color(0xFFD9E6D3);
 const Color _grisCabecera = Color(0xFFE7E3E3);
 const Color _grisCampo = Color(0xFFF8F7F4);
+const List<String> _categoriasProducto = [
+  'General',
+  'Higiene',
+  'Curacion',
+  'Bebidas',
+  'Dispositivo',
+  'Otro',
+];
 
 class ContenidoCatalogoProducto extends StatefulWidget {
   const ContenidoCatalogoProducto({super.key});
@@ -887,11 +895,11 @@ class _DialogoProductoState extends State<_DialogoProducto> {
   late final TextEditingController _codigoController;
   late final TextEditingController _nombreController;
   late final TextEditingController _descripcionController;
-  late final TextEditingController _categoriaController;
   late final TextEditingController _presentacionController;
   late final TextEditingController _sustanciaController;
   late final TextEditingController _dosisController;
   late String _tipo;
+  late String _categoria;
   late String _via;
   late String _edad;
   late bool _manejaCaducidad;
@@ -907,14 +915,16 @@ class _DialogoProductoState extends State<_DialogoProducto> {
     _nombreController = TextEditingController(text: producto?.nombre ?? '');
     _descripcionController =
         TextEditingController(text: producto?.descripcion ?? '');
-    _categoriaController =
-        TextEditingController(text: producto?.categoria ?? '');
     _presentacionController =
         TextEditingController(text: producto?.presentacion ?? '');
     _sustanciaController =
         TextEditingController(text: producto?.sustanciaActiva ?? '');
     _dosisController = TextEditingController(text: producto?.dosis ?? '');
     _tipo = _tipos.contains(producto?.tipo) ? producto!.tipo : 'PRODUCTO';
+    _categoria =
+        _opcionesCategoria(producto?.categoria).contains(producto?.categoria)
+            ? producto!.categoria!
+            : 'General';
     _via = _vias.contains(producto?.viaAdministracion)
         ? producto!.viaAdministracion!
         : 'OTRO';
@@ -928,7 +938,6 @@ class _DialogoProductoState extends State<_DialogoProducto> {
     _codigoController.dispose();
     _nombreController.dispose();
     _descripcionController.dispose();
-    _categoriaController.dispose();
     _presentacionController.dispose();
     _sustanciaController.dispose();
     _dosisController.dispose();
@@ -962,7 +971,7 @@ class _DialogoProductoState extends State<_DialogoProducto> {
         nombre: nombre,
         descripcion: _limpiar(_descripcionController.text),
         tipo: _tipo,
-        categoria: _limpiar(_categoriaController.text),
+        categoria: _tipo == 'PRODUCTO' ? _categoria : null,
         manejaCaducidad: _manejaCaducidad,
         infoMedicamento: infoMedicamento,
       ),
@@ -1008,6 +1017,10 @@ class _DialogoProductoState extends State<_DialogoProducto> {
                         if (value == null) return;
                         setState(() {
                           _tipo = value;
+                          if (value == 'PRODUCTO' &&
+                              !_opcionesCategoria().contains(_categoria)) {
+                            _categoria = 'General';
+                          }
                         });
                       },
                     ),
@@ -1017,10 +1030,29 @@ class _DialogoProductoState extends State<_DialogoProducto> {
               const SizedBox(height: 12),
               _CampoTexto(label: 'Nombre', controller: _nombreController),
               const SizedBox(height: 12),
-              _CampoTexto(
-                label: 'Categoria',
-                controller: _categoriaController,
-              ),
+              if (!esMedicamento)
+                DropdownButtonFormField<String>(
+                  initialValue:
+                      _opcionesCategoria(_categoria).contains(_categoria)
+                          ? _categoria
+                          : 'General',
+                  decoration: const InputDecoration(
+                    labelText: 'Categoria',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: _opcionesCategoria(_categoria)
+                      .map((categoria) => DropdownMenuItem(
+                            value: categoria,
+                            child: Text(categoria),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() {
+                      _categoria = value;
+                    });
+                  },
+                ),
               const SizedBox(height: 12),
               _CampoTexto(
                 label: 'Descripcion',
@@ -1275,6 +1307,17 @@ class _DatoDetalle extends StatelessWidget {
 String? _limpiar(String value) {
   final text = value.trim();
   return text.isEmpty ? null : text;
+}
+
+List<String> _opcionesCategoria([String? actual]) {
+  final opciones = [..._categoriasProducto];
+  final categoriaActual = actual?.trim();
+  if (categoriaActual != null &&
+      categoriaActual.isNotEmpty &&
+      !opciones.contains(categoriaActual)) {
+    opciones.add(categoriaActual);
+  }
+  return opciones;
 }
 
 String _etiqueta(String value) {
