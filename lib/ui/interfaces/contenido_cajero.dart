@@ -280,6 +280,15 @@ class _ContenidoCajeroState extends State<ContenidoCajero> {
     }
   }
 
+  Future<void> _mostrarRegistroCortes() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => _DialogoRegistroCortes(
+        cortesApiService: _cortesApiService,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -295,6 +304,7 @@ class _ContenidoCajeroState extends State<ContenidoCajero> {
                       _EncabezadoCaja(
                         corte: _corte,
                         onRefrescar: _cargarCorte,
+                        onRegistroCortes: _mostrarRegistroCortes,
                       ),
                       const SizedBox(height: 18),
                       _ResumenSuperiorCajero(corte: _corte),
@@ -863,13 +873,834 @@ class _MensajeMovimientos extends StatelessWidget {
   }
 }
 
+class _DialogoRegistroCortes extends StatefulWidget {
+  final CortesApiService cortesApiService;
+
+  const _DialogoRegistroCortes({
+    required this.cortesApiService,
+  });
+
+  @override
+  State<_DialogoRegistroCortes> createState() => _DialogoRegistroCortesState();
+}
+
+class _DialogoRegistroCortesState extends State<_DialogoRegistroCortes> {
+  final TextEditingController _busquedaController = TextEditingController();
+  final TextEditingController _aperturaDesdeController =
+      TextEditingController();
+  final TextEditingController _aperturaHastaController =
+      TextEditingController();
+  final TextEditingController _cierreDesdeController = TextEditingController();
+  final TextEditingController _cierreHastaController = TextEditingController();
+  bool _cargando = true;
+  bool _cargandoDetalle = false;
+  String? _error;
+  String? _errorDetalle;
+  List<CorteResumen> _cortes = [];
+  int? _idSeleccionado;
+  CorteDetalle? _detalle;
+  String _estadoFiltro = 'TODOS';
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarCortes();
+  }
+
+  @override
+  void dispose() {
+    _busquedaController.dispose();
+    _aperturaDesdeController.dispose();
+    _aperturaHastaController.dispose();
+    _cierreDesdeController.dispose();
+    _cierreHastaController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _cargarCortes() async {
+    setState(() {
+      _cargando = true;
+      _error = null;
+    });
+
+    try {
+      final cortes = await widget.cortesApiService.listarResumen(
+        busqueda: _busquedaController.text,
+        estado: _estadoFiltro == 'TODOS' ? null : _estadoFiltro,
+        fechaAperturaDesde: _aperturaDesdeController.text,
+        fechaAperturaHasta: _aperturaHastaController.text,
+        fechaCierreDesde: _cierreDesdeController.text,
+        fechaCierreHasta: _cierreHastaController.text,
+      );
+      if (!mounted) return;
+      setState(() {
+        _cortes = cortes;
+        _detalle = null;
+        _idSeleccionado = null;
+        _cargando = false;
+      });
+
+      if (cortes.isNotEmpty) {
+        await _cargarDetalle(cortes.first.idCorte);
+      }
+    } on ApiException catch (error) {
+      _mostrarError(error.message);
+    } catch (_) {
+      _mostrarError('No se pudo cargar el registro de cortes');
+    }
+  }
+
+  Future<void> _cargarDetalle(int idCorte) async {
+    setState(() {
+      _idSeleccionado = idCorte;
+      _cargandoDetalle = true;
+      _errorDetalle = null;
+    });
+
+    try {
+      final detalle = await widget.cortesApiService.obtenerDetalle(idCorte);
+      if (!mounted || _idSeleccionado != idCorte) return;
+      setState(() {
+        _detalle = detalle;
+        _cargandoDetalle = false;
+      });
+    } on ApiException catch (error) {
+      _mostrarErrorDetalle(error.message);
+    } catch (_) {
+      _mostrarErrorDetalle('No se pudo cargar el detalle del corte');
+    }
+  }
+
+  void _mostrarError(String mensaje) {
+    if (!mounted) return;
+    setState(() {
+      _error = mensaje;
+      _cargando = false;
+    });
+  }
+
+  void _mostrarErrorDetalle(String mensaje) {
+    if (!mounted) return;
+    setState(() {
+      _errorDetalle = mensaje;
+      _cargandoDetalle = false;
+    });
+  }
+
+  void _limpiarFiltros() {
+    setState(() {
+      _busquedaController.clear();
+      _aperturaDesdeController.clear();
+      _aperturaHastaController.clear();
+      _cierreDesdeController.clear();
+      _cierreHastaController.clear();
+      _estadoFiltro = 'TODOS';
+    });
+    _cargarCortes();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.all(24),
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: 1080,
+        height: 720,
+        padding: const EdgeInsets.all(22),
+        decoration: _cardDecoration(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.history_outlined,
+                  color: _verdeOscuro,
+                  size: 22,
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'Registro de cortes',
+                    style: TextStyle(
+                      color: _textoPrincipal,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: _cargarCortes,
+                  tooltip: 'Actualizar',
+                  icon: const Icon(Icons.refresh, color: _textoSecundario),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  tooltip: 'Cerrar',
+                  icon: const Icon(Icons.close, color: _textoPrincipal),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Consulta aperturas, cierres, responsables y transacciones de cada corte.',
+              style: TextStyle(
+                color: _textoSecundario,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 18),
+            _FiltrosRegistroCortes(
+              busquedaController: _busquedaController,
+              aperturaDesdeController: _aperturaDesdeController,
+              aperturaHastaController: _aperturaHastaController,
+              cierreDesdeController: _cierreDesdeController,
+              cierreHastaController: _cierreHastaController,
+              estado: _estadoFiltro,
+              onEstadoChanged: (value) {
+                setState(() {
+                  _estadoFiltro = value;
+                });
+                _cargarCortes();
+              },
+              onBuscar: _cargarCortes,
+              onLimpiar: _limpiarFiltros,
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: _cargando
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                      ? _MensajeMovimientos(
+                          icono: Icons.error_outline,
+                          titulo: _error!,
+                          subtitulo: 'Revisa la API local e intenta de nuevo.',
+                        )
+                      : Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: 390,
+                              child: _ListaRegistroCortes(
+                                cortes: _cortes,
+                                idSeleccionado: _idSeleccionado,
+                                onSeleccionar: _cargarDetalle,
+                              ),
+                            ),
+                            const SizedBox(width: 18),
+                            Expanded(
+                              child: _DetalleRegistroCorte(
+                                detalle: _detalle,
+                                cargando: _cargandoDetalle,
+                                error: _errorDetalle,
+                              ),
+                            ),
+                          ],
+                        ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FiltrosRegistroCortes extends StatelessWidget {
+  final TextEditingController busquedaController;
+  final TextEditingController aperturaDesdeController;
+  final TextEditingController aperturaHastaController;
+  final TextEditingController cierreDesdeController;
+  final TextEditingController cierreHastaController;
+  final String estado;
+  final ValueChanged<String> onEstadoChanged;
+  final VoidCallback onBuscar;
+  final VoidCallback onLimpiar;
+
+  const _FiltrosRegistroCortes({
+    required this.busquedaController,
+    required this.aperturaDesdeController,
+    required this.aperturaHastaController,
+    required this.cierreDesdeController,
+    required this.cierreHastaController,
+    required this.estado,
+    required this.onEstadoChanged,
+    required this.onBuscar,
+    required this.onLimpiar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F9F5),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _bordeSuave),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: TextField(
+                  controller: busquedaController,
+                  onSubmitted: (_) => onBuscar(),
+                  decoration: InputDecoration(
+                    labelText: 'Buscar cortes',
+                    hintText: 'Corte, usuario, efectivo o electronico',
+                    prefixIcon: const Icon(Icons.search, size: 18),
+                    filled: true,
+                    fillColor: _blanco,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(7),
+                      borderSide: const BorderSide(color: _bordeSuave),
+                    ),
+                    isDense: true,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: estado,
+                  decoration: InputDecoration(
+                    labelText: 'Estado',
+                    filled: true,
+                    fillColor: _blanco,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(7),
+                      borderSide: const BorderSide(color: _bordeSuave),
+                    ),
+                    isDense: true,
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'TODOS', child: Text('Todos')),
+                    DropdownMenuItem(value: 'ABIERTO', child: Text('Abiertos')),
+                    DropdownMenuItem(value: 'CERRADO', child: Text('Cerrados')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      onEstadoChanged(value);
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 10),
+              ElevatedButton.icon(
+                onPressed: onBuscar,
+                icon: const Icon(Icons.search, size: 16, color: Colors.white),
+                label: const Text(
+                  'Buscar',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _verdeOscuro,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: onLimpiar,
+                icon: const Icon(Icons.filter_alt_off_outlined, size: 16),
+                label: const Text('Limpiar'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _textoSecundario,
+                  side: const BorderSide(color: _bordeSuave),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _CampoFechaFiltroCorte(
+                  label: 'Apertura desde',
+                  controller: aperturaDesdeController,
+                  onChanged: onBuscar,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _CampoFechaFiltroCorte(
+                  label: 'Apertura hasta',
+                  controller: aperturaHastaController,
+                  onChanged: onBuscar,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _CampoFechaFiltroCorte(
+                  label: 'Cierre desde',
+                  controller: cierreDesdeController,
+                  onChanged: onBuscar,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _CampoFechaFiltroCorte(
+                  label: 'Cierre hasta',
+                  controller: cierreHastaController,
+                  onChanged: onBuscar,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CampoFechaFiltroCorte extends StatelessWidget {
+  final String label;
+  final TextEditingController controller;
+  final VoidCallback onChanged;
+
+  const _CampoFechaFiltroCorte({
+    required this.label,
+    required this.controller,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      readOnly: true,
+      onTap: () => _seleccionarFecha(context),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: 'YYYY-MM-DD',
+        suffixIcon: controller.text.isEmpty
+            ? const Icon(Icons.calendar_month_outlined, size: 18)
+            : IconButton(
+                onPressed: () {
+                  controller.clear();
+                  onChanged();
+                },
+                icon: const Icon(Icons.close, size: 16),
+              ),
+        filled: true,
+        fillColor: _blanco,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(7),
+          borderSide: const BorderSide(color: _bordeSuave),
+        ),
+        isDense: true,
+      ),
+    );
+  }
+
+  Future<void> _seleccionarFecha(BuildContext context) async {
+    final inicial = DateTime.tryParse(controller.text) ?? DateTime.now();
+    final seleccionada = await showDatePicker(
+      context: context,
+      initialDate: inicial,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+      helpText: label,
+      cancelText: 'Cancelar',
+      confirmText: 'Aceptar',
+    );
+
+    if (seleccionada == null) return;
+    controller.text = _formatoFechaApi(seleccionada);
+    onChanged();
+  }
+}
+
+class _ListaRegistroCortes extends StatelessWidget {
+  final List<CorteResumen> cortes;
+  final int? idSeleccionado;
+  final ValueChanged<int> onSeleccionar;
+
+  const _ListaRegistroCortes({
+    required this.cortes,
+    required this.idSeleccionado,
+    required this.onSeleccionar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (cortes.isEmpty) {
+      return const _MensajeMovimientos(
+        icono: Icons.receipt_long_outlined,
+        titulo: 'Sin cortes registrados',
+        subtitulo: 'Cuando abras y cierres cortes apareceran aqui.',
+      );
+    }
+
+    return ListView.separated(
+      itemCount: cortes.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final corte = cortes[index];
+        final seleccionado = corte.idCorte == idSeleccionado;
+        return _TarjetaRegistroCorte(
+          corte: corte,
+          seleccionado: seleccionado,
+          onDetalles: () => onSeleccionar(corte.idCorte),
+        );
+      },
+    );
+  }
+}
+
+class _TarjetaRegistroCorte extends StatelessWidget {
+  final CorteResumen corte;
+  final bool seleccionado;
+  final VoidCallback onDetalles;
+
+  const _TarjetaRegistroCorte({
+    required this.corte,
+    required this.seleccionado,
+    required this.onDetalles,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: seleccionado ? const Color(0xFFF1F9EA) : _blanco,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: seleccionado ? _verdeOscuro : _bordeSuave,
+          width: seleccionado ? 1.4 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Corte #${corte.idCorte}',
+                  style: const TextStyle(
+                    color: _textoPrincipal,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              _BadgeEstadoCorte(estado: corte.estado),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Abre: ${_nombreUsuarioCorte(corte.usuarioAbreNombre, corte.usuarioAbre)}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _textoSecundario,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          Text(
+            'Cierra: ${_nombreUsuarioCorte(corte.usuarioCierraNombre, corte.usuarioCierra)}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _textoSecundario,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _MiniDatoRegistro(
+                label: 'Inicial',
+                value: ConfigMoneda.formato(
+                  corte.efectivoInicial + corte.electronicoInicial,
+                ),
+              ),
+              _MiniDatoRegistro(
+                label: 'Final',
+                value: ConfigMoneda.formato(
+                  corte.estado == 'CERRADO'
+                      ? corte.efectivoContado + corte.electronicoContado
+                      : corte.totalEsperado,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: onDetalles,
+              icon: const Icon(Icons.article_outlined, size: 16),
+              label: const Text('Detalles'),
+              style: TextButton.styleFrom(
+                foregroundColor: _verdeOscuro,
+                textStyle: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetalleRegistroCorte extends StatelessWidget {
+  final CorteDetalle? detalle;
+  final bool cargando;
+  final String? error;
+
+  const _DetalleRegistroCorte({
+    required this.detalle,
+    required this.cargando,
+    required this.error,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (cargando) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (error != null) {
+      return _MensajeMovimientos(
+        icono: Icons.error_outline,
+        titulo: error!,
+        subtitulo: 'Selecciona otro corte o actualiza el registro.',
+      );
+    }
+
+    final corte = detalle;
+    if (corte == null) {
+      return const _MensajeMovimientos(
+        icono: Icons.article_outlined,
+        titulo: 'Selecciona un corte',
+        subtitulo: 'El detalle y sus transacciones se mostraran aqui.',
+      );
+    }
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Detalle corte #${corte.idCorte}',
+                  style: const TextStyle(
+                    color: _textoPrincipal,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              _BadgeEstadoCorte(estado: corte.estado),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _DatoCorte(
+                label: 'Apertura',
+                value: _formatoFechaHora(corte.fechaApertura),
+              ),
+              _DatoCorte(
+                label: 'Cierre',
+                value: _formatoFechaHora(corte.fechaCierre),
+              ),
+              _DatoCorte(
+                label: 'Abrio',
+                value: _nombreUsuarioCorte(
+                  corte.usuarioAbreNombre,
+                  corte.usuarioAbre,
+                ),
+              ),
+              _DatoCorte(
+                label: 'Cerro',
+                value: _nombreUsuarioCorte(
+                  corte.usuarioCierraNombre,
+                  corte.usuarioCierra,
+                ),
+              ),
+              _DatoCorte(
+                label: 'Efectivo inicial',
+                value: ConfigMoneda.formato(corte.efectivoInicial),
+              ),
+              _DatoCorte(
+                label: 'Efectivo final',
+                value: ConfigMoneda.formato(
+                  corte.estado == 'CERRADO'
+                      ? corte.efectivoContado
+                      : corte.efectivoEsperado,
+                ),
+              ),
+              _DatoCorte(
+                label: 'Electronico inicial',
+                value: ConfigMoneda.formato(corte.electronicoInicial),
+              ),
+              _DatoCorte(
+                label: 'Electronico final',
+                value: ConfigMoneda.formato(
+                  corte.estado == 'CERRADO'
+                      ? corte.electronicoContado
+                      : corte.electronicoEsperado,
+                ),
+              ),
+              _DatoCorte(
+                label: 'Diferencia efectivo',
+                value: ConfigMoneda.formato(corte.diferenciaEfectivo),
+                valueColor:
+                    corte.diferenciaEfectivo == 0 ? _textoPrincipal : _rojo,
+              ),
+              _DatoCorte(
+                label: 'Diferencia electronico',
+                value: ConfigMoneda.formato(corte.diferenciaElectronico),
+                valueColor:
+                    corte.diferenciaElectronico == 0 ? _textoPrincipal : _rojo,
+              ),
+            ],
+          ),
+          if (corte.observacionesCorte.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              corte.observacionesCorte,
+              style: const TextStyle(
+                color: _textoSecundario,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _MiniDatoRegistro(
+                label: 'Entradas efectivo',
+                value: ConfigMoneda.formato(
+                  corte.totalesMovimientos.entradasEfectivo,
+                ),
+              ),
+              _MiniDatoRegistro(
+                label: 'Salidas efectivo',
+                value: ConfigMoneda.formato(
+                  corte.totalesMovimientos.salidasEfectivo,
+                ),
+              ),
+              _MiniDatoRegistro(
+                label: 'Entradas electronico',
+                value: ConfigMoneda.formato(
+                  corte.totalesMovimientos.entradasElectronico,
+                ),
+              ),
+              _MiniDatoRegistro(
+                label: 'Salidas electronico',
+                value: ConfigMoneda.formato(
+                  corte.totalesMovimientos.salidasElectronico,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Text(
+            'Transacciones (${corte.totalesMovimientos.totalMovimientos})',
+            style: const TextStyle(
+              color: _textoPrincipal,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          corte.movimientos.isEmpty
+              ? const _MensajeMovimientos(
+                  icono: Icons.receipt_long_outlined,
+                  titulo: 'Sin transacciones',
+                  subtitulo: 'Este corte no tiene movimientos registrados.',
+                )
+              : _ListaMovimientosCaja(movimientos: corte.movimientos),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniDatoRegistro extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _MiniDatoRegistro({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F9F5),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _bordeSuave),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: _textoSecundario,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            style: const TextStyle(
+              color: _textoPrincipal,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _EncabezadoCaja extends StatelessWidget {
   final CorteResumen? corte;
   final VoidCallback onRefrescar;
+  final VoidCallback onRegistroCortes;
 
   const _EncabezadoCaja({
     required this.corte,
     required this.onRefrescar,
+    required this.onRegistroCortes,
   });
 
   @override
@@ -904,6 +1735,24 @@ class _EncabezadoCaja extends StatelessWidget {
             ],
           ),
         ),
+        OutlinedButton.icon(
+          onPressed: onRegistroCortes,
+          icon: const Icon(Icons.history_outlined, size: 18),
+          label: const Text(
+            'Registro de cortes',
+            style: TextStyle(fontWeight: FontWeight.w900),
+          ),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _verdeOscuro,
+            side: const BorderSide(color: _bordeSuave),
+            backgroundColor: _blanco,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
         IconButton(
           onPressed: onRefrescar,
           icon: const Icon(Icons.refresh, color: _textoSecundario),
@@ -1933,6 +2782,12 @@ String _formatoFechaHora(DateTime? fecha) {
   return '$dia/$mes/${fecha.year} $hora:$minuto';
 }
 
+String _formatoFechaApi(DateTime fecha) {
+  final mes = fecha.month.toString().padLeft(2, '0');
+  final dia = fecha.day.toString().padLeft(2, '0');
+  return '${fecha.year}-$mes-$dia';
+}
+
 String _etiquetaConcepto(String valor) {
   if (valor.isEmpty) return 'Sin concepto';
 
@@ -1942,4 +2797,14 @@ String _etiquetaConcepto(String valor) {
       .where((parte) => parte.isNotEmpty)
       .map((parte) => '${parte[0].toUpperCase()}${parte.substring(1)}')
       .join(' ');
+}
+
+String _nombreUsuarioCorte(String nombre, int? idUsuario) {
+  if (nombre.trim().isNotEmpty) {
+    return nombre;
+  }
+  if (idUsuario == null || idUsuario <= 0) {
+    return 'Sin cerrar';
+  }
+  return 'Usuario #$idUsuario';
 }

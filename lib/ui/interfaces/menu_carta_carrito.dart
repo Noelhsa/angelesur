@@ -187,7 +187,7 @@ class _DialogoPagoVentaState extends State<_DialogoPagoVenta> {
                     ),
                     const SizedBox(height: 26),
                     const _EtiquetaCampoPago(
-                      texto: 'MÃ©todo de pago',
+                      texto: 'Metodo de pago',
                     ),
                     const SizedBox(height: 6),
                     _SelectorMetodoPago(
@@ -197,7 +197,7 @@ class _DialogoPagoVentaState extends State<_DialogoPagoVenta> {
                     const SizedBox(height: 18),
                     if (_esEfectivo) ...[
                       const _EtiquetaCampoPago(
-                        texto: 'Acceso rÃ¡pido (Efectivo)',
+                        texto: 'Acceso rapido (Efectivo)',
                       ),
                       const SizedBox(height: 10),
                       _AccesosRapidosPago(
@@ -432,7 +432,7 @@ class _SelectorMetodoPago extends StatelessWidget {
         ),
         DropdownMenuItem(
           value: 'ELECTRONICO',
-          child: Text('ElectrÃ³nico'),
+          child: Text('Electronico'),
         ),
         DropdownMenuItem(
           value: 'OTRO',
@@ -618,7 +618,7 @@ class _CampoReferenciaPago extends StatelessWidget {
         fontWeight: FontWeight.w600,
       ),
       decoration: InputDecoration(
-        hintText: 'NÃºmero de autorizaciÃ³n, folio o referencia',
+        hintText: 'Numero de autorizacion, folio o referencia',
         hintStyle: const TextStyle(
           color: Color(0xFF9AA19B),
           fontSize: 11,
@@ -765,7 +765,7 @@ class _OpcionImprimirTicket extends StatelessWidget {
           const SizedBox(width: 8),
           const Expanded(
             child: Text(
-              'Â¿Imprimir ticket?',
+              'Imprimir ticket?',
               style: TextStyle(
                 color: _texto,
                 fontSize: 11,
@@ -973,7 +973,7 @@ class MenuCartaCarrito extends StatelessWidget {
             child: medicamentos.isEmpty
                 ? const Center(
                     child: Text(
-                      'Carrito vacÃ­o',
+                      'Carrito vacio',
                       style: TextStyle(
                         color: _textoSuave,
                         fontSize: 12,

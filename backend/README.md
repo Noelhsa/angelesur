@@ -86,7 +86,10 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 - `GET /devoluciones/proveedores/{idDevolucionProveedor}`: obtiene devolucion a proveedor.
 - `POST /devoluciones/proveedores`: llama `sp_registrar_devolucion_proveedor`.
 - `POST /devoluciones/proveedores/{idDevolucionProveedor}/cancelar`: llama `sp_cancelar_devolucion_proveedor`.
+- `GET /cortes/resumen`: lista cortes con saldos, totales, usuarios de apertura/cierre y filtros por busqueda, estado y fechas.
 - `GET /cortes/actual`: lee el corte abierto desde `vw_corte_resumen`.
+- `GET /cortes/{idCorte}`: obtiene resumen, totales y movimientos del corte.
+- `GET /cortes/{idCorte}/movimientos`: lista movimientos de un corte.
 - `POST /cortes/abrir`: llama `sp_abrir_corte`.
 - `POST /cortes/cerrar`: llama `sp_cerrar_corte`.
 - `POST /ventas`: llama `sp_registrar_venta`.
