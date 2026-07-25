@@ -350,6 +350,57 @@ class TotalesMovimientosCorte {
   }
 }
 
+class CortesResumenPaginado {
+  final List<CorteResumen> items;
+  final int pagina;
+  final int limite;
+  final int total;
+  final int totalPaginas;
+  final bool hayAnterior;
+  final bool haySiguiente;
+
+  const CortesResumenPaginado({
+    required this.items,
+    required this.pagina,
+    required this.limite,
+    required this.total,
+    required this.totalPaginas,
+    required this.hayAnterior,
+    required this.haySiguiente,
+  });
+
+  factory CortesResumenPaginado.fromResponse(dynamic response) {
+    if (response is List<dynamic>) {
+      final items = response
+          .map((item) => CorteResumen.fromJson(item as Map<String, dynamic>))
+          .toList();
+      return CortesResumenPaginado(
+        items: items,
+        pagina: 1,
+        limite: items.length,
+        total: items.length,
+        totalPaginas: 1,
+        hayAnterior: false,
+        haySiguiente: false,
+      );
+    }
+
+    final map = response as Map<String, dynamic>;
+    final items = (map['items'] as List<dynamic>? ?? [])
+        .map((item) => CorteResumen.fromJson(item as Map<String, dynamic>))
+        .toList();
+    return CortesResumenPaginado(
+      items: items,
+      pagina: CorteResumen._asIntAny(map, ['pagina']),
+      limite: CorteResumen._asIntAny(map, ['limite']),
+      total: CorteResumen._asIntAny(map, ['total']),
+      totalPaginas: CorteResumen._asIntAny(map, ['totalPaginas']),
+      hayAnterior: map['hayAnterior'] == true,
+      haySiguiente: map['haySiguiente'] == true,
+    );
+  }
+}
+
 class CortesApiService {
   final ApiClient _apiClient;
 
@@ -362,16 +413,18 @@ class CortesApiService {
     return CorteResumen.fromJson(response as Map<String, dynamic>);
   }
 
-  Future<List<CorteResumen>> listarResumen({
+  Future<CortesResumenPaginado> listarResumen({
     String? busqueda,
     String? estado,
     String? fechaAperturaDesde,
     String? fechaAperturaHasta,
     String? fechaCierreDesde,
     String? fechaCierreHasta,
-    int limite = 100,
+    int pagina = 1,
+    int limite = 25,
   }) async {
     final params = <String, String>{
+      'pagina': pagina.toString(),
       'limite': limite.toString(),
       if (busqueda != null && busqueda.trim().isNotEmpty)
         'busqueda': busqueda.trim(),
@@ -387,10 +440,7 @@ class CortesApiService {
     };
     final query = Uri(queryParameters: params).query;
     final response = await _apiClient.get('/cortes/resumen?$query');
-    final list = response as List<dynamic>;
-    return list
-        .map((item) => CorteResumen.fromJson(item as Map<String, dynamic>))
-        .toList();
+    return CortesResumenPaginado.fromResponse(response);
   }
 
   Future<CorteDetalle> obtenerDetalle(

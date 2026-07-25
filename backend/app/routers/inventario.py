@@ -60,9 +60,12 @@ def listar_inventario_actual(
     busqueda: str | None = Query(default=None, min_length=1),
     id_producto: int | None = Query(default=None, alias="idProducto"),
     solo_activos: bool = Query(default=True, alias="soloActivos"),
-    limite: int = Query(default=200, ge=1, le=1000),
+    categoria: str | None = Query(default=None, min_length=1),
+    estado_stock: str | None = Query(default=None, alias="estadoStock"),
+    pagina: int = Query(default=1, ge=1),
+    limite: int = Query(default=25, ge=5, le=100),
 ):
-    sql = "SELECT * FROM vw_inventario_actual"
+    sql_base = "SELECT * FROM vw_inventario_actual"
     filtros: list[str] = []
     params: list[object] = []
 
@@ -74,6 +77,17 @@ def listar_inventario_actual(
         filtros.append("idProducto = %s")
         params.append(id_producto)
 
+    if categoria:
+        filtros.append("categoria = %s")
+        params.append(categoria)
+
+    if estado_stock == "AGOTADO":
+        filtros.append("stockActual <= 0")
+    elif estado_stock == "STOCK_BAJO":
+        filtros.append("stockActual > 0 AND stockActual <= 15")
+    elif estado_stock == "EN_EXISTENCIA":
+        filtros.append("stockActual > 15")
+
     if busqueda:
         filtros.append(
             "(nombre LIKE %s OR codigoBarras LIKE %s OR codigoLote LIKE %s "
@@ -82,12 +96,29 @@ def listar_inventario_actual(
         like = f"%{busqueda}%"
         params.extend([like, like, like, like])
 
-    if filtros:
-        sql += " WHERE " + " AND ".join(filtros)
+    where_sql = f" WHERE {' AND '.join(filtros)}" if filtros else ""
+    total_row = fetch_one(
+        f"SELECT COUNT(*) AS total FROM ({sql_base}{where_sql}) inventario",
+        params,
+    )
+    total = int(total_row["total"] if total_row else 0)
+    total_paginas = max((total + limite - 1) // limite, 1)
+    pagina_actual = min(pagina, total_paginas)
+    offset = (pagina_actual - 1) * limite
 
-    sql += " ORDER BY nombre, fechaCaducidad, idInventario LIMIT %s"
-    params.append(limite)
-    return fetch_all(sql, params)
+    items = fetch_all(
+        sql_base + where_sql + " ORDER BY nombre, fechaCaducidad, idInventario LIMIT %s OFFSET %s",
+        [*params, limite, offset],
+    )
+    return {
+        "items": items,
+        "pagina": pagina_actual,
+        "limite": limite,
+        "total": total,
+        "totalPaginas": total_paginas,
+        "hayAnterior": pagina_actual > 1,
+        "haySiguiente": pagina_actual < total_paginas,
+    }
 
 
 @router.get("/caducidad")

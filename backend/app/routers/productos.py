@@ -78,14 +78,16 @@ class ProductoResponse(BaseModel):
     dosis: str | None = None
 
 
-@router.get("", response_model=list[ProductoResponse])
+@router.get("")
 def listar_productos(
     busqueda: str | None = Query(default=None, min_length=1),
     tipo: TipoProducto | None = None,
+    categoria: str | None = Query(default=None, min_length=1),
+    activo: bool | None = None,
     incluir_inactivos: bool = Query(default=False, alias="incluirInactivos"),
-    limite: int = Query(default=200, ge=1, le=1000),
+    pagina: int = Query(default=1, ge=1),
+    limite: int = Query(default=25, ge=5, le=100),
 ):
-    sql = _select_productos_sql()
     filtros: list[str] = []
     params: list[object] = []
 
@@ -93,23 +95,48 @@ def listar_productos(
         filtros.append("p.activo = %s")
         params.append(1)
 
+    if activo is not None:
+        filtros.append("p.activo = %s")
+        params.append(1 if activo else 0)
+
     if tipo:
         filtros.append("p.tipo = %s")
         params.append(tipo)
+
+    if categoria:
+        filtros.append("p.categoria = %s")
+        params.append(categoria)
 
     if busqueda:
         filtros.append(
             "(p.nombre LIKE %s OR p.codigoBarras LIKE %s OR p.categoria LIKE %s)"
         )
-        like = f"%{busqueda}%"
+        like = f"%{busqueda.strip()}%"
         params.extend([like, like, like])
 
-    if filtros:
-        sql += " WHERE " + " AND ".join(filtros)
+    where_sql = f" WHERE {' AND '.join(filtros)}" if filtros else ""
+    total_row = fetch_one(
+        f"SELECT COUNT(*) AS total FROM ({_select_productos_sql()}{where_sql}) productos",
+        params,
+    )
+    total = int(total_row["total"] if total_row else 0)
+    total_paginas = max((total + limite - 1) // limite, 1)
+    pagina_actual = min(pagina, total_paginas)
+    offset = (pagina_actual - 1) * limite
 
-    sql += " ORDER BY p.nombre LIMIT %s"
-    params.append(limite)
-    return fetch_all(sql, params)
+    items = fetch_all(
+        _select_productos_sql() + where_sql + " ORDER BY p.nombre LIMIT %s OFFSET %s",
+        [*params, limite, offset],
+    )
+    return {
+        "items": items,
+        "pagina": pagina_actual,
+        "limite": limite,
+        "total": total,
+        "totalPaginas": total_paginas,
+        "hayAnterior": pagina_actual > 1,
+        "haySiguiente": pagina_actual < total_paginas,
+    }
 
 
 @router.get("/{id_producto}", response_model=ProductoResponse)

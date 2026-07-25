@@ -32,13 +32,10 @@ class ContenidoCatalogoProducto extends StatefulWidget {
       _ContenidoCatalogoProductoState();
 }
 
-class _ContenidoCatalogoProductoState
-    extends State<ContenidoCatalogoProducto> {
-  final ProductosApiService _productosApiService =
-      ProductosApiService();
+class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
+  final ProductosApiService _productosApiService = ProductosApiService();
 
-  final TextEditingController _busquedaController =
-      TextEditingController();
+  final TextEditingController _busquedaController = TextEditingController();
 
   String _categoriaSeleccionada = 'Todas las categorias';
   String _estadoSeleccionado = 'Todos los estados';
@@ -51,6 +48,12 @@ class _ContenidoCatalogoProductoState
   String? _error;
 
   List<ProductoCatalogoApi> _productos = [];
+  int _pagina = 1;
+  int _limite = 25;
+  int _totalProductos = 0;
+  int _totalPaginas = 1;
+  bool _hayAnterior = false;
+  bool _haySiguiente = false;
 
   @override
   void initState() {
@@ -78,6 +81,13 @@ class _ContenidoCatalogoProductoState
 
     return [
       'Todas las categorias',
+      ..._categoriasProducto.where(
+        (categoria) => !categorias.contains(categoria),
+      ),
+      if (_categoriaSeleccionada != 'Todas las categorias' &&
+          !categorias.contains(_categoriaSeleccionada) &&
+          !_categoriasProducto.contains(_categoriaSeleccionada))
+        _categoriaSeleccionada,
       ...categorias,
     ];
   }
@@ -98,7 +108,7 @@ class _ContenidoCatalogoProductoState
     }).toList();
   }
 
-  Future<void> _cargarProductos() async {
+  Future<void> _cargarProductos({int? pagina}) async {
     setState(() {
       _cargando = true;
       _error = null;
@@ -111,10 +121,22 @@ class _ContenidoCatalogoProductoState
         _ => null,
       };
 
-      final productos =
-          await _productosApiService.listarProductos(
+      final activo = switch (_estadoSeleccionado) {
+        'Activo' => true,
+        'Inactivo' => false,
+        _ => null,
+      };
+      final categoria = _categoriaSeleccionada == 'Todas las categorias'
+          ? null
+          : _categoriaSeleccionada;
+
+      final resultado = await _productosApiService.listarProductosPaginados(
         busqueda: _busquedaController.text,
         tipo: tipo,
+        categoria: categoria,
+        activo: activo,
+        pagina: pagina ?? _pagina,
+        limite: _limite,
       );
 
       if (!mounted) {
@@ -122,13 +144,18 @@ class _ContenidoCatalogoProductoState
       }
 
       setState(() {
-        _productos = productos;
+        _productos = resultado.items;
+        _pagina = resultado.pagina;
+        _limite = resultado.limite;
+        _totalProductos = resultado.total;
+        _totalPaginas = resultado.totalPaginas;
+        _hayAnterior = resultado.hayAnterior;
+        _haySiguiente = resultado.haySiguiente;
 
         if (!_categorias.contains(
           _categoriaSeleccionada,
         )) {
-          _categoriaSeleccionada =
-              'Todas las categorias';
+          _categoriaSeleccionada = 'Todas las categorias';
         }
 
         _cargando = false;
@@ -170,8 +197,7 @@ class _ContenidoCatalogoProductoState
     ProductoCatalogoApi producto,
   ) async {
     try {
-      final detalle =
-          await _productosApiService.obtenerProducto(
+      final detalle = await _productosApiService.obtenerProducto(
         producto.idProducto,
       );
 
@@ -308,9 +334,7 @@ class _ContenidoCatalogoProductoState
       );
 
       _mostrarMensaje(
-        producto.activo
-            ? 'Producto desactivado'
-            : 'Producto activado',
+        producto.activo ? 'Producto desactivado' : 'Producto activado',
       );
 
       await _cargarProductos();
@@ -345,19 +369,14 @@ class _ContenidoCatalogoProductoState
                 28,
               ),
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _PanelFiltrosProducto(
-                    busquedaController:
-                        _busquedaController,
-                    categoriaSeleccionada:
-                        _categoriaSeleccionada,
+                    busquedaController: _busquedaController,
+                    categoriaSeleccionada: _categoriaSeleccionada,
                     categorias: _categorias,
-                    estadoSeleccionado:
-                        _estadoSeleccionado,
-                    tipoSeleccionado:
-                        _tipoSeleccionado,
+                    estadoSeleccionado: _estadoSeleccionado,
+                    tipoSeleccionado: _tipoSeleccionado,
                     procesando: _procesando,
                     onCategoriaChanged: (value) {
                       if (value == null) {
@@ -367,6 +386,7 @@ class _ContenidoCatalogoProductoState
                       setState(() {
                         _categoriaSeleccionada = value;
                       });
+                      _cargarProductos(pagina: 1);
                     },
                     onEstadoChanged: (value) {
                       if (value == null) {
@@ -376,6 +396,7 @@ class _ContenidoCatalogoProductoState
                       setState(() {
                         _estadoSeleccionado = value;
                       });
+                      _cargarProductos(pagina: 1);
                     },
                     onTipoChanged: (value) {
                       if (value == null) {
@@ -386,9 +407,9 @@ class _ContenidoCatalogoProductoState
                         _tipoSeleccionado = value;
                       });
 
-                      _cargarProductos();
+                      _cargarProductos(pagina: 1);
                     },
-                    onBuscar: _cargarProductos,
+                    onBuscar: () => _cargarProductos(pagina: 1),
                     onRefrescar: _cargarProductos,
                     onNuevoProducto: () {
                       setState(() {
@@ -399,56 +420,54 @@ class _ContenidoCatalogoProductoState
                   const SizedBox(height: 18),
                   if (_cargando)
                     const _EstadoProductos(
-                      mensaje:
-                          'Cargando productos...',
+                      mensaje: 'Cargando productos...',
                     )
                   else if (_error != null)
                     _EstadoProductos(
                       mensaje: _error!,
-                      onReintentar:
-                          _cargarProductos,
+                      onReintentar: _cargarProductos,
                     )
                   else if (_productosFiltrados.isEmpty)
                     const _EstadoProductos(
-                      mensaje:
-                          'No hay productos para mostrar',
+                      mensaje: 'No hay productos para mostrar',
                     )
                   else
                     LayoutBuilder(
-                      builder:
-                          (context, constraints) {
-                        final anchoTabla =
-                            constraints.maxWidth <
-                                    1050
-                                ? 1050.0
-                                : constraints
-                                    .maxWidth;
+                      builder: (context, constraints) {
+                        final anchoTabla = constraints.maxWidth < 1050
+                            ? 1050.0
+                            : constraints.maxWidth;
 
                         return SingleChildScrollView(
-                          scrollDirection:
-                              Axis.horizontal,
+                          scrollDirection: Axis.horizontal,
                           child: SizedBox(
                             width: anchoTabla,
-                            child:
-                                _TablaProductos(
-                              productos:
-                                  _productosFiltrados,
-                              procesando:
-                                  _procesando,
-                              onDetalle:
-                                  _mostrarDetalle,
+                            child: _TablaProductos(
+                              productos: _productos,
+                              procesando: _procesando,
+                              onDetalle: _mostrarDetalle,
                               onEditar: (producto) {
                                 _guardarProducto(
                                   producto: producto,
                                 );
                               },
-                              onCambiarEstado:
-                                  _cambiarEstado,
+                              onCambiarEstado: _cambiarEstado,
                             ),
                           ),
                         );
                       },
                     ),
+                  const SizedBox(height: 12),
+                  _PaginadorCatalogoProducto(
+                    pagina: _pagina,
+                    totalPaginas: _totalPaginas,
+                    total: _totalProductos,
+                    limite: _limite,
+                    hayAnterior: _hayAnterior,
+                    haySiguiente: _haySiguiente,
+                    onAnterior: () => _cargarProductos(pagina: _pagina - 1),
+                    onSiguiente: () => _cargarProductos(pagina: _pagina + 1),
+                  ),
                 ],
               ),
             ),
@@ -460,8 +479,7 @@ class _ContenidoCatalogoProductoState
                   _mostrarMenuNuevoProducto = false;
                 });
               },
-              onGuardarProducto:
-                  _guardarProductoDesdeCarta,
+              onGuardarProducto: _guardarProductoDesdeCarta,
             ),
         ],
       ),
@@ -470,8 +488,7 @@ class _ContenidoCatalogoProductoState
 }
 
 class _PanelFiltrosProducto extends StatelessWidget {
-  final TextEditingController
-      busquedaController;
+  final TextEditingController busquedaController;
 
   final String categoriaSeleccionada;
   final List<String> categorias;
@@ -479,14 +496,11 @@ class _PanelFiltrosProducto extends StatelessWidget {
   final String tipoSeleccionado;
   final bool procesando;
 
-  final ValueChanged<String?>
-      onCategoriaChanged;
+  final ValueChanged<String?> onCategoriaChanged;
 
-  final ValueChanged<String?>
-      onEstadoChanged;
+  final ValueChanged<String?> onEstadoChanged;
 
-  final ValueChanged<String?>
-      onTipoChanged;
+  final ValueChanged<String?> onTipoChanged;
 
   final VoidCallback onBuscar;
   final VoidCallback onRefrescar;
@@ -526,8 +540,7 @@ class _PanelFiltrosProducto extends StatelessWidget {
       child: Wrap(
         spacing: 14,
         runSpacing: 12,
-        crossAxisAlignment:
-            WrapCrossAlignment.end,
+        crossAxisAlignment: WrapCrossAlignment.end,
         children: [
           SizedBox(
             width: 240,
@@ -582,12 +595,9 @@ class _PanelFiltrosProducto extends StatelessWidget {
             onTap: onRefrescar,
           ),
           _BotonPrincipalCatalogo(
-            texto: procesando
-                ? 'Guardando...'
-                : 'Nuevo Producto',
+            texto: procesando ? 'Guardando...' : 'Nuevo Producto',
             icono: Icons.add,
-            onTap:
-                procesando ? null : onNuevoProducto,
+            onTap: procesando ? null : onNuevoProducto,
           ),
         ],
       ),
@@ -613,8 +623,7 @@ class _CampoBusqueda extends StatelessWidget {
       },
       decoration: InputDecoration(
         labelText: 'Buscar producto',
-        hintText:
-            'Nombre, codigo o categoria',
+        hintText: 'Nombre, codigo o categoria',
         prefixIcon: const Icon(
           Icons.search,
           size: 18,
@@ -622,8 +631,7 @@ class _CampoBusqueda extends StatelessWidget {
         filled: true,
         fillColor: _grisCampo,
         border: OutlineInputBorder(
-          borderRadius:
-              BorderRadius.circular(5),
+          borderRadius: BorderRadius.circular(5),
           borderSide: const BorderSide(
             color: Color(0xFFC8D6C0),
           ),
@@ -649,9 +657,7 @@ class _CampoDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final value = opciones.contains(valor)
-        ? valor
-        : opciones.first;
+    final value = opciones.contains(valor) ? valor : opciones.first;
 
     return DropdownButtonFormField<String>(
       initialValue: value,
@@ -661,8 +667,7 @@ class _CampoDropdown extends StatelessWidget {
         filled: true,
         fillColor: _grisCampo,
         border: OutlineInputBorder(
-          borderRadius:
-              BorderRadius.circular(5),
+          borderRadius: BorderRadius.circular(5),
           borderSide: const BorderSide(
             color: Color(0xFFC8D6C0),
           ),
@@ -680,8 +685,7 @@ class _CampoDropdown extends StatelessWidget {
   }
 }
 
-class _BotonSecundarioCatalogo
-    extends StatelessWidget {
+class _BotonSecundarioCatalogo extends StatelessWidget {
   final String texto;
   final IconData icono;
   final VoidCallback onTap;
@@ -712,16 +716,14 @@ class _BotonSecundarioCatalogo
           ),
         ),
         style: OutlinedButton.styleFrom(
-          padding:
-              const EdgeInsets.symmetric(
+          padding: const EdgeInsets.symmetric(
             horizontal: 14,
           ),
           side: const BorderSide(
             color: Color(0xFFC8D6C0),
           ),
           shape: RoundedRectangleBorder(
-            borderRadius:
-                BorderRadius.circular(5),
+            borderRadius: BorderRadius.circular(5),
           ),
         ),
       ),
@@ -729,8 +731,7 @@ class _BotonSecundarioCatalogo
   }
 }
 
-class _BotonPrincipalCatalogo
-    extends StatelessWidget {
+class _BotonPrincipalCatalogo extends StatelessWidget {
   final String texto;
   final IconData icono;
   final VoidCallback? onTap;
@@ -763,13 +764,11 @@ class _BotonPrincipalCatalogo
         style: ElevatedButton.styleFrom(
           backgroundColor: _verdeOscuro,
           elevation: 0,
-          padding:
-              const EdgeInsets.symmetric(
+          padding: const EdgeInsets.symmetric(
             horizontal: 16,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius:
-                BorderRadius.circular(5),
+            borderRadius: BorderRadius.circular(5),
           ),
         ),
       ),
@@ -781,14 +780,11 @@ class _TablaProductos extends StatelessWidget {
   final List<ProductoCatalogoApi> productos;
   final bool procesando;
 
-  final ValueChanged<ProductoCatalogoApi>
-      onDetalle;
+  final ValueChanged<ProductoCatalogoApi> onDetalle;
 
-  final ValueChanged<ProductoCatalogoApi>
-      onEditar;
+  final ValueChanged<ProductoCatalogoApi> onEditar;
 
-  final ValueChanged<ProductoCatalogoApi>
-      onCambiarEstado;
+  final ValueChanged<ProductoCatalogoApi> onCambiarEstado;
 
   const _TablaProductos({
     required this.productos,
@@ -801,12 +797,9 @@ class _TablaProductos extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment:
-          CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (var index = 0;
-            index < productos.length;
-            index++) ...[
+        for (var index = 0; index < productos.length; index++) ...[
           if (index > 0)
             const SizedBox(
               height: 10,
@@ -816,8 +809,7 @@ class _TablaProductos extends StatelessWidget {
             procesando: procesando,
             onDetalle: onDetalle,
             onEditar: onEditar,
-            onCambiarEstado:
-                onCambiarEstado,
+            onCambiarEstado: onCambiarEstado,
           ),
         ],
       ],
@@ -825,19 +817,78 @@ class _TablaProductos extends StatelessWidget {
   }
 }
 
-class _FilaProductoCatalogo
-    extends StatelessWidget {
+class _PaginadorCatalogoProducto extends StatelessWidget {
+  final int pagina;
+  final int totalPaginas;
+  final int total;
+  final int limite;
+  final bool hayAnterior;
+  final bool haySiguiente;
+  final VoidCallback onAnterior;
+  final VoidCallback onSiguiente;
+
+  const _PaginadorCatalogoProducto({
+    required this.pagina,
+    required this.totalPaginas,
+    required this.total,
+    required this.limite,
+    required this.hayAnterior,
+    required this.haySiguiente,
+    required this.onAnterior,
+    required this.onSiguiente,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final desde = total == 0 ? 0 : ((pagina - 1) * limite) + 1;
+    final hasta = total == 0 ? 0 : (desde + limite - 1).clamp(0, total);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _bordeSuave),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              '$desde-$hasta de $total | Pagina $pagina de $totalPaginas',
+              style: const TextStyle(
+                color: _textoSecundario,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: hayAnterior ? onAnterior : null,
+            tooltip: 'Pagina anterior',
+            icon: const Icon(Icons.chevron_left),
+            color: _verdeOscuro,
+          ),
+          IconButton(
+            onPressed: haySiguiente ? onSiguiente : null,
+            tooltip: 'Pagina siguiente',
+            icon: const Icon(Icons.chevron_right),
+            color: _verdeOscuro,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilaProductoCatalogo extends StatelessWidget {
   final ProductoCatalogoApi producto;
   final bool procesando;
 
-  final ValueChanged<ProductoCatalogoApi>
-      onDetalle;
+  final ValueChanged<ProductoCatalogoApi> onDetalle;
 
-  final ValueChanged<ProductoCatalogoApi>
-      onEditar;
+  final ValueChanged<ProductoCatalogoApi> onEditar;
 
-  final ValueChanged<ProductoCatalogoApi>
-      onCambiarEstado;
+  final ValueChanged<ProductoCatalogoApi> onCambiarEstado;
 
   const _FilaProductoCatalogo({
     required this.producto,
@@ -861,8 +912,7 @@ class _FilaProductoCatalogo
         border: Border.all(
           color: _bordeSuave,
         ),
-        borderRadius:
-            BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(
@@ -880,8 +930,7 @@ class _FilaProductoCatalogo
             height: 42,
             decoration: BoxDecoration(
               color: _fondoIconoProducto(),
-              borderRadius:
-                  BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               producto.esMedicamento
@@ -894,47 +943,39 @@ class _FilaProductoCatalogo
           const SizedBox(width: 14),
           Expanded(
             flex: 15,
-            child:
-                _MetricaProductoCatalogo(
+            child: _MetricaProductoCatalogo(
               titulo: 'Código',
               child: Text(
-                producto.codigoBarras ??
-                    'S/C',
+                producto.codigoBarras ?? 'S/C',
                 maxLines: 2,
-                overflow:
-                    TextOverflow.ellipsis,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: _textoPrincipal,
                   fontSize: 10,
-                  fontWeight:
-                      FontWeight.w800,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ),
           ),
           Expanded(
             flex: 28,
-            child:
-                _MetricaProductoCatalogo(
+            child: _MetricaProductoCatalogo(
               titulo: 'Producto',
               child: Text(
                 producto.nombre,
                 maxLines: 2,
-                overflow:
-                    TextOverflow.ellipsis,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: _textoPrincipal,
                   fontSize: 12,
-                  fontWeight:
-                      FontWeight.w900,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ),
           ),
           Expanded(
             flex: 14,
-            child:
-                _MetricaProductoCatalogo(
+            child: _MetricaProductoCatalogo(
               titulo: 'Tipo',
               child: _Badge(
                 texto: _etiqueta(
@@ -945,28 +986,23 @@ class _FilaProductoCatalogo
           ),
           Expanded(
             flex: 18,
-            child:
-                _MetricaProductoCatalogo(
+            child: _MetricaProductoCatalogo(
               titulo: 'Categoría',
               child: Text(
-                producto.categoria ??
-                    'Sin categoría',
+                producto.categoria ?? 'Sin categoría',
                 maxLines: 2,
-                overflow:
-                    TextOverflow.ellipsis,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: _textoPrincipal,
                   fontSize: 11,
-                  fontWeight:
-                      FontWeight.w800,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ),
           ),
           Expanded(
             flex: 12,
-            child:
-                _MetricaProductoCatalogo(
+            child: _MetricaProductoCatalogo(
               titulo: 'Estado',
               child: _BadgeEstado(
                 activo: producto.activo,
@@ -975,8 +1011,7 @@ class _FilaProductoCatalogo
           ),
           Expanded(
             flex: 17,
-            child:
-                _MetricaProductoCatalogo(
+            child: _MetricaProductoCatalogo(
               titulo: 'Acciones',
               child: Row(
                 children: [
@@ -988,18 +1023,14 @@ class _FilaProductoCatalogo
                               producto,
                             );
                           },
-                    padding:
-                        EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
                       minWidth: 32,
                       minHeight: 30,
                     ),
-                    tooltip:
-                        'Ver detalle',
+                    tooltip: 'Ver detalle',
                     icon: const Icon(
-                      Icons
-                          .visibility_outlined,
+                      Icons.visibility_outlined,
                     ),
                     color: _azul,
                     iconSize: 18,
@@ -1013,10 +1044,8 @@ class _FilaProductoCatalogo
                               producto,
                             );
                           },
-                    padding:
-                        EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
                       minWidth: 32,
                       minHeight: 30,
                     ),
@@ -1036,26 +1065,18 @@ class _FilaProductoCatalogo
                               producto,
                             );
                           },
-                    padding:
-                        EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
                       minWidth: 32,
                       minHeight: 30,
                     ),
-                    tooltip: producto.activo
-                        ? 'Desactivar'
-                        : 'Activar',
+                    tooltip: producto.activo ? 'Desactivar' : 'Activar',
                     icon: Icon(
                       producto.activo
-                          ? Icons
-                              .toggle_on_outlined
-                          : Icons
-                              .toggle_off_outlined,
+                          ? Icons.toggle_on_outlined
+                          : Icons.toggle_off_outlined,
                     ),
-                    color: producto.activo
-                        ? _verdeOscuro
-                        : _rojo,
+                    color: producto.activo ? _verdeOscuro : _rojo,
                     iconSize: 22,
                   ),
                 ],
@@ -1098,8 +1119,7 @@ class _FilaProductoCatalogo
   }
 }
 
-class _MetricaProductoCatalogo
-    extends StatelessWidget {
+class _MetricaProductoCatalogo extends StatelessWidget {
   final String titulo;
   final Widget child;
 
@@ -1116,19 +1136,16 @@ class _MetricaProductoCatalogo
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             titulo,
             maxLines: 1,
-            overflow:
-                TextOverflow.ellipsis,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: _textoSecundario,
               fontSize: 9,
-              fontWeight:
-                  FontWeight.w700,
+              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 5),
@@ -1151,15 +1168,13 @@ class _Badge extends StatelessWidget {
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(
+        padding: const EdgeInsets.symmetric(
           horizontal: 8,
           vertical: 4,
         ),
         decoration: BoxDecoration(
           color: const Color(0xFFEDEDEA),
-          borderRadius:
-              BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
           texto,
@@ -1186,26 +1201,18 @@ class _BadgeEstado extends StatelessWidget {
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(
+        padding: const EdgeInsets.symmetric(
           horizontal: 8,
           vertical: 4,
         ),
         decoration: BoxDecoration(
-          color: activo
-              ? const Color(0xFFEAF8DD)
-              : const Color(0xFFFFE8E8),
-          borderRadius:
-              BorderRadius.circular(4),
+          color: activo ? const Color(0xFFEAF8DD) : const Color(0xFFFFE8E8),
+          borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
-          activo
-              ? 'Activo'
-              : 'Inactivo',
+          activo ? 'Activo' : 'Inactivo',
           style: TextStyle(
-            color: activo
-                ? _verdeOscuro
-                : _rojo,
+            color: activo ? _verdeOscuro : _rojo,
             fontSize: 9,
             fontWeight: FontWeight.w900,
           ),
@@ -1228,13 +1235,11 @@ class _EstadoProductos extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding:
-            const EdgeInsets.symmetric(
+        padding: const EdgeInsets.symmetric(
           vertical: 42,
         ),
         child: Column(
-          mainAxisSize:
-              MainAxisSize.min,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               mensaje,
@@ -1242,15 +1247,13 @@ class _EstadoProductos extends StatelessWidget {
               style: const TextStyle(
                 color: _textoPrincipal,
                 fontSize: 15,
-                fontWeight:
-                    FontWeight.w800,
+                fontWeight: FontWeight.w800,
               ),
             ),
             if (onReintentar != null) ...[
               const SizedBox(height: 12),
               ElevatedButton.icon(
-                onPressed:
-                    onReintentar,
+                onPressed: onReintentar,
                 icon: const Icon(
                   Icons.refresh,
                 ),
@@ -1274,12 +1277,10 @@ class _DialogoProducto extends StatefulWidget {
   });
 
   @override
-  State<_DialogoProducto> createState() =>
-      _DialogoProductoState();
+  State<_DialogoProducto> createState() => _DialogoProductoState();
 }
 
-class _DialogoProductoState
-    extends State<_DialogoProducto> {
+class _DialogoProductoState extends State<_DialogoProducto> {
   static const List<String> _tipos = [
     'PRODUCTO',
     'MEDICAMENTO',
@@ -1307,23 +1308,17 @@ class _DialogoProductoState
     'ADULTO',
   ];
 
-  late final TextEditingController
-      _codigoController;
+  late final TextEditingController _codigoController;
 
-  late final TextEditingController
-      _nombreController;
+  late final TextEditingController _nombreController;
 
-  late final TextEditingController
-      _descripcionController;
+  late final TextEditingController _descripcionController;
 
-  late final TextEditingController
-      _presentacionController;
+  late final TextEditingController _presentacionController;
 
-  late final TextEditingController
-      _sustanciaController;
+  late final TextEditingController _sustanciaController;
 
-  late final TextEditingController
-      _dosisController;
+  late final TextEditingController _dosisController;
 
   late String _tipo;
   late String _categoria;
@@ -1341,33 +1336,27 @@ class _DialogoProductoState
 
     final producto = widget.producto;
 
-    _codigoController =
-        TextEditingController(
+    _codigoController = TextEditingController(
       text: producto?.codigoBarras ?? '',
     );
 
-    _nombreController =
-        TextEditingController(
+    _nombreController = TextEditingController(
       text: producto?.nombre ?? '',
     );
 
-    _descripcionController =
-        TextEditingController(
+    _descripcionController = TextEditingController(
       text: producto?.descripcion ?? '',
     );
 
-    _presentacionController =
-        TextEditingController(
+    _presentacionController = TextEditingController(
       text: producto?.presentacion ?? '',
     );
 
-    _sustanciaController =
-        TextEditingController(
+    _sustanciaController = TextEditingController(
       text: producto?.sustanciaActiva ?? '',
     );
 
-    _dosisController =
-        TextEditingController(
+    _dosisController = TextEditingController(
       text: producto?.dosis ?? '',
     );
 
@@ -1395,11 +1384,9 @@ class _DialogoProductoState
         ? producto!.edad!
         : 'GENERAL';
 
-    _manejaCaducidad =
-        producto?.manejaCaducidad ?? false;
+    _manejaCaducidad = producto?.manejaCaducidad ?? false;
 
-    _requiereReceta =
-        producto?.requiereReceta ?? false;
+    _requiereReceta = producto?.requiereReceta ?? false;
   }
 
   @override
@@ -1415,20 +1402,17 @@ class _DialogoProductoState
   }
 
   void _confirmar() {
-    final nombre =
-        _nombreController.text.trim();
+    final nombre = _nombreController.text.trim();
 
     if (nombre.isEmpty) {
       setState(() {
-        _error =
-            'Ingresa el nombre del producto';
+        _error = 'Ingresa el nombre del producto';
       });
 
       return;
     }
 
-    Map<String, dynamic>?
-        infoMedicamento;
+    Map<String, dynamic>? infoMedicamento;
 
     if (_tipo == 'MEDICAMENTO') {
       infoMedicamento = {
@@ -1437,8 +1421,7 @@ class _DialogoProductoState
         ),
         'viaAdministracion': _via,
         'edad': _edad,
-        'requiereReceta':
-            _requiereReceta,
+        'requiereReceta': _requiereReceta,
         'sustanciaActiva': _limpiar(
           _sustanciaController.text,
         ),
@@ -1458,64 +1441,47 @@ class _DialogoProductoState
           _descripcionController.text,
         ),
         tipo: _tipo,
-        categoria:
-            _tipo == 'PRODUCTO'
-                ? _categoria
-                : null,
-        manejaCaducidad:
-            _manejaCaducidad,
-        infoMedicamento:
-            infoMedicamento,
+        categoria: _tipo == 'PRODUCTO' ? _categoria : null,
+        manejaCaducidad: _manejaCaducidad,
+        infoMedicamento: infoMedicamento,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final esMedicamento =
-        _tipo == 'MEDICAMENTO';
+    final esMedicamento = _tipo == 'MEDICAMENTO';
 
     return AlertDialog(
       title: Text(
-        widget.producto == null
-            ? 'Nuevo producto'
-            : 'Editar producto',
+        widget.producto == null ? 'Nuevo producto' : 'Editar producto',
       ),
       content: SizedBox(
         width: 520,
         child: SingleChildScrollView(
           child: Column(
-            mainAxisSize:
-                MainAxisSize.min,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Row(
                 children: [
                   Expanded(
                     child: _CampoTexto(
-                      label:
-                          'Codigo de barras',
-                      controller:
-                          _codigoController,
+                      label: 'Codigo de barras',
+                      controller: _codigoController,
                     ),
                   ),
                   const SizedBox(
                     width: 12,
                   ),
                   Expanded(
-                    child:
-                        DropdownButtonFormField<
-                            String>(
+                    child: DropdownButtonFormField<String>(
                       initialValue: _tipo,
-                      decoration:
-                          const InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: 'Tipo',
-                        border:
-                            OutlineInputBorder(),
+                        border: OutlineInputBorder(),
                       ),
-                      items:
-                          _tipos.map((tipo) {
-                        return DropdownMenuItem<
-                            String>(
+                      items: _tipos.map((tipo) {
+                        return DropdownMenuItem<String>(
                           value: tipo,
                           child: Text(
                             _etiqueta(
@@ -1532,14 +1498,11 @@ class _DialogoProductoState
                         setState(() {
                           _tipo = value;
 
-                          if (value ==
-                                  'PRODUCTO' &&
-                              !_opcionesCategoria()
-                                  .contains(
+                          if (value == 'PRODUCTO' &&
+                              !_opcionesCategoria().contains(
                                 _categoria,
                               )) {
-                            _categoria =
-                                'General';
+                            _categoria = 'General';
                           }
                         });
                       },
@@ -1550,31 +1513,24 @@ class _DialogoProductoState
               const SizedBox(height: 12),
               _CampoTexto(
                 label: 'Nombre',
-                controller:
-                    _nombreController,
+                controller: _nombreController,
               ),
               const SizedBox(height: 12),
               if (!esMedicamento)
-                DropdownButtonFormField<
-                    String>(
-                  initialValue:
-                      _opcionesCategoria(
+                DropdownButtonFormField<String>(
+                  initialValue: _opcionesCategoria(
                     _categoria,
                   ).contains(_categoria)
-                          ? _categoria
-                          : 'General',
-                  decoration:
-                      const InputDecoration(
+                      ? _categoria
+                      : 'General',
+                  decoration: const InputDecoration(
                     labelText: 'Categoria',
-                    border:
-                        OutlineInputBorder(),
+                    border: OutlineInputBorder(),
                   ),
-                  items:
-                      _opcionesCategoria(
+                  items: _opcionesCategoria(
                     _categoria,
                   ).map((categoria) {
-                    return DropdownMenuItem<
-                        String>(
+                    return DropdownMenuItem<String>(
                       value: categoria,
                       child: Text(
                         categoria,
@@ -1594,35 +1550,28 @@ class _DialogoProductoState
               const SizedBox(height: 12),
               _CampoTexto(
                 label: 'Descripcion',
-                controller:
-                    _descripcionController,
+                controller: _descripcionController,
                 maxLines: 2,
               ),
               const SizedBox(height: 8),
               CheckboxListTile(
-                value:
-                    _manejaCaducidad,
+                value: _manejaCaducidad,
                 onChanged: (value) {
                   setState(() {
-                    _manejaCaducidad =
-                        value ?? false;
+                    _manejaCaducidad = value ?? false;
                   });
                 },
-                contentPadding:
-                    EdgeInsets.zero,
+                contentPadding: EdgeInsets.zero,
                 title: const Text(
                   'Maneja caducidad',
                 ),
-                controlAffinity:
-                    ListTileControlAffinity
-                        .leading,
+                controlAffinity: ListTileControlAffinity.leading,
               ),
               if (esMedicamento) ...[
                 const Divider(height: 24),
                 _CampoTexto(
                   label: 'Presentacion',
-                  controller:
-                      _presentacionController,
+                  controller: _presentacionController,
                 ),
                 const SizedBox(
                   height: 12,
@@ -1630,21 +1579,14 @@ class _DialogoProductoState
                 Row(
                   children: [
                     Expanded(
-                      child:
-                          DropdownButtonFormField<
-                              String>(
+                      child: DropdownButtonFormField<String>(
                         initialValue: _via,
-                        decoration:
-                            const InputDecoration(
-                          labelText:
-                              'Via de administracion',
-                          border:
-                              OutlineInputBorder(),
+                        decoration: const InputDecoration(
+                          labelText: 'Via de administracion',
+                          border: OutlineInputBorder(),
                         ),
-                        items:
-                            _vias.map((via) {
-                          return DropdownMenuItem<
-                              String>(
+                        items: _vias.map((via) {
+                          return DropdownMenuItem<String>(
                             value: via,
                             child: Text(
                               _etiqueta(
@@ -1668,20 +1610,14 @@ class _DialogoProductoState
                       width: 12,
                     ),
                     Expanded(
-                      child:
-                          DropdownButtonFormField<
-                              String>(
+                      child: DropdownButtonFormField<String>(
                         initialValue: _edad,
-                        decoration:
-                            const InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: 'Edad',
-                          border:
-                              OutlineInputBorder(),
+                          border: OutlineInputBorder(),
                         ),
-                        items:
-                            _edades.map((edad) {
-                          return DropdownMenuItem<
-                              String>(
+                        items: _edades.map((edad) {
+                          return DropdownMenuItem<String>(
                             value: edad,
                             child: Text(
                               _etiqueta(
@@ -1707,50 +1643,39 @@ class _DialogoProductoState
                   height: 12,
                 ),
                 _CampoTexto(
-                  label:
-                      'Sustancia activa',
-                  controller:
-                      _sustanciaController,
+                  label: 'Sustancia activa',
+                  controller: _sustanciaController,
                 ),
                 const SizedBox(
                   height: 12,
                 ),
                 _CampoTexto(
                   label: 'Dosis',
-                  controller:
-                      _dosisController,
+                  controller: _dosisController,
                 ),
                 CheckboxListTile(
-                  value:
-                      _requiereReceta,
+                  value: _requiereReceta,
                   onChanged: (value) {
                     setState(() {
-                      _requiereReceta =
-                          value ?? false;
+                      _requiereReceta = value ?? false;
                     });
                   },
-                  contentPadding:
-                      EdgeInsets.zero,
+                  contentPadding: EdgeInsets.zero,
                   title: const Text(
                     'Requiere receta',
                   ),
-                  controlAffinity:
-                      ListTileControlAffinity
-                          .leading,
+                  controlAffinity: ListTileControlAffinity.leading,
                 ),
               ],
               if (_error != null) ...[
                 const SizedBox(height: 8),
                 Align(
-                  alignment:
-                      Alignment.centerLeft,
+                  alignment: Alignment.centerLeft,
                   child: Text(
                     _error!,
-                    style:
-                        const TextStyle(
+                    style: const TextStyle(
                       color: _rojo,
-                      fontWeight:
-                          FontWeight.w800,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
@@ -1797,15 +1722,13 @@ class _CampoTexto extends StatelessWidget {
       maxLines: maxLines,
       decoration: InputDecoration(
         labelText: label,
-        border:
-            const OutlineInputBorder(),
+        border: const OutlineInputBorder(),
       ),
     );
   }
 }
 
-class _DialogoDetalleProducto
-    extends StatelessWidget {
+class _DialogoDetalleProducto extends StatelessWidget {
   final ProductoCatalogoApi producto;
 
   const _DialogoDetalleProducto({
@@ -1822,8 +1745,7 @@ class _DialogoDetalleProducto
         width: 460,
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _DatoDetalle(
               'ID',
@@ -1831,8 +1753,7 @@ class _DialogoDetalleProducto
             ),
             _DatoDetalle(
               'Codigo',
-              producto.codigoBarras ??
-                  'Sin codigo',
+              producto.codigoBarras ?? 'Sin codigo',
             ),
             _DatoDetalle(
               'Tipo',
@@ -1842,42 +1763,32 @@ class _DialogoDetalleProducto
             ),
             _DatoDetalle(
               'Categoria',
-              producto.categoria ??
-                  'Sin categoria',
+              producto.categoria ?? 'Sin categoria',
             ),
             _DatoDetalle(
               'Estado',
-              producto.activo
-                  ? 'Activo'
-                  : 'Inactivo',
+              producto.activo ? 'Activo' : 'Inactivo',
             ),
             _DatoDetalle(
               'Maneja caducidad',
-              producto.manejaCaducidad
-                  ? 'Si'
-                  : 'No',
+              producto.manejaCaducidad ? 'Si' : 'No',
             ),
             _DatoDetalle(
               'Descripcion',
-              producto.descripcion ??
-                  'Sin descripcion',
+              producto.descripcion ?? 'Sin descripcion',
             ),
-            if (producto
-                .esMedicamento) ...[
+            if (producto.esMedicamento) ...[
               const Divider(height: 22),
               _DatoDetalle(
                 'Presentacion',
-                producto.presentacion ??
-                    'Sin presentacion',
+                producto.presentacion ?? 'Sin presentacion',
               ),
               _DatoDetalle(
                 'Via',
-                producto.viaAdministracion ==
-                        null
+                producto.viaAdministracion == null
                     ? 'Sin via'
                     : _etiqueta(
-                        producto
-                            .viaAdministracion!,
+                        producto.viaAdministracion!,
                       ),
               ),
               _DatoDetalle(
@@ -1890,19 +1801,15 @@ class _DialogoDetalleProducto
               ),
               _DatoDetalle(
                 'Sustancia activa',
-                producto.sustanciaActiva ??
-                    'Sin sustancia',
+                producto.sustanciaActiva ?? 'Sin sustancia',
               ),
               _DatoDetalle(
                 'Dosis',
-                producto.dosis ??
-                    'Sin dosis',
+                producto.dosis ?? 'Sin dosis',
               ),
               _DatoDetalle(
                 'Requiere receta',
-                producto.requiereReceta
-                    ? 'Si'
-                    : 'No',
+                producto.requiereReceta ? 'Si' : 'No',
               ),
             ],
           ],
@@ -1938,8 +1845,7 @@ class _DatoDetalle extends StatelessWidget {
         bottom: 8,
       ),
       child: Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 130,
@@ -1948,8 +1854,7 @@ class _DatoDetalle extends StatelessWidget {
               style: const TextStyle(
                 color: _textoSecundario,
                 fontSize: 12,
-                fontWeight:
-                    FontWeight.w800,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
@@ -1959,8 +1864,7 @@ class _DatoDetalle extends StatelessWidget {
               style: const TextStyle(
                 color: _textoPrincipal,
                 fontSize: 12,
-                fontWeight:
-                    FontWeight.w700,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -1973,9 +1877,7 @@ class _DatoDetalle extends StatelessWidget {
 String? _limpiar(String value) {
   final text = value.trim();
 
-  return text.isEmpty
-      ? null
-      : text;
+  return text.isEmpty ? null : text;
 }
 
 List<String> _opcionesCategoria([
@@ -1985,8 +1887,7 @@ List<String> _opcionesCategoria([
     ..._categoriasProducto,
   ];
 
-  final categoriaActual =
-      actual?.trim();
+  final categoriaActual = actual?.trim();
 
   if (categoriaActual != null &&
       categoriaActual.isNotEmpty &&
@@ -2013,8 +1914,7 @@ String _etiqueta(String value) {
         (part) => part.isNotEmpty,
       )
       .map(
-        (part) =>
-            '${part[0].toUpperCase()}${part.substring(1)}',
+        (part) => '${part[0].toUpperCase()}${part.substring(1)}',
       )
       .join(' ');
 }

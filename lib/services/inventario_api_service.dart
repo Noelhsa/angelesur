@@ -17,27 +17,50 @@ class InventarioApiService {
         .toList();
   }
 
-  Future<List<InventarioItem>> listarActual({
+  Future<InventarioPaginado> listarActualPaginado({
     String? busqueda,
+    String? categoria,
+    EstadoStockInventario? estadoStock,
     bool soloActivos = true,
-    int limite = 500,
+    int pagina = 1,
+    int limite = 25,
   }) async {
     final params = <String>[
       'soloActivos=$soloActivos',
+      'pagina=$pagina',
       'limite=$limite',
     ];
 
     if (busqueda != null && busqueda.trim().isNotEmpty) {
       params.add('busqueda=${Uri.encodeQueryComponent(busqueda.trim())}');
     }
+    if (categoria != null && categoria.trim().isNotEmpty) {
+      params.add('categoria=${Uri.encodeQueryComponent(categoria.trim())}');
+    }
+    if (estadoStock != null) {
+      params.add('estadoStock=${_estadoStockApi(estadoStock)}');
+    }
 
     final response =
         await _apiClient.get('/inventario/actual?${params.join('&')}');
-    final items = response as List<dynamic>;
+    return InventarioPaginado.fromResponse(response);
+  }
 
-    return items
-        .map((item) => InventarioItem.fromJson(item as Map<String, dynamic>))
-        .toList();
+  Future<List<InventarioItem>> listarActual({
+    String? busqueda,
+    String? categoria,
+    EstadoStockInventario? estadoStock,
+    bool soloActivos = true,
+    int limite = 500,
+  }) async {
+    final resultado = await listarActualPaginado(
+      busqueda: busqueda,
+      categoria: categoria,
+      estadoStock: estadoStock,
+      soloActivos: soloActivos,
+      limite: limite,
+    );
+    return resultado.items;
   }
 
   Future<InventarioItem> actualizarUbicacion({
@@ -93,6 +116,57 @@ class UbicacionInventarioSugerida {
 
   bool get tieneUbicacion =>
       ubicacionLetra.trim().isNotEmpty && ubicacionNumero != null;
+}
+
+class InventarioPaginado {
+  final List<InventarioItem> items;
+  final int pagina;
+  final int limite;
+  final int total;
+  final int totalPaginas;
+  final bool hayAnterior;
+  final bool haySiguiente;
+
+  const InventarioPaginado({
+    required this.items,
+    required this.pagina,
+    required this.limite,
+    required this.total,
+    required this.totalPaginas,
+    required this.hayAnterior,
+    required this.haySiguiente,
+  });
+
+  factory InventarioPaginado.fromResponse(dynamic response) {
+    if (response is List<dynamic>) {
+      final items = response
+          .map((item) => InventarioItem.fromJson(item as Map<String, dynamic>))
+          .toList();
+      return InventarioPaginado(
+        items: items,
+        pagina: 1,
+        limite: items.length,
+        total: items.length,
+        totalPaginas: 1,
+        hayAnterior: false,
+        haySiguiente: false,
+      );
+    }
+
+    final map = response as Map<String, dynamic>;
+    final items = (map['items'] as List<dynamic>? ?? [])
+        .map((item) => InventarioItem.fromJson(item as Map<String, dynamic>))
+        .toList();
+    return InventarioPaginado(
+      items: items,
+      pagina: InventarioItem._asInt(map['pagina']),
+      limite: InventarioItem._asInt(map['limite']),
+      total: InventarioItem._asInt(map['total']),
+      totalPaginas: InventarioItem._asInt(map['totalPaginas']),
+      hayAnterior: map['hayAnterior'] == true,
+      haySiguiente: map['haySiguiente'] == true,
+    );
+  }
 }
 
 class InventarioItem {
@@ -214,4 +288,12 @@ enum EstadoStockInventario {
   enExistencia,
   stockBajo,
   agotado,
+}
+
+String _estadoStockApi(EstadoStockInventario estado) {
+  return switch (estado) {
+    EstadoStockInventario.enExistencia => 'EN_EXISTENCIA',
+    EstadoStockInventario.stockBajo => 'STOCK_BAJO',
+    EstadoStockInventario.agotado => 'AGOTADO',
+  };
 }

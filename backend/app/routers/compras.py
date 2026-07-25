@@ -41,11 +41,13 @@ class CancelarCompraRequest(BaseModel):
 
 @router.get("")
 def listar_compras(
+    busqueda: str | None = Query(default=None, min_length=1),
     estatus: Literal["REGISTRADA", "CANCELADA"] | None = None,
     id_proveedor: int | None = Query(default=None, alias="idProveedor"),
-    limite: int = Query(default=100, ge=1, le=500),
+    pagina: int = Query(default=1, ge=1),
+    limite: int = Query(default=25, ge=5, le=100),
 ):
-    sql = """
+    sql_base = """
         SELECT
             c.idCompra,
             c.folioProveedor,
@@ -66,6 +68,20 @@ def listar_compras(
     filtros: list[str] = []
     params: list[object] = []
 
+    if busqueda:
+        filtros.append(
+            """
+            (
+                CAST(c.idCompra AS CHAR) LIKE %s
+                OR c.folioProveedor LIKE %s
+                OR p.nombre LIKE %s
+                OR u.nombre LIKE %s
+            )
+            """
+        )
+        like = f"%{busqueda.strip()}%"
+        params.extend([like, like, like, like])
+
     if estatus:
         filtros.append("c.estatus = %s")
         params.append(estatus)
@@ -74,12 +90,29 @@ def listar_compras(
         filtros.append("c.idProveedor = %s")
         params.append(id_proveedor)
 
-    if filtros:
-        sql += " WHERE " + " AND ".join(filtros)
+    where_sql = f" WHERE {' AND '.join(filtros)}" if filtros else ""
+    total_row = fetch_one(
+        f"SELECT COUNT(*) AS total FROM ({sql_base}{where_sql}) compras",
+        params,
+    )
+    total = int(total_row["total"] if total_row else 0)
+    total_paginas = max((total + limite - 1) // limite, 1)
+    pagina_actual = min(pagina, total_paginas)
+    offset = (pagina_actual - 1) * limite
 
-    sql += " ORDER BY c.fecha DESC, c.idCompra DESC LIMIT %s"
-    params.append(limite)
-    return fetch_all(sql, params)
+    items = fetch_all(
+        sql_base + where_sql + " ORDER BY c.fecha DESC, c.idCompra DESC LIMIT %s OFFSET %s",
+        [*params, limite, offset],
+    )
+    return {
+        "items": items,
+        "pagina": pagina_actual,
+        "limite": limite,
+        "total": total,
+        "totalPaginas": total_paginas,
+        "hayAnterior": pagina_actual > 1,
+        "haySiguiente": pagina_actual < total_paginas,
+    }
 
 
 @router.get("/{id_compra}")

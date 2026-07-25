@@ -31,59 +31,42 @@ def listar_cortes(
     fecha_apertura_hasta: str | None = Query(default=None, alias="fechaAperturaHasta"),
     fecha_cierre_desde: str | None = Query(default=None, alias="fechaCierreDesde"),
     fecha_cierre_hasta: str | None = Query(default=None, alias="fechaCierreHasta"),
-    limite: int = Query(default=100, ge=1, le=500),
+    pagina: int = Query(default=1, ge=1),
+    limite: int = Query(default=25, ge=5, le=100),
 ):
-    sql = _select_cortes_resumen_sql()
-    filtros: list[str] = []
-    params: list[object] = []
+    filtros, params = _crear_filtros_cortes_resumen(
+        busqueda=busqueda,
+        estado=estado,
+        fecha_apertura_desde=fecha_apertura_desde,
+        fecha_apertura_hasta=fecha_apertura_hasta,
+        fecha_cierre_desde=fecha_cierre_desde,
+        fecha_cierre_hasta=fecha_cierre_hasta,
+    )
+    where_sql = f" WHERE {' AND '.join(filtros)}" if filtros else ""
+    total_row = fetch_one(
+        f"SELECT COUNT(*) AS total FROM ({_select_cortes_resumen_sql()}{where_sql}) cortes",
+        params,
+    )
+    total = int(total_row["total"] if total_row else 0)
+    total_paginas = max((total + limite - 1) // limite, 1)
+    pagina_actual = min(pagina, total_paginas)
+    offset = (pagina_actual - 1) * limite
 
-    if busqueda:
-        filtros.append(
-            """
-            (
-                CAST(r.idCorte AS CHAR) LIKE %s
-                OR ua.nombre LIKE %s
-                OR uc.nombre LIKE %s
-                OR c.observaciones LIKE %s
-                OR CAST(r.efectivoInicial AS CHAR) LIKE %s
-                OR CAST(r.electronicoInicial AS CHAR) LIKE %s
-                OR CAST(r.efectivoContado AS CHAR) LIKE %s
-                OR CAST(r.electronicoContado AS CHAR) LIKE %s
-                OR CAST(r.efectivoSistema AS CHAR) LIKE %s
-                OR CAST(r.electronicoSistema AS CHAR) LIKE %s
-                OR CAST(r.efectivoSistema + r.electronicoSistema AS CHAR) LIKE %s
-            )
-            """
-        )
-        like = f"%{busqueda.strip()}%"
-        params.extend([like] * 11)
-
-    if estado:
-        filtros.append("r.estado = %s")
-        params.append(estado)
-
-    if fecha_apertura_desde:
-        filtros.append("DATE(r.fechaApertura) >= %s")
-        params.append(fecha_apertura_desde)
-
-    if fecha_apertura_hasta:
-        filtros.append("DATE(r.fechaApertura) <= %s")
-        params.append(fecha_apertura_hasta)
-
-    if fecha_cierre_desde:
-        filtros.append("DATE(r.fechaCierre) >= %s")
-        params.append(fecha_cierre_desde)
-
-    if fecha_cierre_hasta:
-        filtros.append("DATE(r.fechaCierre) <= %s")
-        params.append(fecha_cierre_hasta)
-
-    if filtros:
-        sql += " WHERE " + " AND ".join(filtros)
-
-    sql += " ORDER BY r.fechaApertura DESC LIMIT %s"
-    params.append(limite)
-    return fetch_all(sql, params)
+    sql = (
+        _select_cortes_resumen_sql()
+        + where_sql
+        + " ORDER BY r.fechaApertura DESC LIMIT %s OFFSET %s"
+    )
+    items = fetch_all(sql, [*params, limite, offset])
+    return {
+        "items": items,
+        "pagina": pagina_actual,
+        "limite": limite,
+        "total": total,
+        "totalPaginas": total_paginas,
+        "hayAnterior": pagina_actual > 1,
+        "haySiguiente": pagina_actual < total_paginas,
+    }
 
 
 @router.get("/actual")
@@ -167,6 +150,61 @@ def _obtener_corte_resumen(id_corte: int):
         _select_cortes_resumen_sql() + " WHERE r.idCorte = %s",
         [id_corte],
     )
+
+
+def _crear_filtros_cortes_resumen(
+    busqueda: str | None,
+    estado: Literal["ABIERTO", "CERRADO"] | None,
+    fecha_apertura_desde: str | None,
+    fecha_apertura_hasta: str | None,
+    fecha_cierre_desde: str | None,
+    fecha_cierre_hasta: str | None,
+) -> tuple[list[str], list[object]]:
+    filtros: list[str] = []
+    params: list[object] = []
+
+    if busqueda:
+        filtros.append(
+            """
+            (
+                CAST(r.idCorte AS CHAR) LIKE %s
+                OR ua.nombre LIKE %s
+                OR uc.nombre LIKE %s
+                OR c.observaciones LIKE %s
+                OR CAST(r.efectivoInicial AS CHAR) LIKE %s
+                OR CAST(r.electronicoInicial AS CHAR) LIKE %s
+                OR CAST(r.efectivoContado AS CHAR) LIKE %s
+                OR CAST(r.electronicoContado AS CHAR) LIKE %s
+                OR CAST(r.efectivoSistema AS CHAR) LIKE %s
+                OR CAST(r.electronicoSistema AS CHAR) LIKE %s
+                OR CAST(r.efectivoSistema + r.electronicoSistema AS CHAR) LIKE %s
+            )
+            """
+        )
+        like = f"%{busqueda.strip()}%"
+        params.extend([like] * 11)
+
+    if estado:
+        filtros.append("r.estado = %s")
+        params.append(estado)
+
+    if fecha_apertura_desde:
+        filtros.append("DATE(r.fechaApertura) >= %s")
+        params.append(fecha_apertura_desde)
+
+    if fecha_apertura_hasta:
+        filtros.append("DATE(r.fechaApertura) <= %s")
+        params.append(fecha_apertura_hasta)
+
+    if fecha_cierre_desde:
+        filtros.append("DATE(r.fechaCierre) >= %s")
+        params.append(fecha_cierre_desde)
+
+    if fecha_cierre_hasta:
+        filtros.append("DATE(r.fechaCierre) <= %s")
+        params.append(fecha_cierre_hasta)
+
+    return filtros, params
 
 
 def _select_cortes_resumen_sql() -> str:

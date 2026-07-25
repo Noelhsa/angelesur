@@ -900,6 +900,12 @@ class _DialogoRegistroCortesState extends State<_DialogoRegistroCortes> {
   int? _idSeleccionado;
   CorteDetalle? _detalle;
   String _estadoFiltro = 'TODOS';
+  int _pagina = 1;
+  int _limite = 25;
+  int _totalCortes = 0;
+  int _totalPaginas = 1;
+  bool _hayAnterior = false;
+  bool _haySiguiente = false;
 
   @override
   void initState() {
@@ -917,31 +923,40 @@ class _DialogoRegistroCortesState extends State<_DialogoRegistroCortes> {
     super.dispose();
   }
 
-  Future<void> _cargarCortes() async {
+  Future<void> _cargarCortes({int? pagina}) async {
     setState(() {
       _cargando = true;
       _error = null;
     });
 
     try {
-      final cortes = await widget.cortesApiService.listarResumen(
+      final paginaSolicitada = pagina ?? _pagina;
+      final resultado = await widget.cortesApiService.listarResumen(
         busqueda: _busquedaController.text,
         estado: _estadoFiltro == 'TODOS' ? null : _estadoFiltro,
         fechaAperturaDesde: _aperturaDesdeController.text,
         fechaAperturaHasta: _aperturaHastaController.text,
         fechaCierreDesde: _cierreDesdeController.text,
         fechaCierreHasta: _cierreHastaController.text,
+        pagina: paginaSolicitada,
+        limite: _limite,
       );
       if (!mounted) return;
       setState(() {
-        _cortes = cortes;
+        _cortes = resultado.items;
+        _pagina = resultado.pagina;
+        _limite = resultado.limite;
+        _totalCortes = resultado.total;
+        _totalPaginas = resultado.totalPaginas;
+        _hayAnterior = resultado.hayAnterior;
+        _haySiguiente = resultado.haySiguiente;
         _detalle = null;
         _idSeleccionado = null;
         _cargando = false;
       });
 
-      if (cortes.isNotEmpty) {
-        await _cargarDetalle(cortes.first.idCorte);
+      if (resultado.items.isNotEmpty) {
+        await _cargarDetalle(resultado.items.first.idCorte);
       }
     } on ApiException catch (error) {
       _mostrarError(error.message);
@@ -995,8 +1010,9 @@ class _DialogoRegistroCortesState extends State<_DialogoRegistroCortes> {
       _cierreDesdeController.clear();
       _cierreHastaController.clear();
       _estadoFiltro = 'TODOS';
+      _pagina = 1;
     });
-    _cargarCortes();
+    _cargarCortes(pagina: 1);
   }
 
   @override
@@ -1031,7 +1047,7 @@ class _DialogoRegistroCortesState extends State<_DialogoRegistroCortes> {
                   ),
                 ),
                 IconButton(
-                  onPressed: _cargarCortes,
+                  onPressed: () => _cargarCortes(),
                   tooltip: 'Actualizar',
                   icon: const Icon(Icons.refresh, color: _textoSecundario),
                 ),
@@ -1059,13 +1075,20 @@ class _DialogoRegistroCortesState extends State<_DialogoRegistroCortes> {
               cierreDesdeController: _cierreDesdeController,
               cierreHastaController: _cierreHastaController,
               estado: _estadoFiltro,
+              limite: _limite,
               onEstadoChanged: (value) {
                 setState(() {
                   _estadoFiltro = value;
                 });
-                _cargarCortes();
+                _cargarCortes(pagina: 1);
               },
-              onBuscar: _cargarCortes,
+              onLimiteChanged: (value) {
+                setState(() {
+                  _limite = value;
+                });
+                _cargarCortes(pagina: 1);
+              },
+              onBuscar: () => _cargarCortes(pagina: 1),
               onLimpiar: _limpiarFiltros,
             ),
             const SizedBox(height: 16),
@@ -1086,7 +1109,17 @@ class _DialogoRegistroCortesState extends State<_DialogoRegistroCortes> {
                               child: _ListaRegistroCortes(
                                 cortes: _cortes,
                                 idSeleccionado: _idSeleccionado,
+                                pagina: _pagina,
+                                totalPaginas: _totalPaginas,
+                                total: _totalCortes,
+                                limite: _limite,
+                                hayAnterior: _hayAnterior,
+                                haySiguiente: _haySiguiente,
                                 onSeleccionar: _cargarDetalle,
+                                onAnterior: () =>
+                                    _cargarCortes(pagina: _pagina - 1),
+                                onSiguiente: () =>
+                                    _cargarCortes(pagina: _pagina + 1),
                               ),
                             ),
                             const SizedBox(width: 18),
@@ -1114,7 +1147,9 @@ class _FiltrosRegistroCortes extends StatelessWidget {
   final TextEditingController cierreDesdeController;
   final TextEditingController cierreHastaController;
   final String estado;
+  final int limite;
   final ValueChanged<String> onEstadoChanged;
+  final ValueChanged<int> onLimiteChanged;
   final VoidCallback onBuscar;
   final VoidCallback onLimpiar;
 
@@ -1125,7 +1160,9 @@ class _FiltrosRegistroCortes extends StatelessWidget {
     required this.cierreDesdeController,
     required this.cierreHastaController,
     required this.estado,
+    required this.limite,
     required this.onEstadoChanged,
+    required this.onLimiteChanged,
     required this.onBuscar,
     required this.onLimpiar,
   });
@@ -1184,6 +1221,34 @@ class _FiltrosRegistroCortes extends StatelessWidget {
                   onChanged: (value) {
                     if (value != null) {
                       onEstadoChanged(value);
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 118,
+                child: DropdownButtonFormField<int>(
+                  initialValue: limite,
+                  decoration: InputDecoration(
+                    labelText: 'Por pagina',
+                    filled: true,
+                    fillColor: _blanco,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(7),
+                      borderSide: const BorderSide(color: _bordeSuave),
+                    ),
+                    isDense: true,
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 10, child: Text('10')),
+                    DropdownMenuItem(value: 25, child: Text('25')),
+                    DropdownMenuItem(value: 50, child: Text('50')),
+                    DropdownMenuItem(value: 100, child: Text('100')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      onLimiteChanged(value);
                     }
                   },
                 ),
@@ -1328,36 +1393,136 @@ class _CampoFechaFiltroCorte extends StatelessWidget {
 class _ListaRegistroCortes extends StatelessWidget {
   final List<CorteResumen> cortes;
   final int? idSeleccionado;
+  final int pagina;
+  final int totalPaginas;
+  final int total;
+  final int limite;
+  final bool hayAnterior;
+  final bool haySiguiente;
   final ValueChanged<int> onSeleccionar;
+  final VoidCallback onAnterior;
+  final VoidCallback onSiguiente;
 
   const _ListaRegistroCortes({
     required this.cortes,
     required this.idSeleccionado,
+    required this.pagina,
+    required this.totalPaginas,
+    required this.total,
+    required this.limite,
+    required this.hayAnterior,
+    required this.haySiguiente,
     required this.onSeleccionar,
+    required this.onAnterior,
+    required this.onSiguiente,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (cortes.isEmpty) {
-      return const _MensajeMovimientos(
-        icono: Icons.receipt_long_outlined,
-        titulo: 'Sin cortes registrados',
-        subtitulo: 'Cuando abras y cierres cortes apareceran aqui.',
-      );
-    }
+    return Column(
+      children: [
+        Expanded(
+          child: cortes.isEmpty
+              ? const _MensajeMovimientos(
+                  icono: Icons.receipt_long_outlined,
+                  titulo: 'Sin cortes registrados',
+                  subtitulo: 'Cuando abras y cierres cortes apareceran aqui.',
+                )
+              : ListView.separated(
+                  itemCount: cortes.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    final corte = cortes[index];
+                    final seleccionado = corte.idCorte == idSeleccionado;
+                    return _TarjetaRegistroCorte(
+                      corte: corte,
+                      seleccionado: seleccionado,
+                      onDetalles: () => onSeleccionar(corte.idCorte),
+                    );
+                  },
+                ),
+        ),
+        const SizedBox(height: 10),
+        _PaginadorRegistroCortes(
+          pagina: pagina,
+          totalPaginas: totalPaginas,
+          total: total,
+          limite: limite,
+          hayAnterior: hayAnterior,
+          haySiguiente: haySiguiente,
+          onAnterior: onAnterior,
+          onSiguiente: onSiguiente,
+        ),
+      ],
+    );
+  }
+}
 
-    return ListView.separated(
-      itemCount: cortes.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        final corte = cortes[index];
-        final seleccionado = corte.idCorte == idSeleccionado;
-        return _TarjetaRegistroCorte(
-          corte: corte,
-          seleccionado: seleccionado,
-          onDetalles: () => onSeleccionar(corte.idCorte),
-        );
-      },
+class _PaginadorRegistroCortes extends StatelessWidget {
+  final int pagina;
+  final int totalPaginas;
+  final int total;
+  final int limite;
+  final bool hayAnterior;
+  final bool haySiguiente;
+  final VoidCallback onAnterior;
+  final VoidCallback onSiguiente;
+
+  const _PaginadorRegistroCortes({
+    required this.pagina,
+    required this.totalPaginas,
+    required this.total,
+    required this.limite,
+    required this.hayAnterior,
+    required this.haySiguiente,
+    required this.onAnterior,
+    required this.onSiguiente,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final desde = total == 0 ? 0 : ((pagina - 1) * limite) + 1;
+    final hasta = total == 0 ? 0 : (desde + limite - 1).clamp(0, total);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F9F5),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _bordeSuave),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              '$desde-$hasta de $total | Pagina $pagina de $totalPaginas',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: _textoSecundario,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: hayAnterior ? onAnterior : null,
+            tooltip: 'Pagina anterior',
+            icon: const Icon(Icons.chevron_left, size: 20),
+            color: _verdeOscuro,
+            disabledColor: _textoSecundario,
+            visualDensity: VisualDensity.compact,
+          ),
+          IconButton(
+            onPressed: haySiguiente ? onSiguiente : null,
+            tooltip: 'Pagina siguiente',
+            icon: const Icon(Icons.chevron_right, size: 20),
+            color: _verdeOscuro,
+            disabledColor: _textoSecundario,
+            visualDensity: VisualDensity.compact,
+          ),
+        ],
+      ),
     );
   }
 }

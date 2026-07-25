@@ -108,32 +108,107 @@ class ProductoPayload {
   }
 }
 
+class ProductosPaginados {
+  final List<ProductoCatalogoApi> items;
+  final int pagina;
+  final int limite;
+  final int total;
+  final int totalPaginas;
+  final bool hayAnterior;
+  final bool haySiguiente;
+
+  const ProductosPaginados({
+    required this.items,
+    required this.pagina,
+    required this.limite,
+    required this.total,
+    required this.totalPaginas,
+    required this.hayAnterior,
+    required this.haySiguiente,
+  });
+
+  factory ProductosPaginados.fromResponse(dynamic response) {
+    if (response is List<dynamic>) {
+      final items = response
+          .map((item) =>
+              ProductoCatalogoApi.fromJson(item as Map<String, dynamic>))
+          .toList();
+      return ProductosPaginados(
+        items: items,
+        pagina: 1,
+        limite: items.length,
+        total: items.length,
+        totalPaginas: 1,
+        hayAnterior: false,
+        haySiguiente: false,
+      );
+    }
+
+    final map = response as Map<String, dynamic>;
+    final items = (map['items'] as List<dynamic>? ?? [])
+        .map((item) =>
+            ProductoCatalogoApi.fromJson(item as Map<String, dynamic>))
+        .toList();
+    return ProductosPaginados(
+      items: items,
+      pagina: ProductoCatalogoApi._asInt(map['pagina']),
+      limite: ProductoCatalogoApi._asInt(map['limite']),
+      total: ProductoCatalogoApi._asInt(map['total']),
+      totalPaginas: ProductoCatalogoApi._asInt(map['totalPaginas']),
+      hayAnterior: map['hayAnterior'] == true,
+      haySiguiente: map['haySiguiente'] == true,
+    );
+  }
+}
+
 class ProductosApiService {
   final ApiClient _apiClient;
 
   ProductosApiService({ApiClient? apiClient})
       : _apiClient = apiClient ?? ApiClient();
 
-  Future<List<ProductoCatalogoApi>> listarProductos({
+  Future<ProductosPaginados> listarProductosPaginados({
     String? busqueda,
     String? tipo,
+    String? categoria,
+    bool? activo,
     bool incluirInactivos = true,
-    int limite = 500,
+    int pagina = 1,
+    int limite = 25,
   }) async {
     final params = <String, String>{
       'incluirInactivos': incluirInactivos.toString(),
+      'pagina': pagina.toString(),
       'limite': limite.toString(),
       if (busqueda != null && busqueda.trim().isNotEmpty)
         'busqueda': busqueda.trim(),
       if (tipo != null && tipo.isNotEmpty) 'tipo': tipo,
+      if (categoria != null && categoria.trim().isNotEmpty)
+        'categoria': categoria.trim(),
+      if (activo != null) 'activo': activo.toString(),
     };
     final query = Uri(queryParameters: params).query;
     final response = await _apiClient.get('/productos?$query');
-    final list = response as List<dynamic>;
-    return list
-        .map((item) =>
-            ProductoCatalogoApi.fromJson(item as Map<String, dynamic>))
-        .toList();
+    return ProductosPaginados.fromResponse(response);
+  }
+
+  Future<List<ProductoCatalogoApi>> listarProductos({
+    String? busqueda,
+    String? tipo,
+    String? categoria,
+    bool? activo,
+    bool incluirInactivos = true,
+    int limite = 500,
+  }) async {
+    final resultado = await listarProductosPaginados(
+      busqueda: busqueda,
+      tipo: tipo,
+      categoria: categoria,
+      activo: activo,
+      incluirInactivos: incluirInactivos,
+      limite: limite,
+    );
+    return resultado.items;
   }
 
   Future<ProductoCatalogoApi> obtenerProducto(int idProducto) async {

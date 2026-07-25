@@ -215,28 +215,96 @@ class CompraPayload {
   }
 }
 
+class ComprasPaginadas {
+  final List<CompraResumen> items;
+  final int pagina;
+  final int limite;
+  final int total;
+  final int totalPaginas;
+  final bool hayAnterior;
+  final bool haySiguiente;
+
+  const ComprasPaginadas({
+    required this.items,
+    required this.pagina,
+    required this.limite,
+    required this.total,
+    required this.totalPaginas,
+    required this.hayAnterior,
+    required this.haySiguiente,
+  });
+
+  factory ComprasPaginadas.fromResponse(dynamic response) {
+    if (response is List<dynamic>) {
+      final items = response
+          .map((item) => CompraResumen.fromJson(item as Map<String, dynamic>))
+          .toList();
+      return ComprasPaginadas(
+        items: items,
+        pagina: 1,
+        limite: items.length,
+        total: items.length,
+        totalPaginas: 1,
+        hayAnterior: false,
+        haySiguiente: false,
+      );
+    }
+
+    final map = response as Map<String, dynamic>;
+    final items = (map['items'] as List<dynamic>? ?? [])
+        .map((item) => CompraResumen.fromJson(item as Map<String, dynamic>))
+        .toList();
+    return ComprasPaginadas(
+      items: items,
+      pagina: _asInt(map['pagina']),
+      limite: _asInt(map['limite']),
+      total: _asInt(map['total']),
+      totalPaginas: _asInt(map['totalPaginas']),
+      hayAnterior: map['hayAnterior'] == true,
+      haySiguiente: map['haySiguiente'] == true,
+    );
+  }
+}
+
 class ComprasApiService {
   final ApiClient _apiClient;
 
   ComprasApiService({ApiClient? apiClient})
       : _apiClient = apiClient ?? ApiClient();
 
-  Future<List<CompraResumen>> listarCompras({
+  Future<ComprasPaginadas> listarComprasPaginadas({
+    String? busqueda,
     String? estatus,
     int? idProveedor,
-    int limite = 100,
+    int pagina = 1,
+    int limite = 25,
   }) async {
     final params = <String, String>{
+      'pagina': pagina.toString(),
       'limite': limite.toString(),
+      if (busqueda != null && busqueda.trim().isNotEmpty)
+        'busqueda': busqueda.trim(),
       if (estatus != null && estatus.isNotEmpty) 'estatus': estatus,
       if (idProveedor != null) 'idProveedor': idProveedor.toString(),
     };
     final query = Uri(queryParameters: params).query;
     final response = await _apiClient.get('/compras?$query');
-    final list = response as List<dynamic>;
-    return list
-        .map((item) => CompraResumen.fromJson(item as Map<String, dynamic>))
-        .toList();
+    return ComprasPaginadas.fromResponse(response);
+  }
+
+  Future<List<CompraResumen>> listarCompras({
+    String? busqueda,
+    String? estatus,
+    int? idProveedor,
+    int limite = 100,
+  }) async {
+    final resultado = await listarComprasPaginadas(
+      busqueda: busqueda,
+      estatus: estatus,
+      idProveedor: idProveedor,
+      limite: limite,
+    );
+    return resultado.items;
   }
 
   Future<CompraDetalle> obtenerCompra(int idCompra) async {

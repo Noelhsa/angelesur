@@ -34,7 +34,7 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 - `GET /health`: confirma que la API responde.
 - `GET /health/db`: confirma conexion a MariaDB.
 - `GET /inventario/disponible`: lee `vw_inventario_disponible_para_venta`.
-- `GET /inventario/actual`: lee `vw_inventario_actual`.
+- `GET /inventario/actual`: lee `vw_inventario_actual` con paginacion (`pagina`, `limite`) y filtros por busqueda, categoria y estado de stock.
 - `GET /inventario/{idInventario}`: obtiene un lote de inventario.
 - `GET /inventario/caducidad`: lee `vw_productos_por_caducar`.
 - `GET /inventario/movimientos`: lista movimientos de inventario.
@@ -47,7 +47,7 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 - `POST /usuarios`: crea un usuario con contrasena hasheada.
 - `PATCH /usuarios/{idUsuario}/estado`: activa o desactiva un usuario.
 - `POST /auth/login`: valida `username` y `password`.
-- `GET /productos`: lista productos activos.
+- `GET /productos`: lista productos paginados con filtros por busqueda, tipo, categoria y estado.
 - `GET /productos/{idProducto}`: obtiene un producto con datos de medicamento si aplica.
 - `POST /productos`: crea producto o medicamento.
 - `PATCH /productos/{idProducto}`: actualiza producto o medicamento.
@@ -57,7 +57,7 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 - `POST /proveedores`: crea proveedor.
 - `PATCH /proveedores/{idProveedor}`: actualiza proveedor.
 - `PATCH /proveedores/{idProveedor}/estado`: activa o desactiva un proveedor.
-- `GET /compras`: lista compras.
+- `GET /compras`: lista compras paginadas con filtros por busqueda, estatus y proveedor.
 - `GET /compras/{idCompra}`: obtiene compra con detalles.
 - `POST /compras`: llama `sp_registrar_compra`.
 - `POST /compras/{idCompra}/cancelar`: llama `sp_cancelar_compra`.
@@ -86,7 +86,7 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 - `GET /devoluciones/proveedores/{idDevolucionProveedor}`: obtiene devolucion a proveedor.
 - `POST /devoluciones/proveedores`: llama `sp_registrar_devolucion_proveedor`.
 - `POST /devoluciones/proveedores/{idDevolucionProveedor}/cancelar`: llama `sp_cancelar_devolucion_proveedor`.
-- `GET /cortes/resumen`: lista cortes con saldos, totales, usuarios de apertura/cierre y filtros por busqueda, estado y fechas.
+- `GET /cortes/resumen`: lista cortes paginados con saldos, totales, usuarios de apertura/cierre y filtros por busqueda, estado y fechas. Acepta `pagina` y `limite`, y devuelve `items`, `total`, `totalPaginas`, `hayAnterior` y `haySiguiente`.
 - `GET /cortes/actual`: lee el corte abierto desde `vw_corte_resumen`.
 - `GET /cortes/{idCorte}`: obtiene resumen, totales y movimientos del corte.
 - `GET /cortes/{idCorte}/movimientos`: lista movimientos de un corte.
