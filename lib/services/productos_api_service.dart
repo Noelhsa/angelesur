@@ -200,15 +200,29 @@ class ProductosApiService {
     bool incluirInactivos = true,
     int limite = 500,
   }) async {
-    final resultado = await listarProductosPaginados(
-      busqueda: busqueda,
-      tipo: tipo,
-      categoria: categoria,
-      activo: activo,
-      incluirInactivos: incluirInactivos,
-      limite: limite,
-    );
-    return resultado.items;
+    final items = <ProductoCatalogoApi>[];
+    var pagina = 1;
+    const limitePagina = 100;
+
+    while (items.length < limite) {
+      final resultado = await listarProductosPaginados(
+        busqueda: busqueda,
+        tipo: tipo,
+        categoria: categoria,
+        activo: activo,
+        incluirInactivos: incluirInactivos,
+        pagina: pagina,
+        limite: limitePagina,
+      );
+      items.addAll(resultado.items);
+
+      if (!resultado.haySiguiente || resultado.items.isEmpty) {
+        break;
+      }
+      pagina += 1;
+    }
+
+    return items.take(limite).toList();
   }
 
   Future<ProductoCatalogoApi> obtenerProducto(int idProducto) async {

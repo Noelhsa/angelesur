@@ -15,6 +15,7 @@ class ContenidoVenta extends StatefulWidget {
   final List<Medicamento> medicamentos;
   final ValueChanged<Medicamento> onAgregar;
   final ValueChanged<TarifaServicioYastas> onAgregarYastas;
+  final Future<void> Function(String codigoBarras) onEscanearCodigoBarras;
 
   const ContenidoVenta({
     super.key,
@@ -22,6 +23,7 @@ class ContenidoVenta extends StatefulWidget {
     required this.medicamentos,
     required this.onAgregar,
     required this.onAgregarYastas,
+    required this.onEscanearCodigoBarras,
   });
 
   @override
@@ -38,6 +40,7 @@ class _ContenidoVentaState extends State<ContenidoVenta> {
         _BarraSuperiorVenta(
           busquedaController: widget.busquedaController,
           seccionSeleccionada: _seccionSeleccionada,
+          onEscanearCodigoBarras: widget.onEscanearCodigoBarras,
           onSeleccionarSeccion: (seccion) {
             setState(() {
               _seccionSeleccionada = seccion;
@@ -63,11 +66,13 @@ class _ContenidoVentaState extends State<ContenidoVenta> {
 class _BarraSuperiorVenta extends StatelessWidget {
   final TextEditingController busquedaController;
   final String seccionSeleccionada;
+  final Future<void> Function(String codigoBarras) onEscanearCodigoBarras;
   final ValueChanged<String> onSeleccionarSeccion;
 
   const _BarraSuperiorVenta({
     required this.busquedaController,
     required this.seccionSeleccionada,
+    required this.onEscanearCodigoBarras,
     required this.onSeleccionarSeccion,
   });
 
@@ -113,6 +118,7 @@ class _BarraSuperiorVenta extends StatelessWidget {
                     offset: const Offset(0, -2),
                     child: TextField(
                       controller: busquedaController,
+                      onSubmitted: onEscanearCodigoBarras,
                       cursorColor: _verdeOscuro,
                       textAlign: TextAlign.left,
                       style: const TextStyle(

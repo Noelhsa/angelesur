@@ -7,14 +7,41 @@ class InventarioApiService {
   InventarioApiService({ApiClient? apiClient})
       : _apiClient = apiClient ?? ApiClient();
 
-  Future<List<Medicamento>> listarDisponibles() async {
-    final response = await _apiClient.get('/inventario/disponible');
+  Future<List<Medicamento>> listarDisponibles({
+    String? busqueda,
+    int limite = 500,
+  }) async {
+    final params = <String>[
+      'limite=$limite',
+      if (busqueda != null && busqueda.trim().isNotEmpty)
+        'busqueda=${Uri.encodeQueryComponent(busqueda.trim())}',
+    ];
+    final response =
+        await _apiClient.get('/inventario/disponible?${params.join('&')}');
     final items = response as List<dynamic>;
 
     return items
         .map((item) =>
             Medicamento.fromInventarioJson(item as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<List<Medicamento>> buscarDisponiblesPorCodigoBarras(
+    String codigoBarras,
+  ) async {
+    final codigo = _normalizarCodigoBarras(codigoBarras);
+    if (codigo.isEmpty) {
+      return [];
+    }
+
+    final candidatos = await listarDisponibles(
+      busqueda: codigoBarras,
+      limite: 50,
+    );
+
+    return candidatos.where((medicamento) {
+      return _normalizarCodigoBarras(medicamento.codigoBarras) == codigo;
+    }).toList();
   }
 
   Future<InventarioPaginado> listarActualPaginado({
@@ -53,14 +80,28 @@ class InventarioApiService {
     bool soloActivos = true,
     int limite = 500,
   }) async {
-    final resultado = await listarActualPaginado(
-      busqueda: busqueda,
-      categoria: categoria,
-      estadoStock: estadoStock,
-      soloActivos: soloActivos,
-      limite: limite,
-    );
-    return resultado.items;
+    final items = <InventarioItem>[];
+    var pagina = 1;
+    const limitePagina = 100;
+
+    while (items.length < limite) {
+      final resultado = await listarActualPaginado(
+        busqueda: busqueda,
+        categoria: categoria,
+        estadoStock: estadoStock,
+        soloActivos: soloActivos,
+        pagina: pagina,
+        limite: limitePagina,
+      );
+      items.addAll(resultado.items);
+
+      if (!resultado.haySiguiente || resultado.items.isEmpty) {
+        break;
+      }
+      pagina += 1;
+    }
+
+    return items.take(limite).toList();
   }
 
   Future<InventarioItem> actualizarUbicacion({
@@ -296,4 +337,8 @@ String _estadoStockApi(EstadoStockInventario estado) {
     EstadoStockInventario.stockBajo => 'STOCK_BAJO',
     EstadoStockInventario.agotado => 'AGOTADO',
   };
+}
+
+String _normalizarCodigoBarras(String value) {
+  return value.trim().replaceAll(RegExp(r'\s+'), '').toLowerCase();
 }

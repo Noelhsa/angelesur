@@ -195,6 +195,7 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
 
     return _medicamentos.where((medicamento) {
       return medicamento.nombre.toLowerCase().contains(texto) ||
+          medicamento.codigoBarras.toLowerCase().contains(texto) ||
           medicamento.detalle.toLowerCase().contains(texto) ||
           medicamento.categoria.toLowerCase().contains(texto);
     }).toList();
@@ -212,6 +213,25 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
   Medicamento? _productoCarritoPorId(int id) {
     for (final producto in _productosDisponiblesParaCarrito) {
       if (producto.id == id) {
+        return producto;
+      }
+    }
+
+    return null;
+  }
+
+  Medicamento? _buscarProductoDisponiblePorCodigo(
+    String codigoNormalizado,
+    List<Medicamento> productos,
+  ) {
+    for (final producto in productos) {
+      if (_normalizarCodigoBarras(producto.codigoBarras) != codigoNormalizado) {
+        continue;
+      }
+
+      final cantidadActual = _carrito[producto.id] ?? 0;
+
+      if (cantidadActual < producto.stock) {
         return producto;
       }
     }
@@ -328,6 +348,18 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     });
   }
 
+  void _mostrarMensaje(String mensaje) {
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensaje),
+      ),
+    );
+  }
+
   void _agregarAlCarrito(Medicamento producto) {
     final cantidadActual = _carrito[producto.id] ?? 0;
 
@@ -338,6 +370,58 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     setState(() {
       _carrito[producto.id] = cantidadActual + 1;
     });
+  }
+
+  Future<void> _agregarPorCodigoBarras(String value) async {
+    final codigo = _normalizarCodigoBarras(value);
+
+    if (codigo.isEmpty) {
+      return;
+    }
+
+    var producto = _buscarProductoDisponiblePorCodigo(codigo, _medicamentos);
+
+    if (producto == null) {
+      try {
+        final encontrados =
+            await _inventarioApiService.buscarDisponiblesPorCodigoBarras(value);
+
+        if (!mounted) {
+          return;
+        }
+
+        if (encontrados.isNotEmpty) {
+          setState(() {
+            for (final encontrado in encontrados) {
+              final index = _medicamentos.indexWhere(
+                (item) => item.id == encontrado.id,
+              );
+
+              if (index >= 0) {
+                _medicamentos[index] = encontrado;
+              } else {
+                _medicamentos.add(encontrado);
+              }
+            }
+          });
+          producto = _buscarProductoDisponiblePorCodigo(codigo, _medicamentos);
+        }
+      } on ApiException catch (error) {
+        _mostrarMensaje(error.message);
+        return;
+      } catch (_) {
+        _mostrarMensaje('No se pudo buscar el codigo escaneado');
+        return;
+      }
+    }
+
+    if (producto == null) {
+      _mostrarMensaje('No se encontro un producto con ese codigo de barras');
+      return;
+    }
+
+    _agregarAlCarrito(producto);
+    _busquedaController.clear();
   }
 
   void _actualizarDescuento(double descuento) {
@@ -761,6 +845,7 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
             medicamentos: _medicamentosFiltrados,
             onAgregar: _agregarAlCarrito,
             onAgregarYastas: _agregarServicioYastas,
+            onEscanearCodigoBarras: _agregarPorCodigoBarras,
           ),
         ),
         MenuCartaCarrito(
@@ -914,6 +999,10 @@ class _EstadoInventario extends StatelessWidget {
       ),
     );
   }
+}
+
+String _normalizarCodigoBarras(String value) {
+  return value.trim().replaceAll(RegExp(r'\s+'), '').toLowerCase();
 }
 
 class _InterfazNoEncontrada extends StatelessWidget {

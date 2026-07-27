@@ -2,6 +2,7 @@ class Medicamento {
   final int id;
   final int? idProducto;
   final String nombre;
+  final String codigoBarras;
   final String detalle;
   final String categoria;
   final double precio;
@@ -12,6 +13,7 @@ class Medicamento {
     required this.id,
     this.idProducto,
     required this.nombre,
+    this.codigoBarras = '',
     required this.detalle,
     required this.categoria,
     required this.precio,
@@ -27,6 +29,7 @@ class Medicamento {
       id: _asInt(map['idInventario']),
       idProducto: _asNullableInt(map['idProducto']),
       nombre: map['nombre']?.toString() ?? 'Producto sin nombre',
+      codigoBarras: map['codigoBarras']?.toString() ?? '',
       detalle: fechaCaducidad == null
           ? 'Lote $codigoLote'
           : 'Lote $codigoLote - Cad. $fechaCaducidad',
