@@ -30,7 +30,7 @@ class _ContenidoCatalogoInventarioState
   final TextEditingController _busquedaController = TextEditingController();
 
   String _categoriaSeleccionada = 'Todas las categorias';
-  String _estadoSeleccionado = 'Todos los estados';
+  String _estadoSeleccionado = 'En existencia';
 
   bool _cargando = true;
   String? _error;
