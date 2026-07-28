@@ -53,13 +53,17 @@ class _DialogoPagoVenta extends StatefulWidget {
   });
 
   @override
-  State<_DialogoPagoVenta> createState() => _DialogoPagoVentaState();
+  State<_DialogoPagoVenta> createState() =>
+      _DialogoPagoVentaState();
 }
 
-class _DialogoPagoVentaState extends State<_DialogoPagoVenta> {
-  final TextEditingController _montoController = TextEditingController();
+class _DialogoPagoVentaState
+    extends State<_DialogoPagoVenta> {
+  final TextEditingController _montoController =
+      TextEditingController();
 
-  final TextEditingController _referenciaController = TextEditingController();
+  final TextEditingController _referenciaController =
+      TextEditingController();
 
   String _medio = 'EFECTIVO';
   String? _error;
@@ -68,8 +72,10 @@ class _DialogoPagoVentaState extends State<_DialogoPagoVenta> {
   bool get _esEfectivo => _medio == 'EFECTIVO';
 
   double? get _montoRecibido {
-    final texto =
-        _montoController.text.trim().replaceAll(',', '').replaceAll('\$', '');
+    final texto = _montoController.text
+        .trim()
+        .replaceAll(',', '')
+        .replaceAll('\$', '');
 
     return double.tryParse(texto);
   }
@@ -104,7 +110,8 @@ class _DialogoPagoVentaState extends State<_DialogoPagoVenta> {
       _medio = value;
       _error = null;
 
-      if (_esEfectivo && _montoController.text.trim().isEmpty) {
+      if (_esEfectivo &&
+          _montoController.text.trim().isEmpty) {
         _montoController.text = '0.00';
       }
     });
@@ -114,7 +121,8 @@ class _DialogoPagoVentaState extends State<_DialogoPagoVenta> {
     setState(() {
       _montoController.text = monto.toStringAsFixed(2);
 
-      _montoController.selection = TextSelection.collapsed(
+      _montoController.selection =
+          TextSelection.collapsed(
         offset: _montoController.text.length,
       );
 
@@ -126,9 +134,11 @@ class _DialogoPagoVentaState extends State<_DialogoPagoVenta> {
     final montoRecibido = _montoRecibido;
 
     if (_esEfectivo &&
-        (montoRecibido == null || montoRecibido < widget.total)) {
+        (montoRecibido == null ||
+            montoRecibido < widget.total)) {
       setState(() {
-        _error = 'El efectivo recibido debe cubrir el total';
+        _error =
+            'El efectivo recibido debe cubrir el total';
       });
 
       return;
@@ -137,7 +147,8 @@ class _DialogoPagoVentaState extends State<_DialogoPagoVenta> {
     Navigator.of(context).pop(
       DatosPagoVenta(
         medio: _medio,
-        montoRecibido: _esEfectivo ? montoRecibido : null,
+        montoRecibido:
+            _esEfectivo ? montoRecibido : null,
         referencia: _limpiarReferencia(
           _referenciaController.text,
         ),
@@ -180,7 +191,8 @@ class _DialogoPagoVentaState extends State<_DialogoPagoVenta> {
                   20,
                 ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
                   children: [
                     _TarjetaMontoTotal(
                       total: widget.total,
@@ -197,11 +209,13 @@ class _DialogoPagoVentaState extends State<_DialogoPagoVenta> {
                     const SizedBox(height: 18),
                     if (_esEfectivo) ...[
                       const _EtiquetaCampoPago(
-                        texto: 'Acceso rapido (Efectivo)',
+                        texto:
+                            'Acceso rapido (Efectivo)',
                       ),
                       const SizedBox(height: 10),
                       _AccesosRapidosPago(
-                        onSeleccionar: _seleccionarMontoRapido,
+                        onSeleccionar:
+                            _seleccionarMontoRapido,
                       ),
                       const SizedBox(height: 18),
                       const _EtiquetaCampoPago(
@@ -209,7 +223,8 @@ class _DialogoPagoVentaState extends State<_DialogoPagoVenta> {
                       ),
                       const SizedBox(height: 6),
                       _CampoCantidadRecibida(
-                        controller: _montoController,
+                        controller:
+                            _montoController,
                         onChanged: (_) {
                           setState(() {
                             _error = null;
@@ -226,7 +241,8 @@ class _DialogoPagoVentaState extends State<_DialogoPagoVenta> {
                       ),
                       const SizedBox(height: 6),
                       _CampoReferenciaPago(
-                        controller: _referenciaController,
+                        controller:
+                            _referenciaController,
                         onChanged: (_) {
                           setState(() {
                             _error = null;
@@ -265,7 +281,8 @@ class _DialogoPagoVentaState extends State<_DialogoPagoVenta> {
   }
 }
 
-class _EncabezadoDialogoPago extends StatelessWidget {
+class _EncabezadoDialogoPago
+    extends StatelessWidget {
   const _EncabezadoDialogoPago();
 
   @override
@@ -306,7 +323,8 @@ class _EncabezadoDialogoPago extends StatelessWidget {
   }
 }
 
-class _TarjetaMontoTotal extends StatelessWidget {
+class _TarjetaMontoTotal
+    extends StatelessWidget {
   final double total;
 
   const _TarjetaMontoTotal({
@@ -326,7 +344,8 @@ class _TarjetaMontoTotal extends StatelessWidget {
         ),
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment:
+            MainAxisAlignment.center,
         children: [
           const Text(
             'Monto Total',
@@ -351,7 +370,8 @@ class _TarjetaMontoTotal extends StatelessWidget {
   }
 }
 
-class _EtiquetaCampoPago extends StatelessWidget {
+class _EtiquetaCampoPago
+    extends StatelessWidget {
   final String texto;
 
   const _EtiquetaCampoPago({
@@ -371,7 +391,8 @@ class _EtiquetaCampoPago extends StatelessWidget {
   }
 }
 
-class _SelectorMetodoPago extends StatelessWidget {
+class _SelectorMetodoPago
+    extends StatelessWidget {
   final String medio;
   final ValueChanged<String?> onChanged;
 
@@ -398,7 +419,8 @@ class _SelectorMetodoPago extends StatelessWidget {
       decoration: InputDecoration(
         filled: true,
         fillColor: _blanco,
-        contentPadding: const EdgeInsets.symmetric(
+        contentPadding:
+            const EdgeInsets.symmetric(
           horizontal: 13,
           vertical: 12,
         ),
@@ -444,7 +466,8 @@ class _SelectorMetodoPago extends StatelessWidget {
   }
 }
 
-class _AccesosRapidosPago extends StatelessWidget {
+class _AccesosRapidosPago
+    extends StatelessWidget {
   final ValueChanged<double> onSeleccionar;
 
   const _AccesosRapidosPago({
@@ -466,7 +489,10 @@ class _AccesosRapidosPago extends StatelessWidget {
       builder: (context, constraints) {
         const separacion = 8.0;
 
-        final anchoBoton = (constraints.maxWidth - (separacion * 2)) / 3;
+        final anchoBoton =
+            (constraints.maxWidth -
+                    (separacion * 2)) /
+                3;
 
         return Wrap(
           spacing: separacion,
@@ -489,7 +515,8 @@ class _AccesosRapidosPago extends StatelessWidget {
   }
 }
 
-class _BotonMontoRapido extends StatelessWidget {
+class _BotonMontoRapido
+    extends StatelessWidget {
   final double monto;
   final VoidCallback onTap;
 
@@ -515,11 +542,13 @@ class _BotonMontoRapido extends StatelessWidget {
         borderRadius: BorderRadius.circular(5),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(5),
+          borderRadius:
+              BorderRadius.circular(5),
           child: Align(
             alignment: Alignment.centerLeft,
             child: Padding(
-              padding: const EdgeInsets.symmetric(
+              padding:
+                  const EdgeInsets.symmetric(
                 horizontal: 10,
               ),
               child: Text(
@@ -538,7 +567,8 @@ class _BotonMontoRapido extends StatelessWidget {
   }
 }
 
-class _CampoCantidadRecibida extends StatelessWidget {
+class _CampoCantidadRecibida
+    extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
 
@@ -552,7 +582,8 @@ class _CampoCantidadRecibida extends StatelessWidget {
     return TextField(
       controller: controller,
       onChanged: onChanged,
-      keyboardType: const TextInputType.numberWithOptions(
+      keyboardType:
+          const TextInputType.numberWithOptions(
         decimal: true,
       ),
       style: const TextStyle(
@@ -569,7 +600,8 @@ class _CampoCantidadRecibida extends StatelessWidget {
         ),
         filled: true,
         fillColor: _blanco,
-        contentPadding: const EdgeInsets.symmetric(
+        contentPadding:
+            const EdgeInsets.symmetric(
           horizontal: 13,
           vertical: 14,
         ),
@@ -598,7 +630,8 @@ class _CampoCantidadRecibida extends StatelessWidget {
   }
 }
 
-class _CampoReferenciaPago extends StatelessWidget {
+class _CampoReferenciaPago
+    extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
 
@@ -618,7 +651,8 @@ class _CampoReferenciaPago extends StatelessWidget {
         fontWeight: FontWeight.w600,
       ),
       decoration: InputDecoration(
-        hintText: 'Numero de autorizacion, folio o referencia',
+        hintText:
+            'Numero de autorizacion, folio o referencia',
         hintStyle: const TextStyle(
           color: Color(0xFF9AA19B),
           fontSize: 11,
@@ -626,7 +660,8 @@ class _CampoReferenciaPago extends StatelessWidget {
         ),
         filled: true,
         fillColor: _blanco,
-        contentPadding: const EdgeInsets.symmetric(
+        contentPadding:
+            const EdgeInsets.symmetric(
           horizontal: 13,
           vertical: 14,
         ),
@@ -697,7 +732,8 @@ class _TarjetaCambio extends StatelessWidget {
   }
 }
 
-class _MensajeErrorPago extends StatelessWidget {
+class _MensajeErrorPago
+    extends StatelessWidget {
   final String mensaje;
 
   const _MensajeErrorPago({
@@ -707,7 +743,8 @@ class _MensajeErrorPago extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
       children: [
         const Icon(
           Icons.error_outline,
@@ -730,7 +767,8 @@ class _MensajeErrorPago extends StatelessWidget {
   }
 }
 
-class _OpcionImprimirTicket extends StatelessWidget {
+class _OpcionImprimirTicket
+    extends StatelessWidget {
   final bool activo;
   final ValueChanged<bool> onChanged;
 
@@ -781,8 +819,10 @@ class _OpcionImprimirTicket extends StatelessWidget {
               activeThumbColor: _blanco,
               activeTrackColor: _verdeOscuro,
               inactiveThumbColor: _blanco,
-              inactiveTrackColor: const Color(0xFFBFC4BD),
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              inactiveTrackColor:
+                  const Color(0xFFBFC4BD),
+              materialTapTargetSize:
+                  MaterialTapTargetSize.shrinkWrap,
             ),
           ),
         ],
@@ -791,7 +831,8 @@ class _OpcionImprimirTicket extends StatelessWidget {
   }
 }
 
-class _AccionesDialogoPago extends StatelessWidget {
+class _AccionesDialogoPago
+    extends StatelessWidget {
   final VoidCallback onCancelar;
   final VoidCallback onConfirmar;
 
@@ -832,16 +873,16 @@ class _AccionesDialogoPago extends StatelessWidget {
                     color: Color(0xFF9EA79A),
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(
-                      5,
-                    ),
+                    borderRadius:
+                        BorderRadius.circular(5),
                   ),
                 ),
                 child: const Text(
                   'Cancelar venta',
                   style: TextStyle(
                     fontSize: 11,
-                    fontWeight: FontWeight.w800,
+                    fontWeight:
+                        FontWeight.w800,
                   ),
                 ),
               ),
@@ -863,18 +904,22 @@ class _AccionesDialogoPago extends StatelessWidget {
                   style: TextStyle(
                     color: _blanco,
                     fontSize: 11,
-                    fontWeight: FontWeight.w900,
+                    fontWeight:
+                        FontWeight.w900,
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
                   elevation: 4,
-                  shadowColor: _verdeOscuro.withOpacity(0.30),
-                  backgroundColor: _verdeOscuro,
+                  shadowColor:
+                      _verdeOscuro.withOpacity(
+                    0.30,
+                  ),
+                  backgroundColor:
+                      _verdeOscuro,
                   foregroundColor: _blanco,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(
-                      5,
-                    ),
+                    borderRadius:
+                        BorderRadius.circular(5),
                   ),
                 ),
               ),
@@ -886,13 +931,15 @@ class _AccionesDialogoPago extends StatelessWidget {
   }
 }
 
-class MenuCartaCarrito extends StatelessWidget {
+class MenuCartaCarrito
+    extends StatelessWidget {
   final List<Medicamento> medicamentos;
   final Map<int, int> cantidades;
   final double subtotal;
   final double descuento;
   final double total;
-  final ValueChanged<double> onDescuentoChanged;
+  final ValueChanged<double>
+      onDescuentoChanged;
   final ValueChanged<int> onIncrementar;
   final ValueChanged<int> onDisminuir;
   final ValueChanged<int> onEliminar;
@@ -917,7 +964,7 @@ class MenuCartaCarrito extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 234,
+      width: 280,
       margin: const EdgeInsets.only(
         top: 20,
         right: 20,
@@ -929,7 +976,8 @@ class MenuCartaCarrito extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.12),
+            color:
+                Colors.black.withOpacity(0.12),
             blurRadius: 14,
             offset: const Offset(0, 5),
           ),
@@ -962,8 +1010,9 @@ class MenuCartaCarrito extends StatelessWidget {
                   'Carrito',
                   style: TextStyle(
                     color: _texto,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    fontWeight:
+                        FontWeight.w900,
                   ),
                 ),
               ],
@@ -977,25 +1026,34 @@ class MenuCartaCarrito extends StatelessWidget {
                       style: TextStyle(
                         color: _textoSuave,
                         fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                        fontWeight:
+                            FontWeight.w600,
                       ),
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(
+                    padding:
+                        const EdgeInsets.fromLTRB(
                       15,
                       13,
                       15,
                       10,
                     ),
-                    itemCount: medicamentos.length,
-                    itemBuilder: (context, index) {
-                      final medicamento = medicamentos[index];
+                    itemCount:
+                        medicamentos.length,
+                    itemBuilder:
+                        (context, index) {
+                      final medicamento =
+                          medicamentos[index];
 
-                      final cantidad = cantidades[medicamento.id] ?? 0;
+                      final cantidad =
+                          cantidades[
+                                  medicamento.id] ??
+                              0;
 
                       return _ItemCarrito(
-                        medicamento: medicamento,
+                        medicamento:
+                            medicamento,
                         cantidad: cantidad,
                         onIncrementar: () {
                           onIncrementar(
@@ -1020,9 +1078,11 @@ class MenuCartaCarrito extends StatelessWidget {
             subtotal: subtotal,
             descuento: descuento,
             total: total,
-            onDescuentoChanged: onDescuentoChanged,
+            onDescuentoChanged:
+                onDescuentoChanged,
             onPagar: onPagar,
-            procesandoPago: procesandoPago,
+            procesandoPago:
+                procesandoPago,
           ),
         ],
       ),
@@ -1050,8 +1110,10 @@ class _ItemCarrito extends StatelessWidget {
     final importe = medicamento.precio * cantidad;
 
     return Container(
-      height: 57,
-      margin: const EdgeInsets.only(bottom: 10),
+      height: 70,
+      margin: const EdgeInsets.only(
+        bottom: 10,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1066,7 +1128,8 @@ class _ItemCarrito extends StatelessWidget {
                 top: 3,
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
                   Text(
                     medicamento.nombre,
@@ -1074,20 +1137,22 @@ class _ItemCarrito extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: _texto,
-                      fontSize: 7.4,
+                      fontSize: 12,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Text(
                     '${ConfigMoneda.formato(medicamento.precio)} c/u',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: Color(0xFF8D8D8D),
-                      fontSize: 6.5,
+                      fontSize: 10,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 7),
                   _ControlCantidad(
                     cantidad: cantidad,
                     onIncrementar: onIncrementar,
@@ -1098,35 +1163,39 @@ class _ItemCarrito extends StatelessWidget {
             ),
           ),
           SizedBox(
-            width: 46,
+            width: 52,
             child: Padding(
               padding: const EdgeInsets.only(
-                top: 6,
+                top: 5,
               ),
               child: Text(
-                ConfigMoneda.formato(
-                  importe,
-                ),
+                ConfigMoneda.formato(importe),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.right,
                 style: const TextStyle(
                   color: _texto,
-                  fontSize: 7.8,
+                  fontSize: 12,
                   fontWeight: FontWeight.w900,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 5),
           Padding(
             padding: const EdgeInsets.only(
-              top: 22,
+              top: 21,
             ),
             child: InkWell(
               onTap: onEliminar,
-              child: const Icon(
-                Icons.delete_outline,
-                size: 13,
-                color: _rojo,
+              borderRadius: BorderRadius.circular(4),
+              child: const Padding(
+                padding: EdgeInsets.all(2),
+                child: Icon(
+                  Icons.delete_outline,
+                  size: 15,
+                  color: _rojo,
+                ),
               ),
             ),
           ),
@@ -1136,7 +1205,8 @@ class _ItemCarrito extends StatelessWidget {
   }
 }
 
-class _ControlCantidad extends StatelessWidget {
+class _ControlCantidad
+    extends StatelessWidget {
   final int cantidad;
   final VoidCallback onIncrementar;
   final VoidCallback onDisminuir;
@@ -1168,8 +1238,9 @@ class _ControlCantidad extends StatelessWidget {
                 '$cantidad',
                 style: const TextStyle(
                   color: _texto,
-                  fontSize: 7.5,
-                  fontWeight: FontWeight.w900,
+                  fontSize: 12,
+                  fontWeight:
+                      FontWeight.w900,
                 ),
               ),
             ),
@@ -1184,7 +1255,8 @@ class _ControlCantidad extends StatelessWidget {
   }
 }
 
-class _BotonCantidad extends StatelessWidget {
+class _BotonCantidad
+    extends StatelessWidget {
   final String texto;
   final VoidCallback onTap;
 
@@ -1205,7 +1277,7 @@ class _BotonCantidad extends StatelessWidget {
             texto,
             style: const TextStyle(
               color: _texto,
-              fontSize: 9,
+              fontSize: 12,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -1215,11 +1287,13 @@ class _BotonCantidad extends StatelessWidget {
   }
 }
 
-class _ResumenCarrito extends StatelessWidget {
+class _ResumenCarrito
+    extends StatelessWidget {
   final double subtotal;
   final double descuento;
   final double total;
-  final ValueChanged<double> onDescuentoChanged;
+  final ValueChanged<double>
+      onDescuentoChanged;
   final VoidCallback onPagar;
   final bool procesandoPago;
 
@@ -1236,7 +1310,12 @@ class _ResumenCarrito extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 198,
-      padding: const EdgeInsets.fromLTRB(15, 18, 15, 20),
+      padding: const EdgeInsets.fromLTRB(
+        15,
+        18,
+        15,
+        20,
+      ),
       decoration: const BoxDecoration(
         color: _blanco,
         border: Border(
@@ -1258,7 +1337,8 @@ class _ResumenCarrito extends StatelessWidget {
           const SizedBox(height: 11),
           _CampoDescuentoCarrito(
             descuento: descuento,
-            onChanged: onDescuentoChanged,
+            onChanged:
+                onDescuentoChanged,
           ),
           const SizedBox(height: 9),
           Container(
@@ -1279,31 +1359,39 @@ class _ResumenCarrito extends StatelessWidget {
             width: double.infinity,
             height: 36,
             child: ElevatedButton.icon(
-              onPressed: total <= 0 || procesandoPago ? null : onPagar,
+              onPressed:
+                  total <= 0 || procesandoPago
+                      ? null
+                      : onPagar,
               icon: const Icon(
                 Icons.payments_outlined,
-                size: 15,
+                size: 14,
                 color: _verdeOscuro,
               ),
               label: Text(
-                procesandoPago ? 'Procesando...' : 'Pagar',
+                procesandoPago
+                    ? 'Procesando...'
+                    : 'Pagar',
                 style: const TextStyle(
                   color: _verdeOscuro,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
+                  fontSize: 12,
+                  fontWeight:
+                      FontWeight.w900,
                 ),
               ),
-              style: ElevatedButton.styleFrom(
+              style:
+                  ElevatedButton.styleFrom(
                 elevation: 8,
-                shadowColor: _verde.withOpacity(.35),
+                shadowColor:
+                    _verde.withOpacity(.35),
                 backgroundColor: _verde,
-                disabledBackgroundColor: const Color(
+                disabledBackgroundColor:
+                    const Color(
                   0xFFBEBEBE,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(
-                    7,
-                  ),
+                  borderRadius:
+                      BorderRadius.circular(7),
                 ),
               ),
             ),
@@ -1314,7 +1402,8 @@ class _ResumenCarrito extends StatelessWidget {
   }
 }
 
-class _FilaResumen extends StatelessWidget {
+class _FilaResumen
+    extends StatelessWidget {
   final String texto;
   final String valor;
   final Color color;
@@ -1336,8 +1425,11 @@ class _FilaResumen extends StatelessWidget {
             texto,
             style: TextStyle(
               color: color,
-              fontSize: grande ? 14 : 8,
-              fontWeight: grande ? FontWeight.w900 : FontWeight.w600,
+              fontSize:
+                  grande ? 15 : 10,
+              fontWeight: grande
+                  ? FontWeight.w900
+                  : FontWeight.w600,
             ),
           ),
         ),
@@ -1345,8 +1437,11 @@ class _FilaResumen extends StatelessWidget {
           valor,
           style: TextStyle(
             color: color,
-            fontSize: grande ? 14 : 8,
-            fontWeight: grande ? FontWeight.w900 : FontWeight.w700,
+            fontSize:
+                grande ? 15 : 12,
+            fontWeight: grande
+                ? FontWeight.w900
+                : FontWeight.w700,
           ),
         ),
       ],
@@ -1354,7 +1449,8 @@ class _FilaResumen extends StatelessWidget {
   }
 }
 
-class _CampoDescuentoCarrito extends StatefulWidget {
+class _CampoDescuentoCarrito
+    extends StatefulWidget {
   final double descuento;
   final ValueChanged<double> onChanged;
 
@@ -1364,29 +1460,50 @@ class _CampoDescuentoCarrito extends StatefulWidget {
   });
 
   @override
-  State<_CampoDescuentoCarrito> createState() => _CampoDescuentoCarritoState();
+  State<_CampoDescuentoCarrito>
+      createState() =>
+          _CampoDescuentoCarritoState();
 }
 
-class _CampoDescuentoCarritoState extends State<_CampoDescuentoCarrito> {
-  late final TextEditingController _controller;
+class _CampoDescuentoCarritoState
+    extends State<_CampoDescuentoCarrito> {
+  late final TextEditingController
+      _controller;
 
   @override
   void initState() {
     super.initState();
+
     _controller = TextEditingController(
-      text: widget.descuento == 0 ? '' : widget.descuento.toStringAsFixed(2),
+      text: widget.descuento == 0
+          ? ''
+          : widget.descuento
+              .toStringAsFixed(2),
     );
   }
 
   @override
-  void didUpdateWidget(covariant _CampoDescuentoCarrito oldWidget) {
+  void didUpdateWidget(
+    covariant _CampoDescuentoCarrito
+        oldWidget,
+  ) {
     super.didUpdateWidget(oldWidget);
 
-    final actual = double.tryParse(_controller.text.trim()) ?? 0;
-    if ((actual - widget.descuento).abs() > 0.009) {
+    final actual = double.tryParse(
+          _controller.text.trim(),
+        ) ??
+        0;
+
+    if ((actual - widget.descuento).abs() >
+        0.009) {
       _controller.text =
-          widget.descuento == 0 ? '' : widget.descuento.toStringAsFixed(2);
-      _controller.selection = TextSelection.collapsed(
+          widget.descuento == 0
+              ? ''
+              : widget.descuento
+                  .toStringAsFixed(2);
+
+      _controller.selection =
+          TextSelection.collapsed(
         offset: _controller.text.length,
       );
     }
@@ -1407,7 +1524,7 @@ class _CampoDescuentoCarritoState extends State<_CampoDescuentoCarrito> {
             'Descuento',
             style: TextStyle(
               color: _rojo,
-              fontSize: 8,
+              fontSize: 10,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -1417,27 +1534,36 @@ class _CampoDescuentoCarritoState extends State<_CampoDescuentoCarrito> {
           height: 28,
           child: TextField(
             controller: _controller,
-            keyboardType: const TextInputType.numberWithOptions(
+            keyboardType:
+                const TextInputType
+                    .numberWithOptions(
               decimal: true,
             ),
             textAlign: TextAlign.right,
             style: const TextStyle(
               color: _rojo,
-              fontSize: 9,
+              fontSize: 12,
               fontWeight: FontWeight.w900,
             ),
-            decoration: const InputDecoration(
+            decoration:
+                const InputDecoration(
               prefixText: '\$',
               isDense: true,
-              contentPadding: EdgeInsets.symmetric(
+              contentPadding:
+                  EdgeInsets.symmetric(
                 horizontal: 8,
                 vertical: 7,
               ),
               border: OutlineInputBorder(),
             ),
             onChanged: (value) {
-              final limpio = value.trim().replaceAll(',', '');
-              widget.onChanged(double.tryParse(limpio) ?? 0);
+              final limpio = value
+                  .trim()
+                  .replaceAll(',', '');
+
+              widget.onChanged(
+                double.tryParse(limpio) ?? 0,
+              );
             },
           ),
         ),
@@ -1446,7 +1572,8 @@ class _CampoDescuentoCarritoState extends State<_CampoDescuentoCarrito> {
   }
 }
 
-class _ImagenCarrito extends StatelessWidget {
+class _ImagenCarrito
+    extends StatelessWidget {
   final int medicamentoId;
   final String? imagenAsset;
 
@@ -1475,7 +1602,8 @@ class _ImagenCarrito extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: _colorImagenBase(medicamentoId),
+        color:
+            _colorImagenBase(medicamentoId),
         borderRadius: BorderRadius.circular(5),
       ),
       child: Center(
@@ -1509,7 +1637,8 @@ class _ImagenCarrito extends StatelessWidget {
   }
 }
 
-class _IlustracionCarrito extends StatelessWidget {
+class _IlustracionCarrito
+    extends StatelessWidget {
   final int medicamentoId;
 
   const _IlustracionCarrito({
@@ -1524,8 +1653,10 @@ class _IlustracionCarrito extends StatelessWidget {
           scale: .42,
           child: _CajaCarrito(
             texto: 'Paracetamol',
-            colorPrincipal: const Color(0xFF55BFD2),
-            colorSecundario: const Color(0xFFE9F6FA),
+            colorPrincipal:
+                const Color(0xFF55BFD2),
+            colorSecundario:
+                const Color(0xFFE9F6FA),
           ),
         );
 
@@ -1540,8 +1671,10 @@ class _IlustracionCarrito extends StatelessWidget {
           scale: .42,
           child: _CajaCarrito(
             texto: 'Ibuprofeno',
-            colorPrincipal: const Color(0xFFFF8500),
-            colorSecundario: const Color(0xFFFFF0DE),
+            colorPrincipal:
+                const Color(0xFFFF8500),
+            colorSecundario:
+                const Color(0xFFFFF0DE),
           ),
         );
 
@@ -1550,8 +1683,10 @@ class _IlustracionCarrito extends StatelessWidget {
           scale: .42,
           child: _CajaCarrito(
             texto: 'Ome',
-            colorPrincipal: const Color(0xFF0F8B70),
-            colorSecundario: const Color(0xFFE7FFF8),
+            colorPrincipal:
+                const Color(0xFF0F8B70),
+            colorSecundario:
+                const Color(0xFFE7FFF8),
           ),
         );
 
@@ -1596,7 +1731,8 @@ class _CajaCarrito extends StatelessWidget {
         borderRadius: BorderRadius.circular(2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.14),
+            color:
+                Colors.black.withOpacity(0.14),
             blurRadius: 6,
             offset: const Offset(2, 3),
           ),
@@ -1621,7 +1757,8 @@ class _CajaCarrito extends StatelessWidget {
               style: TextStyle(
                 color: colorPrincipal,
                 fontSize: 7,
-                fontWeight: FontWeight.w900,
+                fontWeight:
+                    FontWeight.w900,
               ),
             ),
           ),
@@ -1640,7 +1777,8 @@ class _CajaCarrito extends StatelessWidget {
   }
 }
 
-class _FrascoCarrito extends StatelessWidget {
+class _FrascoCarrito
+    extends StatelessWidget {
   const _FrascoCarrito();
 
   @override
@@ -1653,7 +1791,8 @@ class _FrascoCarrito extends StatelessWidget {
           height: 8,
           decoration: const BoxDecoration(
             color: Color(0xFFD9D9D9),
-            borderRadius: BorderRadius.vertical(
+            borderRadius:
+                BorderRadius.vertical(
               top: Radius.circular(2),
             ),
           ),
@@ -1663,10 +1802,12 @@ class _FrascoCarrito extends StatelessWidget {
           height: 50,
           decoration: BoxDecoration(
             color: const Color(0xFF965D28),
-            borderRadius: BorderRadius.circular(5),
+            borderRadius:
+                BorderRadius.circular(5),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(.14),
+                color: Colors.black
+                    .withOpacity(.14),
                 blurRadius: 6,
                 offset: const Offset(2, 3),
               ),

@@ -1735,18 +1735,6 @@ class _PanelDetallesTecnicos
                             productoActivo
                                 ? 'Sí'
                                 : 'No',
-                        trailing: Icon(
-                          productoActivo
-                              ? Icons
-                                  .toggle_on_outlined
-                              : Icons
-                                  .toggle_off_outlined,
-                          color:
-                              productoActivo
-                                  ? _verdeOscuro
-                                  : _rojo,
-                          size: 24,
-                        ),
                       ),
                     ],
                   ),
