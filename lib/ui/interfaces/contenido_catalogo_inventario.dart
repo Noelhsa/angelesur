@@ -4,13 +4,13 @@ import '../../services/api_client.dart';
 import '../../services/inventario_api_service.dart';
 import '../../utils/config_moneda.dart';
 
-const Color _fondoPagina = Color(0xFFF8F6F5);
+const Color _fondoPagina = Color(0xFFE2E2E2);
 const Color _verdeOscuro = Color(0xFF397800);
 const Color _azul = Color(0xFF0B63CE);
 const Color _textoPrincipal = Color(0xFF1F2933);
 const Color _textoSecundario = Color(0xFF667085);
 const Color _bordeSuave = Color(0xFFD9E6D3);
-const Color _grisCampo = Color(0xFFF8F7F4);
+const Color _grisCampo = Color(0xFFFFFFFF);
 const Color _rojo = Color(0xFFE02020);
 
 class ContenidoCatalogoInventario extends StatefulWidget {
@@ -406,20 +406,15 @@ class _ContenidoCatalogoInventarioState
   }
 }
 
-class _PanelFiltrosInventario
-    extends StatelessWidget {
-  final TextEditingController
-      busquedaController;
+class _PanelFiltrosInventario extends StatelessWidget {
+  final TextEditingController busquedaController;
 
   final String categoriaSeleccionada;
   final List<String> categorias;
   final String estadoSeleccionado;
 
-  final ValueChanged<String?>
-      onCategoriaChanged;
-
-  final ValueChanged<String?>
-      onEstadoChanged;
+  final ValueChanged<String?> onCategoriaChanged;
+  final ValueChanged<String?> onEstadoChanged;
 
   final VoidCallback onBuscar;
   final VoidCallback onRefrescar;
@@ -438,7 +433,7 @@ class _PanelFiltrosInventario
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 88,
+      width: double.infinity,
       padding: const EdgeInsets.fromLTRB(
         18,
         14,
@@ -446,50 +441,45 @@ class _PanelFiltrosInventario
         14,
       ),
       decoration: BoxDecoration(
-        color: _fondoPagina,
+        color: Colors.white,
         border: Border.all(
           color: _bordeSuave,
         ),
-        borderRadius:
-            BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SizedBox(
             width: 240,
             child: _CampoBusqueda(
-              controller:
-                  busquedaController,
+              controller: busquedaController,
               onBuscar: onBuscar,
             ),
           ),
-          const SizedBox(width: 18),
+          const SizedBox(width: 14),
           SizedBox(
-            width: 180,
+            width: 190,
             child: _CampoDropdown(
-              etiqueta: 'Categoria',
-              valor:
-                  categoriaSeleccionada,
+              etiqueta: 'Categoría',
+              valor: categoriaSeleccionada,
               opciones: categorias,
-              onChanged:
-                  onCategoriaChanged,
+              onChanged: onCategoriaChanged,
             ),
           ),
-          const SizedBox(width: 18),
+          const SizedBox(width: 14),
           SizedBox(
-            width: 165,
+            width: 170,
             child: _CampoDropdown(
               etiqueta: 'Estado de stock',
-              valor:
-                  estadoSeleccionado,
+              valor: estadoSeleccionado,
               opciones: const [
                 'Todos los estados',
                 'En existencia',
                 'Stock bajo',
                 'Agotado',
               ],
-              onChanged:
-                  onEstadoChanged,
+              onChanged: onEstadoChanged,
             ),
           ),
           const Spacer(),
@@ -693,8 +683,7 @@ class _CampoDropdown extends StatelessWidget {
   }
 }
 
-class _BotonSecundarioCatalogo
-    extends StatelessWidget {
+class _BotonSecundarioCatalogo extends StatelessWidget {
   final String texto;
   final IconData icono;
   final VoidCallback onTap;
@@ -708,33 +697,37 @@ class _BotonSecundarioCatalogo
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 34,
-      child: OutlinedButton.icon(
+      width: 138,
+      height: 32,
+      child: ElevatedButton.icon(
         onPressed: onTap,
         icon: Icon(
           icono,
           size: 14,
-          color: _textoSecundario,
+          color: Colors.white,
         ),
         label: Text(
           texto,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
-            color: _textoPrincipal,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
           ),
         ),
-        style: OutlinedButton.styleFrom(
-          padding:
-              const EdgeInsets.symmetric(
-            horizontal: 14,
+        style: ElevatedButton.styleFrom(
+          elevation: 2,
+          backgroundColor: const Color(0xFF417A00),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(
+            horizontal: 10,
           ),
-          side: const BorderSide(
-            color: Color(0xFFC8D6C0),
+          shadowColor: const Color(0xFF417A00).withValues(
+            alpha: 0.25,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius:
-                BorderRadius.circular(5),
+            borderRadius: BorderRadius.circular(6),
           ),
         ),
       ),

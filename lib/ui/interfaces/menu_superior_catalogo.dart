@@ -17,27 +17,28 @@ class MenuSuperiorCatalogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 86,
-      padding: const EdgeInsets.only(
-        left: 14,
-        top: 18,
-        right: 14,
+      padding: const EdgeInsets.fromLTRB(
+        14,
+        18,
+        14,
+        0,
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Gestión de Catalogo',
+            'Gestión de Catálogo',
             style: TextStyle(
               color: _textoPrincipal,
-              fontSize: 22,
+              fontSize: 27,
               fontWeight: FontWeight.w800,
               height: 1,
             ),
           ),
           const SizedBox(height: 16),
           SizedBox(
-            height: 23,
+            height: 32,
             child: Stack(
               children: [
                 Positioned(
@@ -89,26 +90,41 @@ class _OpcionSubmenuCatalogo extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
       child: SizedBox(
-        height: 23,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Text(
-              texto,
-              style: TextStyle(
-                color: activo ? _verdeActivo : _textoPrincipal,
-                fontSize: 8,
-                fontWeight: activo ? FontWeight.w900 : FontWeight.w600,
+        height: 32,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 2,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Text(
+                texto,
+                style: TextStyle(
+                  color: activo
+                      ? _verdeActivo
+                      : _textoPrincipal,
+                  fontSize: 12,
+                  fontWeight: activo
+                      ? FontWeight.w900
+                      : FontWeight.w600,
+                  height: 1,
+                ),
               ),
-            ),
-            const SizedBox(height: 6),
-            Container(
-              width: texto == 'Inventario' ? 52 : 42,
-              height: 2,
-              color: activo ? _verdeActivo : Colors.transparent,
-            ),
-          ],
+              const SizedBox(height: 7),
+              Container(
+                width: texto == 'Inventario'
+                    ? 66
+                    : 55,
+                height: 2,
+                color: activo
+                    ? _verdeActivo
+                    : Colors.transparent,
+              ),
+            ],
+          ),
         ),
       ),
     );
