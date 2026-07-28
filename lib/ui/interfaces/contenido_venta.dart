@@ -15,7 +15,12 @@ class ContenidoVenta extends StatefulWidget {
   final List<Medicamento> medicamentos;
   final ValueChanged<Medicamento> onAgregar;
   final ValueChanged<TarifaServicioYastas> onAgregarYastas;
-  final Future<void> Function(String codigoBarras) onEscanearCodigoBarras;
+
+  final Future<void> Function(
+    String codigoBarras,
+  ) onEscanearCodigoBarras;
+
+  final Future<void> Function() onActualizar;
 
   const ContenidoVenta({
     super.key,
@@ -24,23 +29,52 @@ class ContenidoVenta extends StatefulWidget {
     required this.onAgregar,
     required this.onAgregarYastas,
     required this.onEscanearCodigoBarras,
+    required this.onActualizar,
   });
 
   @override
-  State<ContenidoVenta> createState() => _ContenidoVentaState();
+  State<ContenidoVenta> createState() =>
+      _ContenidoVentaState();
 }
 
-class _ContenidoVentaState extends State<ContenidoVenta> {
+class _ContenidoVentaState
+    extends State<ContenidoVenta> {
   String _seccionSeleccionada = 'Medicamentos';
+  bool _actualizando = false;
+
+  Future<void> _actualizarContenido() async {
+    if (_actualizando) {
+      return;
+    }
+
+    setState(() {
+      _actualizando = true;
+    });
+
+    try {
+      await widget.onActualizar();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _actualizando = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         _BarraSuperiorVenta(
-          busquedaController: widget.busquedaController,
-          seccionSeleccionada: _seccionSeleccionada,
-          onEscanearCodigoBarras: widget.onEscanearCodigoBarras,
+          busquedaController:
+              widget.busquedaController,
+          seccionSeleccionada:
+              _seccionSeleccionada,
+          actualizando: _actualizando,
+          onActualizar: _actualizarContenido,
+          onEscanearCodigoBarras:
+              widget.onEscanearCodigoBarras,
           onSeleccionarSeccion: (seccion) {
             setState(() {
               _seccionSeleccionada = seccion;
@@ -50,11 +84,14 @@ class _ContenidoVentaState extends State<ContenidoVenta> {
         Expanded(
           child: _seccionSeleccionada == 'Yastas'
               ? ContenidoVentaYastas(
-                  busquedaController: widget.busquedaController,
-                  onAgregar: widget.onAgregarYastas,
+                  busquedaController:
+                      widget.busquedaController,
+                  onAgregar:
+                      widget.onAgregarYastas,
                 )
               : _CatalogoMedicamentos(
-                  medicamentos: widget.medicamentos,
+                  medicamentos:
+                      widget.medicamentos,
                   onAgregar: widget.onAgregar,
                 ),
         ),
@@ -63,42 +100,65 @@ class _ContenidoVentaState extends State<ContenidoVenta> {
   }
 }
 
-class _BarraSuperiorVenta extends StatelessWidget {
-  final TextEditingController busquedaController;
+class _BarraSuperiorVenta
+    extends StatelessWidget {
+  final TextEditingController
+      busquedaController;
+
   final String seccionSeleccionada;
-  final Future<void> Function(String codigoBarras) onEscanearCodigoBarras;
-  final ValueChanged<String> onSeleccionarSeccion;
+  final bool actualizando;
+
+  final Future<void> Function(
+    String codigoBarras,
+  ) onEscanearCodigoBarras;
+
+  final ValueChanged<String>
+      onSeleccionarSeccion;
+
+  final VoidCallback onActualizar;
 
   const _BarraSuperiorVenta({
     required this.busquedaController,
     required this.seccionSeleccionada,
+    required this.actualizando,
     required this.onEscanearCodigoBarras,
     required this.onSeleccionarSeccion,
+    required this.onActualizar,
   });
 
   @override
   Widget build(BuildContext context) {
-    final esYastas = seccionSeleccionada == 'Yastas';
+    final esYastas =
+        seccionSeleccionada == 'Yastas';
 
     return Container(
       height: 78,
-      padding: const EdgeInsets.only(left: 28, top: 20, right: 18),
+      padding: const EdgeInsets.only(
+        left: 28,
+        top: 20,
+        right: 28,
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           Container(
             width: 310,
             height: 40,
             decoration: BoxDecoration(
               color: _blanco,
-              borderRadius: BorderRadius.circular(7),
+              borderRadius:
+                  BorderRadius.circular(7),
               border: Border.all(
-                color: const Color(0xFFD6D6D6),
+                color:
+                    const Color(0xFFD6D6D6),
                 width: 1,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
+                  color: Colors.black.withValues(
+                    alpha: 0.04,
+                  ),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),
@@ -115,29 +175,40 @@ class _BarraSuperiorVenta extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Transform.translate(
-                    offset: const Offset(0, -2),
+                    offset:
+                        const Offset(0, -2),
                     child: TextField(
-                      controller: busquedaController,
-                      onSubmitted: onEscanearCodigoBarras,
-                      cursorColor: _verdeOscuro,
+                      controller:
+                          busquedaController,
+                      onSubmitted:
+                          onEscanearCodigoBarras,
+                      cursorColor:
+                          _verdeOscuro,
                       textAlign: TextAlign.left,
                       style: const TextStyle(
                         color: _texto,
                         fontSize: 10,
-                        fontWeight: FontWeight.w500,
+                        fontWeight:
+                            FontWeight.w500,
                       ),
-                      decoration: InputDecoration(
+                      decoration:
+                          InputDecoration(
                         hintText: esYastas
                             ? 'Buscar servicio...'
                             : 'Buscar medicamento...',
-                        hintStyle: const TextStyle(
-                          color: Color(0xFF9A9A9A),
+                        hintStyle:
+                            const TextStyle(
+                          color:
+                              Color(0xFF9A9A9A),
                           fontSize: 9,
-                          fontWeight: FontWeight.w500,
+                          fontWeight:
+                              FontWeight.w500,
                         ),
-                        border: InputBorder.none,
+                        border:
+                            InputBorder.none,
                         isCollapsed: true,
-                        contentPadding: const EdgeInsets.only(
+                        contentPadding:
+                            const EdgeInsets.only(
                           left: 8,
                           right: 8,
                         ),
@@ -152,16 +223,35 @@ class _BarraSuperiorVenta extends StatelessWidget {
           const SizedBox(width: 18),
           _ChipCategoria(
             texto: 'Medicamentos',
-            activo: seccionSeleccionada == 'Medicamentos',
-            onTap: () => onSeleccionarSeccion('Medicamentos'),
+            activo: seccionSeleccionada ==
+                'Medicamentos',
+            onTap: () {
+              onSeleccionarSeccion(
+                'Medicamentos',
+              );
+            },
             ancho: 98,
           ),
           const SizedBox(width: 13),
           _ChipCategoria(
             texto: 'Yastas',
-            activo: seccionSeleccionada == 'Yastas',
-            onTap: () => onSeleccionarSeccion('Yastas'),
+            activo:
+                seccionSeleccionada == 'Yastas',
+            onTap: () {
+              onSeleccionarSeccion('Yastas');
+            },
             ancho: 72,
+          ),
+
+          /*
+           * Empuja el botón de actualizar
+           * hacia el extremo derecho.
+           */
+          const Spacer(),
+
+          _BotonActualizarVenta(
+            actualizando: actualizando,
+            onActualizar: onActualizar,
           ),
         ],
       ),
@@ -169,7 +259,77 @@ class _BarraSuperiorVenta extends StatelessWidget {
   }
 }
 
-class _ChipCategoria extends StatelessWidget {
+class _BotonActualizarVenta
+    extends StatelessWidget {
+  final bool actualizando;
+  final VoidCallback onActualizar;
+
+  const _BotonActualizarVenta({
+    required this.actualizando,
+    required this.onActualizar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 122,
+      height: 32,
+      child: ElevatedButton.icon(
+        onPressed:
+            actualizando ? null : onActualizar,
+        icon: actualizando
+            ? const SizedBox(
+                width: 14,
+                height: 14,
+                child:
+                    CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(
+                Icons.refresh,
+                size: 16,
+                color: Colors.white,
+              ),
+        label: Text(
+          actualizando
+              ? 'Actualizando'
+              : 'Actualizar',
+          maxLines: 1,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          elevation: 3,
+          backgroundColor: _verdeOscuro,
+          disabledBackgroundColor:
+              _verdeOscuro.withValues(
+            alpha: 0.65,
+          ),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+          ),
+          shadowColor:
+              _verdeOscuro.withValues(
+            alpha: 0.25,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius:
+                BorderRadius.circular(7),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChipCategoria
+    extends StatelessWidget {
   final String texto;
   final bool activo;
   final VoidCallback onTap;
@@ -191,19 +351,26 @@ class _ChipCategoria extends StatelessWidget {
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
           elevation: 0,
-          backgroundColor: activo ? _verdeOscuro : const Color(0xFFE3E3E3),
-          foregroundColor: activo ? _blanco : _texto,
+          backgroundColor: activo
+              ? _verdeOscuro
+              : const Color(0xFFE3E3E3),
+          foregroundColor:
+              activo ? _blanco : _texto,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius:
+                BorderRadius.circular(16),
           ),
           padding: EdgeInsets.zero,
         ),
         child: Text(
           texto,
           style: TextStyle(
-            color: activo ? _blanco : _texto,
+            color:
+                activo ? _blanco : _texto,
             fontSize: 10,
-            fontWeight: activo ? FontWeight.w700 : FontWeight.w500,
+            fontWeight: activo
+                ? FontWeight.w700
+                : FontWeight.w500,
           ),
         ),
       ),
@@ -211,7 +378,8 @@ class _ChipCategoria extends StatelessWidget {
   }
 }
 
-class _CatalogoMedicamentos extends StatelessWidget {
+class _CatalogoMedicamentos
+    extends StatelessWidget {
   final List<Medicamento> medicamentos;
   final ValueChanged<Medicamento> onAgregar;
 
@@ -236,27 +404,40 @@ class _CatalogoMedicamentos extends StatelessWidget {
             alignment: Alignment.topLeft,
             child: medicamentos.isEmpty
                 ? const Padding(
-                    padding: EdgeInsets.only(top: 24),
+                    padding:
+                        EdgeInsets.only(
+                      top: 24,
+                    ),
                     child: Text(
                       'No hay medicamentos para mostrar',
                       style: TextStyle(
                         color: _texto,
                         fontSize: 14,
-                        fontWeight: FontWeight.w800,
+                        fontWeight:
+                            FontWeight.w800,
                       ),
                     ),
                   )
                 : Wrap(
-                    alignment: WrapAlignment.start,
-                    crossAxisAlignment: WrapCrossAlignment.start,
+                    alignment:
+                        WrapAlignment.start,
+                    crossAxisAlignment:
+                        WrapCrossAlignment.start,
                     spacing: 14,
                     runSpacing: 15,
-                    children: medicamentos.map((medicamento) {
-                      return _TarjetaMedicamento(
-                        medicamento: medicamento,
-                        onAgregar: () => onAgregar(medicamento),
-                      );
-                    }).toList(),
+                    children: medicamentos.map(
+                      (medicamento) {
+                        return _TarjetaMedicamento(
+                          medicamento:
+                              medicamento,
+                          onAgregar: () {
+                            onAgregar(
+                              medicamento,
+                            );
+                          },
+                        );
+                      },
+                    ).toList(),
                   ),
           ),
         ),
@@ -265,7 +446,8 @@ class _CatalogoMedicamentos extends StatelessWidget {
   }
 }
 
-class _TarjetaMedicamento extends StatelessWidget {
+class _TarjetaMedicamento
+    extends StatelessWidget {
   final Medicamento medicamento;
   final VoidCallback onAgregar;
 
@@ -281,28 +463,39 @@ class _TarjetaMedicamento extends StatelessWidget {
       height: 225,
       decoration: BoxDecoration(
         color: _blanco,
-        borderRadius: BorderRadius.circular(7),
+        borderRadius:
+            BorderRadius.circular(7),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.07),
+            color: Colors.black.withValues(
+              alpha: 0.07,
+            ),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      padding: const EdgeInsets.fromLTRB(15, 16, 15, 12),
+      padding: const EdgeInsets.fromLTRB(
+        15,
+        16,
+        15,
+        12,
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           _ImagenProducto(
             medicamentoId: medicamento.id,
-            imagenAsset: medicamento.imagenAsset,
+            imagenAsset:
+                medicamento.imagenAsset,
           ),
           const SizedBox(height: 20),
           Text(
             medicamento.nombre,
             maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            overflow:
+                TextOverflow.ellipsis,
             style: const TextStyle(
               color: _texto,
               fontSize: 11,
@@ -313,7 +506,8 @@ class _TarjetaMedicamento extends StatelessWidget {
           Text(
             medicamento.detalle,
             maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            overflow:
+                TextOverflow.ellipsis,
             style: const TextStyle(
               color: Color(0xFF333A42),
               fontSize: 6.8,
@@ -323,21 +517,28 @@ class _TarjetaMedicamento extends StatelessWidget {
           ),
           const Spacer(),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment:
+                CrossAxisAlignment.end,
             children: [
               Expanded(
                 child: Text(
-                  ConfigMoneda.formato(medicamento.precio),
+                  ConfigMoneda.formato(
+                    medicamento.precio,
+                  ),
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  overflow:
+                      TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: _verdeOscuro,
                     fontSize: 17,
-                    fontWeight: FontWeight.w500,
+                    fontWeight:
+                        FontWeight.w500,
                   ),
                 ),
               ),
-              _BotonAgregar(onTap: onAgregar),
+              _BotonAgregar(
+                onTap: onAgregar,
+              ),
             ],
           ),
           const SizedBox(height: 4),
@@ -346,14 +547,19 @@ class _TarjetaMedicamento extends StatelessWidget {
               style: const TextStyle(
                 color: _texto,
                 fontSize: 6.6,
-                fontWeight: FontWeight.w500,
+                fontWeight:
+                    FontWeight.w500,
               ),
               children: [
-                const TextSpan(text: 'Stock: '),
+                const TextSpan(
+                  text: 'Stock: ',
+                ),
                 TextSpan(
-                  text: '${medicamento.stock} unidades',
+                  text:
+                      '${medicamento.stock} unidades',
                   style: const TextStyle(
-                    fontWeight: FontWeight.w900,
+                    fontWeight:
+                        FontWeight.w900,
                   ),
                 ),
               ],
@@ -365,7 +571,8 @@ class _TarjetaMedicamento extends StatelessWidget {
   }
 }
 
-class _BotonAgregar extends StatelessWidget {
+class _BotonAgregar
+    extends StatelessWidget {
   final VoidCallback onTap;
 
   const _BotonAgregar({
@@ -381,7 +588,9 @@ class _BotonAgregar extends StatelessWidget {
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
           elevation: 4,
-          shadowColor: _verde.withOpacity(.45),
+          shadowColor: _verde.withValues(
+            alpha: 0.45,
+          ),
           backgroundColor: _verde,
           foregroundColor: _texto,
           padding: EdgeInsets.zero,
@@ -397,7 +606,8 @@ class _BotonAgregar extends StatelessWidget {
   }
 }
 
-class _ImagenProducto extends StatelessWidget {
+class _ImagenProducto
+    extends StatelessWidget {
   final int medicamentoId;
   final String? imagenAsset;
 
@@ -412,7 +622,8 @@ class _ImagenProducto extends StatelessWidget {
 
     if (imagenAsset != null) {
       return ClipRRect(
-        borderRadius: BorderRadius.circular(3),
+        borderRadius:
+            BorderRadius.circular(3),
         child: Image.asset(
           imagenAsset!,
           width: size,
@@ -426,11 +637,16 @@ class _ImagenProducto extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: _colorImagenBase(medicamentoId),
-        borderRadius: BorderRadius.circular(3),
+        color: _colorImagenBase(
+          medicamentoId,
+        ),
+        borderRadius:
+            BorderRadius.circular(3),
       ),
       child: Center(
-        child: _IlustracionProducto(medicamentoId: medicamentoId),
+        child: _IlustracionProducto(
+          medicamentoId: medicamentoId,
+        ),
       ),
     );
   }
@@ -438,22 +654,40 @@ class _ImagenProducto extends StatelessWidget {
   Color _colorImagenBase(int id) {
     switch (id) {
       case 1:
-        return const Color(0xFFF3F5F5);
+        return const Color(
+          0xFFF3F5F5,
+        );
+
       case 2:
-        return const Color(0xFFEFEFEA);
+        return const Color(
+          0xFFEFEFEA,
+        );
+
       case 3:
-        return const Color(0xFFF4F4F0);
+        return const Color(
+          0xFFF4F4F0,
+        );
+
       case 4:
-        return const Color(0xFF0B4B43);
+        return const Color(
+          0xFF0B4B43,
+        );
+
       case 5:
-        return const Color(0xFFB9D9D4);
+        return const Color(
+          0xFFB9D9D4,
+        );
+
       default:
-        return const Color(0xFFF3F5F5);
+        return const Color(
+          0xFFF3F5F5,
+        );
     }
   }
 }
 
-class _IlustracionProducto extends StatelessWidget {
+class _IlustracionProducto
+    extends StatelessWidget {
   final int medicamentoId;
 
   const _IlustracionProducto({
@@ -466,23 +700,33 @@ class _IlustracionProducto extends StatelessWidget {
       case 1:
         return _CajaMedicamento(
           texto: 'Paracetamol',
-          colorPrincipal: const Color(0xFF55BFD2),
-          colorSecundario: const Color(0xFFE9F6FA),
+          colorPrincipal:
+              const Color(0xFF55BFD2),
+          colorSecundario:
+              const Color(0xFFE9F6FA),
         );
+
       case 2:
         return const _FrascoMedicamento();
+
       case 3:
         return _CajaMedicamento(
           texto: 'Ibuprofeno',
-          colorPrincipal: const Color(0xFFFF8500),
-          colorSecundario: const Color(0xFFFFF0DE),
+          colorPrincipal:
+              const Color(0xFFFF8500),
+          colorSecundario:
+              const Color(0xFFFFF0DE),
         );
+
       case 4:
         return _CajaMedicamento(
           texto: 'Ome',
-          colorPrincipal: const Color(0xFF0F8B70),
-          colorSecundario: const Color(0xFFE7FFF8),
+          colorPrincipal:
+              const Color(0xFF0F8B70),
+          colorSecundario:
+              const Color(0xFFE7FFF8),
         );
+
       case 5:
         return Transform.rotate(
           angle: -0.2,
@@ -492,6 +736,7 @@ class _IlustracionProducto extends StatelessWidget {
             color: Color(0xFF4E7B78),
           ),
         );
+
       default:
         return const Icon(
           Icons.medication_outlined,
@@ -502,7 +747,8 @@ class _IlustracionProducto extends StatelessWidget {
   }
 }
 
-class _CajaMedicamento extends StatelessWidget {
+class _CajaMedicamento
+    extends StatelessWidget {
   final String texto;
   final Color colorPrincipal;
   final Color colorSecundario;
@@ -520,10 +766,13 @@ class _CajaMedicamento extends StatelessWidget {
       height: 46,
       decoration: BoxDecoration(
         color: _blanco,
-        borderRadius: BorderRadius.circular(2),
+        borderRadius:
+            BorderRadius.circular(2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.14),
+            color: Colors.black.withValues(
+              alpha: 0.14,
+            ),
             blurRadius: 6,
             offset: const Offset(2, 3),
           ),
@@ -548,7 +797,8 @@ class _CajaMedicamento extends StatelessWidget {
               style: TextStyle(
                 color: colorPrincipal,
                 fontSize: 7,
-                fontWeight: FontWeight.w900,
+                fontWeight:
+                    FontWeight.w900,
               ),
             ),
           ),
@@ -567,7 +817,8 @@ class _CajaMedicamento extends StatelessWidget {
   }
 }
 
-class _FrascoMedicamento extends StatelessWidget {
+class _FrascoMedicamento
+    extends StatelessWidget {
   const _FrascoMedicamento();
 
   @override
@@ -580,7 +831,8 @@ class _FrascoMedicamento extends StatelessWidget {
           height: 8,
           decoration: const BoxDecoration(
             color: Color(0xFFD9D9D9),
-            borderRadius: BorderRadius.vertical(
+            borderRadius:
+                BorderRadius.vertical(
               top: Radius.circular(2),
             ),
           ),
@@ -589,13 +841,20 @@ class _FrascoMedicamento extends StatelessWidget {
           width: 34,
           height: 50,
           decoration: BoxDecoration(
-            color: const Color(0xFF965D28),
-            borderRadius: BorderRadius.circular(5),
+            color: const Color(
+              0xFF965D28,
+            ),
+            borderRadius:
+                BorderRadius.circular(5),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(.14),
+                color:
+                    Colors.black.withValues(
+                  alpha: 0.14,
+                ),
                 blurRadius: 6,
-                offset: const Offset(2, 3),
+                offset:
+                    const Offset(2, 3),
               ),
             ],
           ),

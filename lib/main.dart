@@ -124,7 +124,9 @@ class _PantallaCargandoSesion extends StatelessWidget {
     return const Scaffold(
       backgroundColor: _fondoApp,
       body: Center(
-        child: CircularProgressIndicator(color: _verde),
+        child: CircularProgressIndicator(
+          color: _verde,
+        ),
       ),
     );
   }
@@ -141,31 +143,44 @@ class VentaPrincipalScreen extends StatefulWidget {
   });
 
   @override
-  State<VentaPrincipalScreen> createState() => _VentaPrincipalScreenState();
+  State<VentaPrincipalScreen> createState() =>
+      _VentaPrincipalScreenState();
 }
 
-class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
-  final InventarioApiService _inventarioApiService = InventarioApiService();
+class _VentaPrincipalScreenState
+    extends State<VentaPrincipalScreen> {
+  final InventarioApiService _inventarioApiService =
+      InventarioApiService();
 
-  final VentasApiService _ventasApiService = VentasApiService();
+  final VentasApiService _ventasApiService =
+      VentasApiService();
 
-  final TicketService _ticketService = const TicketService();
+  final TicketService _ticketService =
+      const TicketService();
 
-  final ServiciosYastasApiService _serviciosYastasApiService =
+  final ServiciosYastasApiService
+      _serviciosYastasApiService =
       ServiciosYastasApiService();
 
-  final TextEditingController _busquedaController = TextEditingController();
+  final TextEditingController _busquedaController =
+      TextEditingController();
 
   int _menuSeleccionado = 1;
   int _submenuCatalogoSeleccionado = 0;
+
   bool _cargandoInventario = true;
   bool _procesandoVenta = false;
+
   String? _errorInventario;
+
   double _descuentoVenta = 0;
 
   List<Medicamento> _medicamentos = [];
+
   final Map<int, int> _carrito = {};
-  final Map<int, ServicioYastasCarrito> _serviciosYastasCarrito = {};
+
+  final Map<int, ServicioYastasCarrito>
+      _serviciosYastasCarrito = {};
 
   int _siguienteIdYastasCarrito = -100000;
 
@@ -187,21 +202,31 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
   }
 
   List<Medicamento> get _medicamentosFiltrados {
-    final texto = _busquedaController.text.trim().toLowerCase();
+    final texto =
+        _busquedaController.text.trim().toLowerCase();
 
     if (texto.isEmpty) {
       return _medicamentos;
     }
 
     return _medicamentos.where((medicamento) {
-      return medicamento.nombre.toLowerCase().contains(texto) ||
-          medicamento.codigoBarras.toLowerCase().contains(texto) ||
-          medicamento.detalle.toLowerCase().contains(texto) ||
-          medicamento.categoria.toLowerCase().contains(texto);
+      return medicamento.nombre
+              .toLowerCase()
+              .contains(texto) ||
+          medicamento.codigoBarras
+              .toLowerCase()
+              .contains(texto) ||
+          medicamento.detalle
+              .toLowerCase()
+              .contains(texto) ||
+          medicamento.categoria
+              .toLowerCase()
+              .contains(texto);
     }).toList();
   }
 
-  List<Medicamento> get _productosDisponiblesParaCarrito {
+  List<Medicamento>
+      get _productosDisponiblesParaCarrito {
     return [
       ..._medicamentos,
       ..._serviciosYastasCarrito.values.map(
@@ -211,7 +236,8 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
   }
 
   Medicamento? _productoCarritoPorId(int id) {
-    for (final producto in _productosDisponiblesParaCarrito) {
+    for (final producto
+        in _productosDisponiblesParaCarrito) {
       if (producto.id == id) {
         return producto;
       }
@@ -225,11 +251,15 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     List<Medicamento> productos,
   ) {
     for (final producto in productos) {
-      if (_normalizarCodigoBarras(producto.codigoBarras) != codigoNormalizado) {
+      if (_normalizarCodigoBarras(
+            producto.codigoBarras,
+          ) !=
+          codigoNormalizado) {
         continue;
       }
 
-      final cantidadActual = _carrito[producto.id] ?? 0;
+      final cantidadActual =
+          _carrito[producto.id] ?? 0;
 
       if (cantidadActual < producto.stock) {
         return producto;
@@ -246,12 +276,15 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
         .toList();
   }
 
-  bool get _carritoTieneYastas => _serviciosYastasCarrito.isNotEmpty;
+  bool get _carritoTieneYastas {
+    return _serviciosYastasCarrito.isNotEmpty;
+  }
 
   List<Medicamento> get _itemsProductosCarrito {
     return _carrito.keys
         .where(
-          (id) => !_serviciosYastasCarrito.containsKey(id),
+          (id) =>
+              !_serviciosYastasCarrito.containsKey(id),
         )
         .map(_productoCarritoPorId)
         .whereType<Medicamento>()
@@ -262,7 +295,8 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     double total = 0;
 
     for (final item in _itemsProductosCarrito) {
-      total += item.precio * (_carrito[item.id] ?? 0);
+      total +=
+          item.precio * (_carrito[item.id] ?? 0);
     }
 
     return total;
@@ -272,7 +306,8 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     double total = 0;
 
     for (final item in _carrito.entries) {
-      final producto = _productoCarritoPorId(item.key);
+      final producto =
+          _productoCarritoPorId(item.key);
 
       if (producto == null) {
         continue;
@@ -284,7 +319,9 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     return total;
   }
 
-  double get _subtotalYastas => _subtotal - _subtotalProductos;
+  double get _subtotalYastas {
+    return _subtotal - _subtotalProductos;
+  }
 
   double get _descuento {
     if (_descuentoVenta <= 0) {
@@ -297,12 +334,16 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
   }
 
   double get _totalProductos {
-    final total = _subtotalProductos - _descuento;
+    final total =
+        _subtotalProductos - _descuento;
+
     return total < 0 ? 0 : total;
   }
 
   double get _total {
-    final total = _totalProductos + _subtotalYastas;
+    final total =
+        _totalProductos + _subtotalYastas;
+
     return total < 0 ? 0 : total;
   }
 
@@ -313,7 +354,9 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     });
 
     try {
-      final medicamentos = await _inventarioApiService.listarDisponibles();
+      final medicamentos =
+          await _inventarioApiService
+              .listarDisponibles();
 
       if (!mounted) {
         return;
@@ -329,7 +372,9 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
         _cargandoInventario = false;
       });
     } on ApiException catch (error) {
-      _mostrarErrorInventario(error.message);
+      _mostrarErrorInventario(
+        error.message,
+      );
     } catch (_) {
       _mostrarErrorInventario(
         'No se pudo conectar con la API local',
@@ -337,7 +382,9 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     }
   }
 
-  void _mostrarErrorInventario(String mensaje) {
+  void _mostrarErrorInventario(
+    String mensaje,
+  ) {
     if (!mounted) {
       return;
     }
@@ -360,31 +407,45 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     );
   }
 
-  void _agregarAlCarrito(Medicamento producto) {
-    final cantidadActual = _carrito[producto.id] ?? 0;
+  void _agregarAlCarrito(
+    Medicamento producto,
+  ) {
+    final cantidadActual =
+        _carrito[producto.id] ?? 0;
 
     if (cantidadActual >= producto.stock) {
       return;
     }
 
     setState(() {
-      _carrito[producto.id] = cantidadActual + 1;
+      _carrito[producto.id] =
+          cantidadActual + 1;
     });
   }
 
-  Future<void> _agregarPorCodigoBarras(String value) async {
-    final codigo = _normalizarCodigoBarras(value);
+  Future<void> _agregarPorCodigoBarras(
+    String value,
+  ) async {
+    final codigo =
+        _normalizarCodigoBarras(value);
 
     if (codigo.isEmpty) {
       return;
     }
 
-    var producto = _buscarProductoDisponiblePorCodigo(codigo, _medicamentos);
+    var producto =
+        _buscarProductoDisponiblePorCodigo(
+      codigo,
+      _medicamentos,
+    );
 
     if (producto == null) {
       try {
         final encontrados =
-            await _inventarioApiService.buscarDisponiblesPorCodigoBarras(value);
+            await _inventarioApiService
+                .buscarDisponiblesPorCodigoBarras(
+          value,
+        );
 
         if (!mounted) {
           return;
@@ -393,30 +454,44 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
         if (encontrados.isNotEmpty) {
           setState(() {
             for (final encontrado in encontrados) {
-              final index = _medicamentos.indexWhere(
-                (item) => item.id == encontrado.id,
+              final index =
+                  _medicamentos.indexWhere(
+                (item) =>
+                    item.id == encontrado.id,
               );
 
               if (index >= 0) {
-                _medicamentos[index] = encontrado;
+                _medicamentos[index] =
+                    encontrado;
               } else {
-                _medicamentos.add(encontrado);
+                _medicamentos.add(
+                  encontrado,
+                );
               }
             }
           });
-          producto = _buscarProductoDisponiblePorCodigo(codigo, _medicamentos);
+
+          producto =
+              _buscarProductoDisponiblePorCodigo(
+            codigo,
+            _medicamentos,
+          );
         }
       } on ApiException catch (error) {
         _mostrarMensaje(error.message);
         return;
       } catch (_) {
-        _mostrarMensaje('No se pudo buscar el codigo escaneado');
+        _mostrarMensaje(
+          'No se pudo buscar el codigo escaneado',
+        );
         return;
       }
     }
 
     if (producto == null) {
-      _mostrarMensaje('No se encontro un producto con ese codigo de barras');
+      _mostrarMensaje(
+        'No se encontro un producto con ese codigo de barras',
+      );
       return;
     }
 
@@ -424,64 +499,81 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     _busquedaController.clear();
   }
 
-  void _actualizarDescuento(double descuento) {
+  void _actualizarDescuento(
+    double descuento,
+  ) {
     setState(() {
-      _descuentoVenta = descuento < 0 ? 0 : descuento;
+      _descuentoVenta =
+          descuento < 0 ? 0 : descuento;
     });
   }
 
   Future<void> _agregarServicioYastas(
     TarifaServicioYastas tarifa,
   ) async {
-    final datos = await showDialog<DatosServicioYastas>(
+    final datos =
+        await showDialog<DatosServicioYastas>(
       context: context,
-      builder: (context) => DialogoServicioYastas(
-        tarifa: tarifa,
-      ),
+      builder: (context) {
+        return DialogoServicioYastas(
+          tarifa: tarifa,
+        );
+      },
     );
 
     if (datos == null) {
       return;
     }
 
-    final idCarrito = _siguienteIdYastasCarrito--;
+    final idCarrito =
+        _siguienteIdYastasCarrito--;
 
     final servicio = ServicioYastasCarrito(
       idCarrito: idCarrito,
       tarifa: tarifa,
       montoServicio: datos.montoServicio,
-      referenciaOperacion: datos.referenciaOperacion,
+      referenciaOperacion:
+          datos.referenciaOperacion,
       observaciones: datos.observaciones,
     );
 
     setState(() {
-      _serviciosYastasCarrito[idCarrito] = servicio;
+      _serviciosYastasCarrito[idCarrito] =
+          servicio;
 
       _carrito[idCarrito] = 1;
     });
   }
 
-  void _incrementarCantidad(int productoId) {
-    final producto = _productoCarritoPorId(productoId);
+  void _incrementarCantidad(
+    int productoId,
+  ) {
+    final producto =
+        _productoCarritoPorId(productoId);
 
     if (producto == null) {
       return;
     }
 
-    final cantidadActual = _carrito[productoId] ?? 0;
+    final cantidadActual =
+        _carrito[productoId] ?? 0;
 
     if (cantidadActual >= producto.stock) {
       return;
     }
 
     setState(() {
-      _carrito[productoId] = cantidadActual + 1;
+      _carrito[productoId] =
+          cantidadActual + 1;
     });
   }
 
-  void _disminuirCantidad(int productoId) {
+  void _disminuirCantidad(
+    int productoId,
+  ) {
     setState(() {
-      final cantidadActual = _carrito[productoId] ?? 0;
+      final cantidadActual =
+          _carrito[productoId] ?? 0;
 
       if (cantidadActual <= 1) {
         _carrito.remove(productoId);
@@ -490,26 +582,33 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
           productoId,
         );
       } else {
-        _carrito[productoId] = cantidadActual - 1;
+        _carrito[productoId] =
+            cantidadActual - 1;
       }
+
       _limpiarDescuentoSiNoHayProductos();
     });
   }
 
-  void _eliminarDelCarrito(int productoId) {
+  void _eliminarDelCarrito(
+    int productoId,
+  ) {
     setState(() {
       _carrito.remove(productoId);
 
       _serviciosYastasCarrito.remove(
         productoId,
       );
+
       _limpiarDescuentoSiNoHayProductos();
     });
   }
 
   void _limpiarDescuentoSiNoHayProductos() {
-    final tieneProductos = _carrito.keys.any(
-      (id) => !_serviciosYastasCarrito.containsKey(id),
+    final tieneProductos =
+        _carrito.keys.any(
+      (id) =>
+          !_serviciosYastasCarrito.containsKey(id),
     );
 
     if (!tieneProductos) {
@@ -518,11 +617,13 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
   }
 
   Future<void> _pagarVenta() async {
-    if (_carrito.isEmpty || _procesandoVenta) {
+    if (_carrito.isEmpty ||
+        _procesandoVenta) {
       return;
     }
 
-    if (_carritoTieneYastas && widget.usuario.rol != 'JEFE') {
+    if (_carritoTieneYastas &&
+        widget.usuario.rol != 'JEFE') {
       _mostrarErrorVenta(
         'Solo un usuario JEFE puede registrar '
         'servicios Yastas.',
@@ -531,7 +632,8 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
       return;
     }
 
-    final datosPago = await mostrarDialogoPagoVenta(
+    final datosPago =
+        await mostrarDialogoPagoVenta(
       context: context,
       total: _total,
     );
@@ -540,7 +642,8 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
       return;
     }
 
-    if (_carritoTieneYastas && datosPago.medio != 'EFECTIVO') {
+    if (_carritoTieneYastas &&
+        datosPago.medio != 'EFECTIVO') {
       _mostrarErrorVenta(
         'Los tickets con servicios Yastas '
         'deben cobrarse en efectivo.',
@@ -554,11 +657,13 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
      * la venta. Estos datos se utilizarán para imprimir
      * después de que la API confirme la operación.
      */
-    final productosParaTicket = List<Medicamento>.from(
+    final productosParaTicket =
+        List<Medicamento>.from(
       _itemsCarrito,
     );
 
-    final cantidadesParaTicket = Map<int, int>.from(
+    final cantidadesParaTicket =
+        Map<int, int>.from(
       _carrito,
     );
 
@@ -566,7 +671,9 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     final descuentoParaTicket = _descuento;
     final totalParaTicket = _total;
 
-    final montoRecibidoParaTicket = datosPago.montoRecibido ?? totalParaTicket;
+    final montoRecibidoParaTicket =
+        datosPago.montoRecibido ??
+            totalParaTicket;
 
     final fechaTicket = DateTime.now();
 
@@ -583,28 +690,41 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
        * mediante su servicio correspondiente.
        */
       if (_itemsProductosCarrito.isNotEmpty) {
-        final totalYastas = _subtotalYastas;
-        final montoRecibidoProductos = datosPago.montoRecibido == null
-            ? null
-            : (datosPago.montoRecibido! - totalYastas < _totalProductos
-                ? _totalProductos
-                : datosPago.montoRecibido! - totalYastas);
+        final totalYastas =
+            _subtotalYastas;
 
-        venta = await _ventasApiService.registrarVenta(
+        final montoRecibidoProductos =
+            datosPago.montoRecibido == null
+                ? null
+                : (datosPago.montoRecibido! -
+                                totalYastas <
+                            _totalProductos
+                        ? _totalProductos
+                        : datosPago.montoRecibido! -
+                            totalYastas);
+
+        venta =
+            await _ventasApiService.registrarVenta(
           idUsuario: widget.usuario.id,
-          medicamentos: _itemsProductosCarrito,
-          cantidades: Map<int, int>.from(_carrito),
+          medicamentos:
+              _itemsProductosCarrito,
+          cantidades:
+              Map<int, int>.from(_carrito),
           descuentoGeneral: _descuento,
           medioPago: datosPago.medio,
           total: _totalProductos,
           montoRecibido:
-              datosPago.medio == 'EFECTIVO' ? montoRecibidoProductos : null,
+              datosPago.medio == 'EFECTIVO'
+                  ? montoRecibidoProductos
+                  : null,
           referencia: datosPago.referencia,
-          observaciones: _observacionesVentaProductos(),
+          observaciones:
+              _observacionesVentaProductos(),
         );
       }
 
-      final serviciosRegistrados = await _registrarServiciosYastasEnCarrito(
+      final serviciosRegistrados =
+          await _registrarServiciosYastasEnCarrito(
         folioVenta: venta?.folio,
       );
 
@@ -616,51 +736,74 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
        */
       if (datosPago.imprimirTicket) {
         try {
-          final cambioTicket = datosPago.medio == 'EFECTIVO'
-              ? montoRecibidoParaTicket - totalParaTicket
-              : 0.0;
+          final cambioTicket =
+              datosPago.medio == 'EFECTIVO'
+                  ? montoRecibidoParaTicket -
+                      totalParaTicket
+                  : 0.0;
 
           final ticket = TicketVenta(
-            folio: venta?.folio ?? 'SERVICIO-YASTAS',
+            folio:
+                venta?.folio ??
+                    'SERVICIO-YASTAS',
             fecha: fechaTicket,
             cajero: widget.usuario.nombre,
-            productos: productosParaTicket.map(
+            productos:
+                productosParaTicket.map(
               (producto) {
-                final cantidad = cantidadesParaTicket[producto.id] ?? 0;
+                final cantidad =
+                    cantidadesParaTicket[
+                            producto.id] ??
+                        0;
 
                 final esYastas =
-                    producto.categoria.trim().toLowerCase() == 'yastas';
+                    producto.categoria
+                            .trim()
+                            .toLowerCase() ==
+                        'yastas';
 
-                final detalle = producto.detalle.trim();
+                final detalle =
+                    producto.detalle.trim();
 
                 return TicketProducto(
-                  nombre: esYastas && detalle.isNotEmpty
+                  nombre: esYastas &&
+                          detalle.isNotEmpty
                       ? '${producto.nombre} - '
                           '$detalle'
                       : producto.nombre,
                   cantidad: cantidad,
-                  precioUnitario: producto.precio,
+                  precioUnitario:
+                      producto.precio,
                   descuento: 0,
-                  subtotal: producto.precio * cantidad,
+                  subtotal:
+                      producto.precio *
+                          cantidad,
                 );
               },
             ).toList(),
             subtotal: subtotalParaTicket,
             descuento: descuentoParaTicket,
             total: totalParaTicket,
-            montoRecibido: montoRecibidoParaTicket,
-            cambio: cambioTicket > 0 ? cambioTicket : 0,
+            montoRecibido:
+                montoRecibidoParaTicket,
+            cambio:
+                cambioTicket > 0
+                    ? cambioTicket
+                    : 0,
             metodoPago: datosPago.medio,
-            referencia: datosPago.referencia,
+            referencia:
+                datosPago.referencia,
           );
 
-          await _ticketService.imprimirTicketVenta(
+          await _ticketService
+              .imprimirTicketVenta(
             ticket,
           );
         } on TicketServiceException catch (error) {
           errorImpresion = error.mensaje;
         } catch (error) {
-          errorImpresion = 'Ocurrió un error inesperado '
+          errorImpresion =
+              'Ocurrió un error inesperado '
               'al imprimir: $error';
         }
       }
@@ -675,7 +818,6 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
        */
       setState(() {
         _carrito.clear();
-
         _serviciosYastasCarrito.clear();
         _descuentoVenta = 0;
         _procesandoVenta = false;
@@ -689,7 +831,8 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
         return;
       }
 
-      final mensajeRegistro = _mensajeVentaRegistrada(
+      final mensajeRegistro =
+          _mensajeVentaRegistrada(
         venta,
         serviciosRegistrados,
       );
@@ -697,26 +840,34 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
       final String mensajeFinal;
 
       if (errorImpresion != null) {
-        mensajeFinal = '$mensajeRegistro '
+        mensajeFinal =
+            '$mensajeRegistro '
             'No se pudo imprimir el ticket. '
             '$errorImpresion';
       } else if (datosPago.imprimirTicket) {
-        mensajeFinal = '$mensajeRegistro '
+        mensajeFinal =
+            '$mensajeRegistro '
             'Ticket impreso correctamente.';
       } else {
         mensajeFinal = mensajeRegistro;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context)
+          .showSnackBar(
         SnackBar(
           content: Text(mensajeFinal),
           duration: Duration(
-            seconds: errorImpresion == null ? 4 : 7,
+            seconds:
+                errorImpresion == null
+                    ? 4
+                    : 7,
           ),
         ),
       );
     } on ApiException catch (error) {
-      _mostrarErrorVenta(error.message);
+      _mostrarErrorVenta(
+        error.message,
+      );
     } catch (_) {
       _mostrarErrorVenta(
         'No se pudo registrar la venta',
@@ -724,18 +875,27 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     }
   }
 
-  Future<List<ServicioYastasRegistrado>> _registrarServiciosYastasEnCarrito({
+  Future<List<ServicioYastasRegistrado>>
+      _registrarServiciosYastasEnCarrito({
     String? folioVenta,
   }) async {
-    final registrados = <ServicioYastasRegistrado>[];
+    final registrados =
+        <ServicioYastasRegistrado>[];
 
-    for (final servicio in _serviciosYastasCarrito.values) {
-      final registrado = await _serviciosYastasApiService.registrarServicio(
+    for (final servicio
+        in _serviciosYastasCarrito.values) {
+      final registrado =
+          await _serviciosYastasApiService
+              .registrarServicio(
         idUsuario: widget.usuario.id,
-        idTarifa: servicio.tarifa.idTarifa,
-        montoServicio: servicio.montoServicio,
-        referenciaOperacion: servicio.referenciaOperacion,
-        observaciones: _observacionesYastas(
+        idTarifa:
+            servicio.tarifa.idTarifa,
+        montoServicio:
+            servicio.montoServicio,
+        referenciaOperacion:
+            servicio.referenciaOperacion,
+        observaciones:
+            _observacionesYastas(
           servicio.observaciones,
           folioVenta,
         ),
@@ -752,9 +912,11 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     String? folioVenta,
   ) {
     final partes = <String>[
-      if (folioVenta != null && folioVenta.isNotEmpty)
+      if (folioVenta != null &&
+          folioVenta.isNotEmpty)
         '[VENTA_FOLIO:$folioVenta]',
-      if (observaciones != null && observaciones.trim().isNotEmpty)
+      if (observaciones != null &&
+          observaciones.trim().isNotEmpty)
         observaciones.trim(),
     ];
 
@@ -767,19 +929,24 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
 
   String? _observacionesVentaProductos() {
     final partes = <String>[
-      if (_carritoTieneYastas) 'Ticket mixto con servicios Yastas.',
+      if (_carritoTieneYastas)
+        'Ticket mixto con servicios Yastas.',
       if (_descuento > 0)
-        'Descuento aplicado: ${ConfigMoneda.formato(_descuento)}.',
+        'Descuento aplicado: '
+            '${ConfigMoneda.formato(_descuento)}.',
     ];
 
-    return partes.isEmpty ? null : partes.join(' ');
+    return partes.isEmpty
+        ? null
+        : partes.join(' ');
   }
 
   String _mensajeVentaRegistrada(
     VentaRegistrada? venta,
     List<ServicioYastasRegistrado> servicios,
   ) {
-    if (venta != null && servicios.isNotEmpty) {
+    if (venta != null &&
+        servicios.isNotEmpty) {
       return 'Ticket registrado: '
           'venta ${venta.folio} y '
           '${servicios.length} '
@@ -798,7 +965,9 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
         'servicios Yastas registrados.';
   }
 
-  void _mostrarErrorVenta(String mensaje) {
+  void _mostrarErrorVenta(
+    String mensaje,
+  ) {
     if (!mounted) {
       return;
     }
@@ -828,7 +997,8 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
   }
 
   Widget _construirContenidoVenta() {
-    if (_cargandoInventario || _errorInventario != null) {
+    if (_cargandoInventario ||
+        _errorInventario != null) {
       return _EstadoInventario(
         cargando: _cargandoInventario,
         error: _errorInventario,
@@ -837,15 +1007,23 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
     }
 
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
       children: [
         Expanded(
           child: ContenidoVenta(
-            busquedaController: _busquedaController,
-            medicamentos: _medicamentosFiltrados,
-            onAgregar: _agregarAlCarrito,
-            onAgregarYastas: _agregarServicioYastas,
-            onEscanearCodigoBarras: _agregarPorCodigoBarras,
+            busquedaController:
+                _busquedaController,
+            medicamentos:
+                _medicamentosFiltrados,
+            onAgregar:
+                _agregarAlCarrito,
+            onAgregarYastas:
+                _agregarServicioYastas,
+            onEscanearCodigoBarras:
+                _agregarPorCodigoBarras,
+            onActualizar:
+                _cargarInventario,
           ),
         ),
         MenuCartaCarrito(
@@ -854,12 +1032,17 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
           subtotal: _subtotal,
           descuento: _descuento,
           total: _total,
-          onIncrementar: _incrementarCantidad,
-          onDisminuir: _disminuirCantidad,
-          onEliminar: _eliminarDelCarrito,
-          onDescuentoChanged: _actualizarDescuento,
+          onIncrementar:
+              _incrementarCantidad,
+          onDisminuir:
+              _disminuirCantidad,
+          onEliminar:
+              _eliminarDelCarrito,
+          onDescuentoChanged:
+              _actualizarDescuento,
           onPagar: _pagarVenta,
-          procesandoPago: _procesandoVenta,
+          procesandoPago:
+              _procesandoVenta,
         ),
       ],
     );
@@ -885,18 +1068,22 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
 
       case 4:
         return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
           children: [
             MenuSuperiorCatalogo(
-              indiceSeleccionado: _submenuCatalogoSeleccionado,
+              indiceSeleccionado:
+                  _submenuCatalogoSeleccionado,
               onSeleccionar: (index) {
                 setState(() {
-                  _submenuCatalogoSeleccionado = index;
+                  _submenuCatalogoSeleccionado =
+                      index;
                 });
               },
             ),
             Expanded(
-              child: _construirContenidoCatalogo(),
+              child:
+                  _construirContenidoCatalogo(),
             ),
           ],
         );
@@ -929,22 +1116,27 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
       body: Padding(
         padding: const EdgeInsets.all(10),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius:
+              BorderRadius.circular(8),
           child: Container(
             color: _fondoContenido,
             child: Row(
               children: [
                 BarraLateralIzquierda(
-                  seleccionado: _menuSeleccionado,
-                  onLogout: widget.onLogout,
+                  seleccionado:
+                      _menuSeleccionado,
+                  onLogout:
+                      widget.onLogout,
                   onSeleccionar: (index) {
                     setState(() {
-                      _menuSeleccionado = index;
+                      _menuSeleccionado =
+                          index;
                     });
                   },
                 ),
                 Expanded(
-                  child: _construirContenidoSeleccionado(),
+                  child:
+                      _construirContenidoSeleccionado(),
                 ),
               ],
             ),
@@ -955,7 +1147,8 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
   }
 }
 
-class _EstadoInventario extends StatelessWidget {
+class _EstadoInventario
+    extends StatelessWidget {
   final bool cargando;
   final String? error;
   final VoidCallback onReintentar;
@@ -979,7 +1172,8 @@ class _EstadoInventario extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            error ?? 'No hay inventario disponible',
+            error ??
+                'No hay inventario disponible',
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -1001,11 +1195,20 @@ class _EstadoInventario extends StatelessWidget {
   }
 }
 
-String _normalizarCodigoBarras(String value) {
-  return value.trim().replaceAll(RegExp(r'\s+'), '').toLowerCase();
+String _normalizarCodigoBarras(
+  String value,
+) {
+  return value
+      .trim()
+      .replaceAll(
+        RegExp(r'\s+'),
+        '',
+      )
+      .toLowerCase();
 }
 
-class _InterfazNoEncontrada extends StatelessWidget {
+class _InterfazNoEncontrada
+    extends StatelessWidget {
   const _InterfazNoEncontrada();
 
   @override
