@@ -16,6 +16,71 @@ const Color _textoPrincipal = Color(0xFF101828);
 const Color _textoSecundario = Color(0xFF526171);
 const Color _bordeSuave = Color(0xFFD9E6D3);
 
+Future<bool> mostrarYRegistrarMovimientoCaja({
+  required BuildContext context,
+  required int idUsuario,
+}) async {
+  final datos = await showDialog<_DatosMovimientoCaja>(
+    context: context,
+    builder: (_) {
+      return const _DialogoMovimientoCaja();
+    },
+  );
+
+  if (datos == null) {
+    return false;
+  }
+
+  try {
+    final cajaApiService = CajaApiService();
+
+    await cajaApiService.registrarMovimiento(
+      idUsuario: idUsuario,
+      medio: datos.medio,
+      tipo: datos.tipo,
+      concepto: datos.concepto,
+      monto: datos.monto,
+      observaciones: datos.observaciones,
+    );
+
+    if (!context.mounted) {
+      return true;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Movimiento registrado correctamente',
+        ),
+      ),
+    );
+
+    return true;
+  } on ApiException catch (error) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.message),
+        ),
+      );
+    }
+
+    return false;
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No se pudo registrar el movimiento',
+          ),
+        ),
+      );
+    }
+
+    return false;
+  }
+}
+
 class ContenidoCajero extends StatefulWidget {
   final Usuario usuario;
 

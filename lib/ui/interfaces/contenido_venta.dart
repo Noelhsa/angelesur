@@ -21,6 +21,7 @@ class ContenidoVenta extends StatefulWidget {
   ) onEscanearCodigoBarras;
 
   final Future<void> Function() onActualizar;
+  final Future<void> Function() onNuevoMovimiento;
 
   const ContenidoVenta({
     super.key,
@@ -30,6 +31,7 @@ class ContenidoVenta extends StatefulWidget {
     required this.onAgregarYastas,
     required this.onEscanearCodigoBarras,
     required this.onActualizar,
+    required this.onNuevoMovimiento,
   });
 
   @override
@@ -37,10 +39,11 @@ class ContenidoVenta extends StatefulWidget {
       _ContenidoVentaState();
 }
 
-class _ContenidoVentaState
-    extends State<ContenidoVenta> {
+class _ContenidoVentaState extends State<ContenidoVenta> {
   String _seccionSeleccionada = 'Medicamentos';
+
   bool _actualizando = false;
+  bool _registrandoMovimiento = false;
 
   Future<void> _actualizarContenido() async {
     if (_actualizando) {
@@ -62,17 +65,37 @@ class _ContenidoVentaState
     }
   }
 
+  Future<void> _abrirNuevoMovimiento() async {
+    if (_registrandoMovimiento) {
+      return;
+    }
+
+    setState(() {
+      _registrandoMovimiento = true;
+    });
+
+    try {
+      await widget.onNuevoMovimiento();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _registrandoMovimiento = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         _BarraSuperiorVenta(
-          busquedaController:
-              widget.busquedaController,
-          seccionSeleccionada:
-              _seccionSeleccionada,
+          busquedaController: widget.busquedaController,
+          seccionSeleccionada: _seccionSeleccionada,
           actualizando: _actualizando,
+          registrandoMovimiento: _registrandoMovimiento,
           onActualizar: _actualizarContenido,
+          onNuevoMovimiento: _abrirNuevoMovimiento,
           onEscanearCodigoBarras:
               widget.onEscanearCodigoBarras,
           onSeleccionarSeccion: (seccion) {
@@ -86,12 +109,10 @@ class _ContenidoVentaState
               ? ContenidoVentaYastas(
                   busquedaController:
                       widget.busquedaController,
-                  onAgregar:
-                      widget.onAgregarYastas,
+                  onAgregar: widget.onAgregarYastas,
                 )
               : _CatalogoMedicamentos(
-                  medicamentos:
-                      widget.medicamentos,
+                  medicamentos: widget.medicamentos,
                   onAgregar: widget.onAgregar,
                 ),
         ),
@@ -100,30 +121,30 @@ class _ContenidoVentaState
   }
 }
 
-class _BarraSuperiorVenta
-    extends StatelessWidget {
-  final TextEditingController
-      busquedaController;
-
+class _BarraSuperiorVenta extends StatelessWidget {
+  final TextEditingController busquedaController;
   final String seccionSeleccionada;
+
   final bool actualizando;
+  final bool registrandoMovimiento;
 
   final Future<void> Function(
     String codigoBarras,
   ) onEscanearCodigoBarras;
 
-  final ValueChanged<String>
-      onSeleccionarSeccion;
-
+  final ValueChanged<String> onSeleccionarSeccion;
   final VoidCallback onActualizar;
+  final VoidCallback onNuevoMovimiento;
 
   const _BarraSuperiorVenta({
     required this.busquedaController,
     required this.seccionSeleccionada,
     required this.actualizando,
+    required this.registrandoMovimiento,
     required this.onEscanearCodigoBarras,
     required this.onSeleccionarSeccion,
     required this.onActualizar,
+    required this.onNuevoMovimiento,
   });
 
   @override
@@ -139,19 +160,16 @@ class _BarraSuperiorVenta
         right: 28,
       ),
       child: Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 310,
             height: 40,
             decoration: BoxDecoration(
               color: _blanco,
-              borderRadius:
-                  BorderRadius.circular(7),
+              borderRadius: BorderRadius.circular(7),
               border: Border.all(
-                color:
-                    const Color(0xFFD6D6D6),
+                color: const Color(0xFFD6D6D6),
                 width: 1,
               ),
               boxShadow: [
@@ -175,37 +193,28 @@ class _BarraSuperiorVenta
                 const SizedBox(width: 8),
                 Expanded(
                   child: Transform.translate(
-                    offset:
-                        const Offset(0, -2),
+                    offset: const Offset(0, -2),
                     child: TextField(
-                      controller:
-                          busquedaController,
+                      controller: busquedaController,
                       onSubmitted:
                           onEscanearCodigoBarras,
-                      cursorColor:
-                          _verdeOscuro,
+                      cursorColor: _verdeOscuro,
                       textAlign: TextAlign.left,
                       style: const TextStyle(
                         color: _texto,
                         fontSize: 10,
-                        fontWeight:
-                            FontWeight.w500,
+                        fontWeight: FontWeight.w500,
                       ),
-                      decoration:
-                          InputDecoration(
+                      decoration: InputDecoration(
                         hintText: esYastas
                             ? 'Buscar servicio...'
                             : 'Buscar medicamento...',
-                        hintStyle:
-                            const TextStyle(
-                          color:
-                              Color(0xFF9A9A9A),
+                        hintStyle: const TextStyle(
+                          color: Color(0xFF9A9A9A),
                           fontSize: 9,
-                          fontWeight:
-                              FontWeight.w500,
+                          fontWeight: FontWeight.w500,
                         ),
-                        border:
-                            InputBorder.none,
+                        border: InputBorder.none,
                         isCollapsed: true,
                         contentPadding:
                             const EdgeInsets.only(
@@ -235,25 +244,93 @@ class _BarraSuperiorVenta
           const SizedBox(width: 13),
           _ChipCategoria(
             texto: 'Yastas',
-            activo:
-                seccionSeleccionada == 'Yastas',
+            activo: seccionSeleccionada == 'Yastas',
             onTap: () {
               onSeleccionarSeccion('Yastas');
             },
             ancho: 72,
           ),
-
-          /*
-           * Empuja el botón de actualizar
-           * hacia el extremo derecho.
-           */
           const Spacer(),
-
+          _BotonNuevoMovimientoVenta(
+            registrandoMovimiento:
+                registrandoMovimiento,
+            onNuevoMovimiento:
+                onNuevoMovimiento,
+          ),
+          const SizedBox(width: 8),
           _BotonActualizarVenta(
             actualizando: actualizando,
             onActualizar: onActualizar,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _BotonNuevoMovimientoVenta
+    extends StatelessWidget {
+  final bool registrandoMovimiento;
+  final VoidCallback onNuevoMovimiento;
+
+  const _BotonNuevoMovimientoVenta({
+    required this.registrandoMovimiento,
+    required this.onNuevoMovimiento,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 138,
+      height: 32,
+      child: ElevatedButton.icon(
+        onPressed: registrandoMovimiento
+            ? null
+            : onNuevoMovimiento,
+        icon: registrandoMovimiento
+            ? const SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(
+                Icons.add,
+                size: 14,
+                color: Colors.white,
+              ),
+        label: Text(
+          registrandoMovimiento
+              ? 'Guardando...'
+              : 'Nuevo movimiento',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          elevation: 2,
+          backgroundColor: _verdeOscuro,
+          disabledBackgroundColor:
+              _verdeOscuro.withValues(
+            alpha: 0.65,
+          ),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(
+            horizontal: 10,
+          ),
+          shadowColor: _verdeOscuro.withValues(
+            alpha: 0.25,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+          ),
+        ),
       ),
     );
   }
@@ -272,24 +349,24 @@ class _BotonActualizarVenta
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 122,
+      width: 138,
       height: 32,
       child: ElevatedButton.icon(
-        onPressed:
-            actualizando ? null : onActualizar,
+        onPressed: actualizando
+            ? null
+            : onActualizar,
         icon: actualizando
             ? const SizedBox(
-                width: 14,
-                height: 14,
-                child:
-                    CircularProgressIndicator(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
                   strokeWidth: 2,
                   color: Colors.white,
                 ),
               )
             : const Icon(
                 Icons.refresh,
-                size: 16,
+                size: 14,
                 color: Colors.white,
               ),
         label: Text(
@@ -297,14 +374,15 @@ class _BotonActualizarVenta
               ? 'Actualizando'
               : 'Actualizar',
           maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: FontWeight.w800,
           ),
         ),
         style: ElevatedButton.styleFrom(
-          elevation: 3,
+          elevation: 2,
           backgroundColor: _verdeOscuro,
           disabledBackgroundColor:
               _verdeOscuro.withValues(
@@ -312,15 +390,13 @@ class _BotonActualizarVenta
           ),
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(
-            horizontal: 12,
+            horizontal: 10,
           ),
-          shadowColor:
-              _verdeOscuro.withValues(
+          shadowColor: _verdeOscuro.withValues(
             alpha: 0.25,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius:
-                BorderRadius.circular(7),
+            borderRadius: BorderRadius.circular(6),
           ),
         ),
       ),
@@ -328,8 +404,7 @@ class _BotonActualizarVenta
   }
 }
 
-class _ChipCategoria
-    extends StatelessWidget {
+class _ChipCategoria extends StatelessWidget {
   final String texto;
   final bool activo;
   final VoidCallback onTap;
@@ -357,16 +432,14 @@ class _ChipCategoria
           foregroundColor:
               activo ? _blanco : _texto,
           shape: RoundedRectangleBorder(
-            borderRadius:
-                BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(16),
           ),
           padding: EdgeInsets.zero,
         ),
         child: Text(
           texto,
           style: TextStyle(
-            color:
-                activo ? _blanco : _texto,
+            color: activo ? _blanco : _texto,
             fontSize: 10,
             fontWeight: activo
                 ? FontWeight.w700
@@ -378,8 +451,7 @@ class _ChipCategoria
   }
 }
 
-class _CatalogoMedicamentos
-    extends StatelessWidget {
+class _CatalogoMedicamentos extends StatelessWidget {
   final List<Medicamento> medicamentos;
   final ValueChanged<Medicamento> onAgregar;
 
@@ -404,8 +476,7 @@ class _CatalogoMedicamentos
             alignment: Alignment.topLeft,
             child: medicamentos.isEmpty
                 ? const Padding(
-                    padding:
-                        EdgeInsets.only(
+                    padding: EdgeInsets.only(
                       top: 24,
                     ),
                     child: Text(
@@ -413,14 +484,12 @@ class _CatalogoMedicamentos
                       style: TextStyle(
                         color: _texto,
                         fontSize: 14,
-                        fontWeight:
-                            FontWeight.w800,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   )
                 : Wrap(
-                    alignment:
-                        WrapAlignment.start,
+                    alignment: WrapAlignment.start,
                     crossAxisAlignment:
                         WrapCrossAlignment.start,
                     spacing: 14,
@@ -428,8 +497,7 @@ class _CatalogoMedicamentos
                     children: medicamentos.map(
                       (medicamento) {
                         return _TarjetaMedicamento(
-                          medicamento:
-                              medicamento,
+                          medicamento: medicamento,
                           onAgregar: () {
                             onAgregar(
                               medicamento,
@@ -446,8 +514,7 @@ class _CatalogoMedicamentos
   }
 }
 
-class _TarjetaMedicamento
-    extends StatelessWidget {
+class _TarjetaMedicamento extends StatelessWidget {
   final Medicamento medicamento;
   final VoidCallback onAgregar;
 
@@ -463,8 +530,7 @@ class _TarjetaMedicamento
       height: 225,
       decoration: BoxDecoration(
         color: _blanco,
-        borderRadius:
-            BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(7),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(
@@ -482,20 +548,17 @@ class _TarjetaMedicamento
         12,
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _ImagenProducto(
             medicamentoId: medicamento.id,
-            imagenAsset:
-                medicamento.imagenAsset,
+            imagenAsset: medicamento.imagenAsset,
           ),
           const SizedBox(height: 20),
           Text(
             medicamento.nombre,
             maxLines: 1,
-            overflow:
-                TextOverflow.ellipsis,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: _texto,
               fontSize: 11,
@@ -506,8 +569,7 @@ class _TarjetaMedicamento
           Text(
             medicamento.detalle,
             maxLines: 1,
-            overflow:
-                TextOverflow.ellipsis,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: Color(0xFF333A42),
               fontSize: 6.8,
@@ -517,8 +579,7 @@ class _TarjetaMedicamento
           ),
           const Spacer(),
           Row(
-            crossAxisAlignment:
-                CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Expanded(
                 child: Text(
@@ -526,13 +587,11 @@ class _TarjetaMedicamento
                     medicamento.precio,
                   ),
                   maxLines: 1,
-                  overflow:
-                      TextOverflow.ellipsis,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: _verdeOscuro,
                     fontSize: 17,
-                    fontWeight:
-                        FontWeight.w500,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
@@ -547,8 +606,7 @@ class _TarjetaMedicamento
               style: const TextStyle(
                 color: _texto,
                 fontSize: 6.6,
-                fontWeight:
-                    FontWeight.w500,
+                fontWeight: FontWeight.w500,
               ),
               children: [
                 const TextSpan(
@@ -558,8 +616,7 @@ class _TarjetaMedicamento
                   text:
                       '${medicamento.stock} unidades',
                   style: const TextStyle(
-                    fontWeight:
-                        FontWeight.w900,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ],
@@ -571,8 +628,7 @@ class _TarjetaMedicamento
   }
 }
 
-class _BotonAgregar
-    extends StatelessWidget {
+class _BotonAgregar extends StatelessWidget {
   final VoidCallback onTap;
 
   const _BotonAgregar({
@@ -606,8 +662,7 @@ class _BotonAgregar
   }
 }
 
-class _ImagenProducto
-    extends StatelessWidget {
+class _ImagenProducto extends StatelessWidget {
   final int medicamentoId;
   final String? imagenAsset;
 
@@ -622,8 +677,7 @@ class _ImagenProducto
 
     if (imagenAsset != null) {
       return ClipRRect(
-        borderRadius:
-            BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(3),
         child: Image.asset(
           imagenAsset!,
           width: size,
@@ -640,8 +694,7 @@ class _ImagenProducto
         color: _colorImagenBase(
           medicamentoId,
         ),
-        borderRadius:
-            BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(3),
       ),
       child: Center(
         child: _IlustracionProducto(
@@ -654,40 +707,27 @@ class _ImagenProducto
   Color _colorImagenBase(int id) {
     switch (id) {
       case 1:
-        return const Color(
-          0xFFF3F5F5,
-        );
+        return const Color(0xFFF3F5F5);
 
       case 2:
-        return const Color(
-          0xFFEFEFEA,
-        );
+        return const Color(0xFFEFEFEA);
 
       case 3:
-        return const Color(
-          0xFFF4F4F0,
-        );
+        return const Color(0xFFF4F4F0);
 
       case 4:
-        return const Color(
-          0xFF0B4B43,
-        );
+        return const Color(0xFF0B4B43);
 
       case 5:
-        return const Color(
-          0xFFB9D9D4,
-        );
+        return const Color(0xFFB9D9D4);
 
       default:
-        return const Color(
-          0xFFF3F5F5,
-        );
+        return const Color(0xFFF3F5F5);
     }
   }
 }
 
-class _IlustracionProducto
-    extends StatelessWidget {
+class _IlustracionProducto extends StatelessWidget {
   final int medicamentoId;
 
   const _IlustracionProducto({
@@ -747,8 +787,7 @@ class _IlustracionProducto
   }
 }
 
-class _CajaMedicamento
-    extends StatelessWidget {
+class _CajaMedicamento extends StatelessWidget {
   final String texto;
   final Color colorPrincipal;
   final Color colorSecundario;
@@ -766,8 +805,7 @@ class _CajaMedicamento
       height: 46,
       decoration: BoxDecoration(
         color: _blanco,
-        borderRadius:
-            BorderRadius.circular(2),
+        borderRadius: BorderRadius.circular(2),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(
@@ -797,8 +835,7 @@ class _CajaMedicamento
               style: TextStyle(
                 color: colorPrincipal,
                 fontSize: 7,
-                fontWeight:
-                    FontWeight.w900,
+                fontWeight: FontWeight.w900,
               ),
             ),
           ),
@@ -817,8 +854,7 @@ class _CajaMedicamento
   }
 }
 
-class _FrascoMedicamento
-    extends StatelessWidget {
+class _FrascoMedicamento extends StatelessWidget {
   const _FrascoMedicamento();
 
   @override
@@ -831,8 +867,7 @@ class _FrascoMedicamento
           height: 8,
           decoration: const BoxDecoration(
             color: Color(0xFFD9D9D9),
-            borderRadius:
-                BorderRadius.vertical(
+            borderRadius: BorderRadius.vertical(
               top: Radius.circular(2),
             ),
           ),
@@ -841,20 +876,15 @@ class _FrascoMedicamento
           width: 34,
           height: 50,
           decoration: BoxDecoration(
-            color: const Color(
-              0xFF965D28,
-            ),
-            borderRadius:
-                BorderRadius.circular(5),
+            color: const Color(0xFF965D28),
+            borderRadius: BorderRadius.circular(5),
             boxShadow: [
               BoxShadow(
-                color:
-                    Colors.black.withValues(
+                color: Colors.black.withValues(
                   alpha: 0.14,
                 ),
                 blurRadius: 6,
-                offset:
-                    const Offset(2, 3),
+                offset: const Offset(2, 3),
               ),
             ],
           ),

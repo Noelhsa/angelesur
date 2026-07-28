@@ -652,11 +652,6 @@ class _VentaPrincipalScreenState
       return;
     }
 
-    /*
-     * Se conservan los datos actuales antes de registrar
-     * la venta. Estos datos se utilizarán para imprimir
-     * después de que la API confirme la operación.
-     */
     final productosParaTicket =
         List<Medicamento>.from(
       _itemsCarrito,
@@ -684,11 +679,6 @@ class _VentaPrincipalScreenState
     try {
       VentaRegistrada? venta;
 
-      /*
-       * Los productos normales se registran en la tabla
-       * de ventas. Los servicios Yastas se registran
-       * mediante su servicio correspondiente.
-       */
       if (_itemsProductosCarrito.isNotEmpty) {
         final totalYastas =
             _subtotalYastas;
@@ -730,10 +720,6 @@ class _VentaPrincipalScreenState
 
       String? errorImpresion;
 
-      /*
-       * La impresión se realiza después de que la venta
-       * y los servicios Yastas quedaron registrados.
-       */
       if (datosPago.imprimirTicket) {
         try {
           final cambioTicket =
@@ -812,10 +798,6 @@ class _VentaPrincipalScreenState
         return;
       }
 
-      /*
-       * La operación ya quedó registrada.
-       * El carrito se limpia incluso si la impresora falla.
-       */
       setState(() {
         _carrito.clear();
         _serviciosYastasCarrito.clear();
@@ -983,16 +965,23 @@ class _VentaPrincipalScreenState
     );
   }
 
+  Future<void> _registrarMovimientoDesdeVenta() async {
+    await mostrarYRegistrarMovimientoCaja(
+      context: context,
+      idUsuario: widget.usuario.id,
+    );
+  }
+
   Widget _construirContenidoCatalogo() {
     switch (_submenuCatalogoSeleccionado) {
       case 0:
-        return ContenidoCatalogoInventario();
+        return const ContenidoCatalogoInventario();
 
       case 1:
-        return ContenidoCatalogoProducto();
+        return const ContenidoCatalogoProducto();
 
       default:
-        return ContenidoCatalogoInventario();
+        return const ContenidoCatalogoInventario();
     }
   }
 
@@ -1024,6 +1013,8 @@ class _VentaPrincipalScreenState
                 _agregarPorCodigoBarras,
             onActualizar:
                 _cargarInventario,
+            onNuevoMovimiento:
+                _registrarMovimientoDesdeVenta,
           ),
         ),
         MenuCartaCarrito(
@@ -1059,7 +1050,7 @@ class _VentaPrincipalScreenState
         return _construirContenidoVenta();
 
       case 2:
-        return ContenidoHistorial();
+        return const ContenidoHistorial();
 
       case 3:
         return ContenidoPedidos(
