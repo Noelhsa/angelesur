@@ -997,13 +997,15 @@ class _FilaUsuario extends StatelessWidget {
                     ),
                     icon: Icon(
                       usuario.activo
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
+                          ? Icons.toggle_on_outlined
+                          : Icons.toggle_off_outlined,
                     ),
-                    iconSize: 18,
+                    iconSize: 24,
                     color: esUsuarioActual
                         ? _textoSecundario
-                        : _verdeOscuro,
+                        : usuario.activo
+                            ? _verdeOscuro
+                            : _rojo,
                     tooltip: esUsuarioActual
                         ? 'No puedes desactivar tu propia sesion'
                         : usuario.activo

@@ -2014,9 +2014,16 @@ class _TarjetaResumenCaja extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 128,
-      constraints: const BoxConstraints(minWidth: 155),
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+      height: 144,
+      constraints: const BoxConstraints(
+        minWidth: 155,
+      ),
+      padding: const EdgeInsets.fromLTRB(
+        18,
+        18,
+        18,
+        14,
+      ),
       decoration: _cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2030,7 +2037,11 @@ class _TarjetaResumenCaja extends StatelessWidget {
                   color: fondoIcono,
                   borderRadius: BorderRadius.circular(7),
                 ),
-                child: Icon(icono, size: 20, color: colorIcono),
+                child: Icon(
+                  icono,
+                  size: 20,
+                  color: colorIcono,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -2064,9 +2075,13 @@ class _TarjetaResumenCaja extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: subtituloVerde ? _verdeOscuro : _textoSecundario,
+              color: subtituloVerde
+                  ? _verdeOscuro
+                  : _textoSecundario,
               fontSize: 10,
-              fontWeight: subtituloVerde ? FontWeight.w800 : FontWeight.w500,
+              fontWeight: subtituloVerde
+                  ? FontWeight.w800
+                  : FontWeight.w500,
               height: 1.25,
             ),
           ),
@@ -2086,21 +2101,17 @@ class _TarjetaBalanceEfectivo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 128,
-      constraints: const BoxConstraints(minWidth: 155),
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
-      decoration: BoxDecoration(
-        color: _verde,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _blanco, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: _verde.withValues(alpha: 0.28),
-            blurRadius: 12,
-            offset: const Offset(0, 5),
-          ),
-        ],
+      height: 144,
+      constraints: const BoxConstraints(
+        minWidth: 155,
       ),
+      padding: const EdgeInsets.fromLTRB(
+        18,
+        18,
+        18,
+        14,
+      ),
+      decoration: _cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2114,32 +2125,35 @@ class _TarjetaBalanceEfectivo extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: _verdeOscuro,
+                    color: _textoPrincipal,
                     fontSize: 12,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
           Text(
             valor,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: _verdeOscuro,
+              color: _textoPrincipal,
               fontSize: 22,
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 7),
           const Text(
             'Dinero esperado en caja fisica',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: _verdeOscuro,
+              color: _textoSecundario,
               fontSize: 10,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
+              height: 1.25,
             ),
           ),
         ],
@@ -2157,10 +2171,14 @@ class _IconoBalance extends StatelessWidget {
       width: 36,
       height: 36,
       decoration: BoxDecoration(
-        color: const Color(0xFFA8EC52),
+        color: const Color(0xFFEAF8DD),
         borderRadius: BorderRadius.circular(7),
       ),
-      child: const Icon(Icons.payments_outlined, size: 20, color: _blanco),
+      child: const Icon(
+        Icons.payments_outlined,
+        size: 20,
+        color: _verdeOscuro,
+      ),
     );
   }
 }
