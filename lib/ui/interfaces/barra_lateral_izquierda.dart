@@ -7,15 +7,21 @@ const Color _colorRojo = Color(0xFFE53935);
 
 class BarraLateralIzquierda extends StatelessWidget {
   final int seleccionado;
+  final Set<int> indicesVisibles;
   final ValueChanged<int> onSeleccionar;
   final VoidCallback onLogout;
 
   const BarraLateralIzquierda({
     super.key,
     required this.seleccionado,
+    this.indicesVisibles = const {0, 1, 2, 3, 4, 5, 6, 7, 8},
     required this.onSeleccionar,
     required this.onLogout,
   });
+
+  bool _visible(int indice) {
+    return indicesVisibles.contains(indice);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,14 +35,16 @@ class BarraLateralIzquierda extends StatelessWidget {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  _BotonMenuLateral(
-                    indice: 0,
-                    seleccionado: seleccionado,
-                    icono: Icons.person_outline_rounded,
-                    texto: 'Usuarios',
-                    onTap: onSeleccionar,
-                  ),
-                  const SizedBox(height: 12),
+                  if (_visible(0)) ...[
+                    _BotonMenuLateral(
+                      indice: 0,
+                      seleccionado: seleccionado,
+                      icono: Icons.person_outline_rounded,
+                      texto: 'Usuarios',
+                      onTap: onSeleccionar,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   _BotonMenuLateral(
                     indice: 1,
                     seleccionado: seleccionado,
@@ -53,14 +61,16 @@ class BarraLateralIzquierda extends StatelessWidget {
                     onTap: onSeleccionar,
                   ),
                   const SizedBox(height: 12),
-                  _BotonMenuLateral(
-                    indice: 3,
-                    seleccionado: seleccionado,
-                    icono: Icons.assignment_outlined,
-                    texto: 'Pedidos',
-                    onTap: onSeleccionar,
-                  ),
-                  const SizedBox(height: 12),
+                  if (_visible(3)) ...[
+                    _BotonMenuLateral(
+                      indice: 3,
+                      seleccionado: seleccionado,
+                      icono: Icons.assignment_outlined,
+                      texto: 'Pedidos',
+                      onTap: onSeleccionar,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   _BotonMenuLateral(
                     indice: 4,
                     seleccionado: seleccionado,
@@ -77,30 +87,36 @@ class BarraLateralIzquierda extends StatelessWidget {
                     onTap: onSeleccionar,
                   ),
                   const SizedBox(height: 12),
-                  _BotonMenuLateral(
-                    indice: 6,
-                    seleccionado: seleccionado,
-                    icono: Icons.local_shipping_outlined,
-                    texto: 'Provee.',
-                    onTap: onSeleccionar,
-                  ),
-                  const SizedBox(height: 12),
-                  _BotonMenuLateral(
-                    indice: 7,
-                    seleccionado: seleccionado,
-                    icono: Icons.assignment_return_outlined,
-                    texto: 'Devoluciones',
-                    onTap: onSeleccionar,
-                  ),
-                  const SizedBox(height: 12),
-                  _BotonMenuLateral(
-                    indice: 8,
-                    seleccionado: seleccionado,
-                    icono: Icons.point_of_sale_outlined,
-                    texto: 'Yastas',
-                    onTap: onSeleccionar,
-                  ),
-                  const SizedBox(height: 12),
+                  if (_visible(6)) ...[
+                    _BotonMenuLateral(
+                      indice: 6,
+                      seleccionado: seleccionado,
+                      icono: Icons.local_shipping_outlined,
+                      texto: 'Provee.',
+                      onTap: onSeleccionar,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (_visible(7)) ...[
+                    _BotonMenuLateral(
+                      indice: 7,
+                      seleccionado: seleccionado,
+                      icono: Icons.assignment_return_outlined,
+                      texto: 'Devoluciones',
+                      onTap: onSeleccionar,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (_visible(8)) ...[
+                    _BotonMenuLateral(
+                      indice: 8,
+                      seleccionado: seleccionado,
+                      icono: Icons.point_of_sale_outlined,
+                      texto: 'Yastas',
+                      onTap: onSeleccionar,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                 ],
               ),
             ),

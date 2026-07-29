@@ -23,8 +23,11 @@ const List<String> _categoriasProducto = [
 ];
 
 class ContenidoCatalogoProducto extends StatefulWidget {
+  final bool soloLectura;
+
   const ContenidoCatalogoProducto({
     super.key,
+    this.soloLectura = false,
   });
 
   @override
@@ -378,6 +381,7 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
                     estadoSeleccionado: _estadoSeleccionado,
                     tipoSeleccionado: _tipoSeleccionado,
                     procesando: _procesando,
+                    soloLectura: widget.soloLectura,
                     onCategoriaChanged: (value) {
                       if (value == null) {
                         return;
@@ -445,6 +449,7 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
                             child: _TablaProductos(
                               productos: _productos,
                               procesando: _procesando,
+                              soloLectura: widget.soloLectura,
                               onDetalle: _mostrarDetalle,
                               onEditar: (producto) {
                                 _guardarProducto(
@@ -472,7 +477,7 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
               ),
             ),
           ),
-          if (_mostrarMenuNuevoProducto)
+          if (_mostrarMenuNuevoProducto && !widget.soloLectura)
             MenuCartaCatalogoProducto(
               onCerrar: () {
                 setState(() {
@@ -495,6 +500,7 @@ class _PanelFiltrosProducto extends StatelessWidget {
   final String estadoSeleccionado;
   final String tipoSeleccionado;
   final bool procesando;
+  final bool soloLectura;
 
   final ValueChanged<String?> onCategoriaChanged;
 
@@ -513,6 +519,7 @@ class _PanelFiltrosProducto extends StatelessWidget {
     required this.estadoSeleccionado,
     required this.tipoSeleccionado,
     required this.procesando,
+    required this.soloLectura,
     required this.onCategoriaChanged,
     required this.onEstadoChanged,
     required this.onTipoChanged,
@@ -594,11 +601,12 @@ class _PanelFiltrosProducto extends StatelessWidget {
             icono: Icons.refresh,
             onTap: onRefrescar,
           ),
-          _BotonPrincipalCatalogo(
-            texto: procesando ? 'Guardando...' : 'Nuevo Producto',
-            icono: Icons.add,
-            onTap: procesando ? null : onNuevoProducto,
-          ),
+          if (!soloLectura)
+            _BotonPrincipalCatalogo(
+              texto: procesando ? 'Guardando...' : 'Nuevo Producto',
+              icono: Icons.add,
+              onTap: procesando ? null : onNuevoProducto,
+            ),
         ],
       ),
     );
@@ -779,6 +787,7 @@ class _BotonPrincipalCatalogo extends StatelessWidget {
 class _TablaProductos extends StatelessWidget {
   final List<ProductoCatalogoApi> productos;
   final bool procesando;
+  final bool soloLectura;
 
   final ValueChanged<ProductoCatalogoApi> onDetalle;
 
@@ -789,6 +798,7 @@ class _TablaProductos extends StatelessWidget {
   const _TablaProductos({
     required this.productos,
     required this.procesando,
+    required this.soloLectura,
     required this.onDetalle,
     required this.onEditar,
     required this.onCambiarEstado,
@@ -807,6 +817,7 @@ class _TablaProductos extends StatelessWidget {
           _FilaProductoCatalogo(
             producto: productos[index],
             procesando: procesando,
+            soloLectura: soloLectura,
             onDetalle: onDetalle,
             onEditar: onEditar,
             onCambiarEstado: onCambiarEstado,
@@ -883,6 +894,7 @@ class _PaginadorCatalogoProducto extends StatelessWidget {
 class _FilaProductoCatalogo extends StatelessWidget {
   final ProductoCatalogoApi producto;
   final bool procesando;
+  final bool soloLectura;
 
   final ValueChanged<ProductoCatalogoApi> onDetalle;
 
@@ -893,6 +905,7 @@ class _FilaProductoCatalogo extends StatelessWidget {
   const _FilaProductoCatalogo({
     required this.producto,
     required this.procesando,
+    required this.soloLectura,
     required this.onDetalle,
     required this.onEditar,
     required this.onCambiarEstado,
@@ -1035,50 +1048,52 @@ class _FilaProductoCatalogo extends StatelessWidget {
                     color: _azul,
                     iconSize: 18,
                   ),
-                  const SizedBox(width: 4),
-                  IconButton(
-                    onPressed: procesando
-                        ? null
-                        : () {
-                            onEditar(
-                              producto,
-                            );
-                          },
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 32,
-                      minHeight: 30,
+                  if (!soloLectura) ...[
+                    const SizedBox(width: 4),
+                    IconButton(
+                      onPressed: procesando
+                          ? null
+                          : () {
+                              onEditar(
+                                producto,
+                              );
+                            },
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 30,
+                      ),
+                      tooltip: 'Editar',
+                      icon: const Icon(
+                        Icons.edit_outlined,
+                      ),
+                      color: _verdeOscuro,
+                      iconSize: 18,
                     ),
-                    tooltip: 'Editar',
-                    icon: const Icon(
-                      Icons.edit_outlined,
+                    const SizedBox(width: 4),
+                    IconButton(
+                      onPressed: procesando
+                          ? null
+                          : () {
+                              onCambiarEstado(
+                                producto,
+                              );
+                            },
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 30,
+                      ),
+                      tooltip: producto.activo ? 'Desactivar' : 'Activar',
+                      icon: Icon(
+                        producto.activo
+                            ? Icons.toggle_on_outlined
+                            : Icons.toggle_off_outlined,
+                      ),
+                      color: producto.activo ? _verdeOscuro : _rojo,
+                      iconSize: 22,
                     ),
-                    color: _verdeOscuro,
-                    iconSize: 18,
-                  ),
-                  const SizedBox(width: 4),
-                  IconButton(
-                    onPressed: procesando
-                        ? null
-                        : () {
-                            onCambiarEstado(
-                              producto,
-                            );
-                          },
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 32,
-                      minHeight: 30,
-                    ),
-                    tooltip: producto.activo ? 'Desactivar' : 'Activar',
-                    icon: Icon(
-                      producto.activo
-                          ? Icons.toggle_on_outlined
-                          : Icons.toggle_off_outlined,
-                    ),
-                    color: producto.activo ? _verdeOscuro : _rojo,
-                    iconSize: 22,
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -1308,22 +1323,50 @@ class _DialogoProductoState extends State<_DialogoProducto> {
     'ADULTO',
   ];
 
+  static const List<String> _presentaciones = [
+    'Tableta',
+    'Capsula',
+    'Pastilla',
+    'Jarabe',
+    'Suspension',
+    'Gotas',
+    'Inyectable',
+    'Crema',
+    'Pomada',
+    'Spray',
+    'Solucion',
+    'Otro',
+  ];
+
+  static const List<String> _unidadesDosis = [
+    'mg',
+    'g',
+    'mcg',
+    'ml',
+    'l',
+    'UI',
+    '%',
+    'gotas',
+    'tabletas',
+    'capsulas',
+  ];
+
   late final TextEditingController _codigoController;
 
   late final TextEditingController _nombreController;
 
   late final TextEditingController _descripcionController;
 
-  late final TextEditingController _presentacionController;
-
   late final TextEditingController _sustanciaController;
 
-  late final TextEditingController _dosisController;
+  late final TextEditingController _dosisCantidadController;
 
   late String _tipo;
   late String _categoria;
+  late String _presentacion;
   late String _via;
   late String _edad;
+  late String _dosisUnidad;
 
   late bool _manejaCaducidad;
   late bool _requiereReceta;
@@ -1348,16 +1391,14 @@ class _DialogoProductoState extends State<_DialogoProducto> {
       text: producto?.descripcion ?? '',
     );
 
-    _presentacionController = TextEditingController(
-      text: producto?.presentacion ?? '',
-    );
-
     _sustanciaController = TextEditingController(
       text: producto?.sustanciaActiva ?? '',
     );
 
-    _dosisController = TextEditingController(
-      text: producto?.dosis ?? '',
+    final dosis = _separarDosis(producto?.dosis);
+
+    _dosisCantidadController = TextEditingController(
+      text: dosis.cantidad,
     );
 
     _tipo = _tipos.contains(
@@ -1372,6 +1413,10 @@ class _DialogoProductoState extends State<_DialogoProducto> {
         ? producto!.categoria!
         : 'General';
 
+    _presentacion = _presentacionVisible(
+      producto?.presentacion,
+    );
+
     _via = _vias.contains(
       producto?.viaAdministracion,
     )
@@ -1384,6 +1429,8 @@ class _DialogoProductoState extends State<_DialogoProducto> {
         ? producto!.edad!
         : 'GENERAL';
 
+    _dosisUnidad = _unidadesDosis.contains(dosis.unidad) ? dosis.unidad : 'mg';
+
     _manejaCaducidad = producto?.manejaCaducidad ?? false;
 
     _requiereReceta = producto?.requiereReceta ?? false;
@@ -1394,9 +1441,8 @@ class _DialogoProductoState extends State<_DialogoProducto> {
     _codigoController.dispose();
     _nombreController.dispose();
     _descripcionController.dispose();
-    _presentacionController.dispose();
     _sustanciaController.dispose();
-    _dosisController.dispose();
+    _dosisCantidadController.dispose();
 
     super.dispose();
   }
@@ -1416,18 +1462,14 @@ class _DialogoProductoState extends State<_DialogoProducto> {
 
     if (_tipo == 'MEDICAMENTO') {
       infoMedicamento = {
-        'presentacion': _limpiar(
-          _presentacionController.text,
-        ),
+        'presentacion': _presentacionNormalizada(_presentacion),
         'viaAdministracion': _via,
         'edad': _edad,
         'requiereReceta': _requiereReceta,
         'sustanciaActiva': _limpiar(
           _sustanciaController.text,
         ),
-        'dosis': _limpiar(
-          _dosisController.text,
-        ),
+        'dosis': _dosisTexto(),
       };
     }
 
@@ -1446,6 +1488,33 @@ class _DialogoProductoState extends State<_DialogoProducto> {
         infoMedicamento: infoMedicamento,
       ),
     );
+  }
+
+  String? _dosisTexto() {
+    final cantidad = _dosisCantidadController.text.trim();
+
+    if (cantidad.isEmpty) {
+      return null;
+    }
+
+    return '$cantidad $_dosisUnidad';
+  }
+
+  String _presentacionNormalizada(String value) {
+    return switch (value) {
+      'Capsula' => 'CAPSULA',
+      'Tableta' => 'TABLETA',
+      'Pastilla' => 'PASTILLA',
+      'Suspension' => 'SUSPENSION',
+      'Gotas' => 'GOTAS',
+      'Inyectable' => 'INYECCION',
+      'Jarabe' => 'JARABE',
+      'Crema' => 'CREMA',
+      'Pomada' => 'POMADA',
+      'Spray' => 'AEROSOL',
+      'Solucion' => 'SOLUCION',
+      _ => 'OTRO',
+    };
   }
 
   @override
@@ -1569,9 +1638,27 @@ class _DialogoProductoState extends State<_DialogoProducto> {
               ),
               if (esMedicamento) ...[
                 const Divider(height: 24),
-                _CampoTexto(
-                  label: 'Presentacion',
-                  controller: _presentacionController,
+                DropdownButtonFormField<String>(
+                  initialValue: _presentacion,
+                  decoration: const InputDecoration(
+                    labelText: 'Presentacion',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: _presentaciones.map((presentacion) {
+                    return DropdownMenuItem<String>(
+                      value: presentacion,
+                      child: Text(presentacion),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value == null) {
+                      return;
+                    }
+
+                    setState(() {
+                      _presentacion = value;
+                    });
+                  },
                 ),
                 const SizedBox(
                   height: 12,
@@ -1649,9 +1736,42 @@ class _DialogoProductoState extends State<_DialogoProducto> {
                 const SizedBox(
                   height: 12,
                 ),
-                _CampoTexto(
-                  label: 'Dosis',
-                  controller: _dosisController,
+                Row(
+                  children: [
+                    Expanded(
+                      child: _CampoTexto(
+                        label: 'Cantidad',
+                        controller: _dosisCantidadController,
+                      ),
+                    ),
+                    const SizedBox(
+                      width: 12,
+                    ),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _dosisUnidad,
+                        decoration: const InputDecoration(
+                          labelText: 'Unidad',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: _unidadesDosis.map((unidad) {
+                          return DropdownMenuItem<String>(
+                            value: unidad,
+                            child: Text(unidad),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          if (value == null) {
+                            return;
+                          }
+
+                          setState(() {
+                            _dosisUnidad = value;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
                 ),
                 CheckboxListTile(
                   value: _requiereReceta,
@@ -1900,6 +2020,58 @@ List<String> _opcionesCategoria([
   }
 
   return opciones;
+}
+
+_DosisEditada _separarDosis(String? value) {
+  final text = value?.trim() ?? '';
+
+  if (text.isEmpty) {
+    return const _DosisEditada(
+      cantidad: '',
+      unidad: 'mg',
+    );
+  }
+
+  final parts = text.split(RegExp(r'\s+'));
+
+  if (parts.length < 2) {
+    return _DosisEditada(
+      cantidad: text,
+      unidad: 'mg',
+    );
+  }
+
+  return _DosisEditada(
+    cantidad: parts.sublist(0, parts.length - 1).join(' '),
+    unidad: parts.last,
+  );
+}
+
+String _presentacionVisible(String? value) {
+  return switch (value) {
+    'CAPSULA' => 'Capsula',
+    'TABLETA' => 'Tableta',
+    'PASTILLA' => 'Pastilla',
+    'SUSPENSION' => 'Suspension',
+    'GOTAS' => 'Gotas',
+    'INYECCION' => 'Inyectable',
+    'JARABE' => 'Jarabe',
+    'CREMA' => 'Crema',
+    'POMADA' => 'Pomada',
+    'AEROSOL' => 'Spray',
+    'SOLUCION' => 'Solucion',
+    _ => 'Otro',
+  };
+}
+
+class _DosisEditada {
+  final String cantidad;
+  final String unidad;
+
+  const _DosisEditada({
+    required this.cantidad,
+    required this.unidad,
+  });
 }
 
 String _etiqueta(String value) {

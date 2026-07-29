@@ -39,6 +39,7 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 - `GET /inventario/caducidad`: lee `vw_productos_por_caducar`.
 - `GET /inventario/movimientos`: lista movimientos de inventario.
 - `GET /inventario/historial-precios`: lista cambios de precio.
+- `PATCH /inventario/{idInventario}/datos-lote`: actualiza lote, caducidad, precio de venta y ubicacion del registro de inventario.
 - `PATCH /inventario/{idInventario}/ubicacion`: actualiza la ubicacion de estante del lote.
 - `POST /inventario/ajuste`: llama `sp_ajustar_inventario`.
 - `POST /inventario/precio`: llama `sp_cambiar_precio_inventario`.

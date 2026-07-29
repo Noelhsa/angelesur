@@ -23,10 +23,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final AuthApiService _authApiService = AuthApiService();
-  final TextEditingController _usuarioController =
-      TextEditingController(text: 'admin');
-  final TextEditingController _passwordController =
-      TextEditingController(text: '1234');
+  final TextEditingController _usuarioController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
   bool _cargando = false;
   bool _ocultarPassword = true;

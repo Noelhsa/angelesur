@@ -120,6 +120,28 @@ class InventarioApiService {
     return InventarioItem.fromJson(response as Map<String, dynamic>);
   }
 
+  Future<InventarioItem> actualizarDatosLote({
+    required int idInventario,
+    required String codigoLote,
+    required String? fechaCaducidad,
+    required double precioVenta,
+    required String? ubicacionLetra,
+    required int? ubicacionNumero,
+  }) async {
+    final response = await _apiClient.patch(
+      '/inventario/$idInventario/datos-lote',
+      {
+        'codigoLote': codigoLote,
+        'fechaCaducidad': fechaCaducidad,
+        'precioVenta': precioVenta,
+        'ubicacionLetra': ubicacionLetra,
+        'ubicacionNumero': ubicacionNumero,
+      },
+    );
+
+    return InventarioItem.fromJson(response as Map<String, dynamic>);
+  }
+
   Future<UbicacionInventarioSugerida> obtenerUbicacionSugerida(
     int idProducto,
   ) async {

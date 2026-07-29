@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException, Query
@@ -26,6 +27,12 @@ class CambiarPrecioInventarioRequest(BaseModel):
 class ActualizarUbicacionInventarioRequest(BaseModel):
     ubicacionLetra: str | None = Field(default=None, max_length=1)
     ubicacionNumero: int | None = Field(default=None, ge=1, le=999)
+
+
+class ActualizarDatosLoteInventarioRequest(ActualizarUbicacionInventarioRequest):
+    codigoLote: str | None = Field(default=None, max_length=80)
+    fechaCaducidad: str | None = None
+    precioVenta: Decimal | None = Field(default=None, ge=0)
 
 
 @router.get("/disponible")
@@ -344,8 +351,96 @@ def actualizar_ubicacion_inventario(
     return _obtener_inventario_actual(id_inventario)
 
 
+@router.patch("/{id_inventario}/datos-lote")
+def actualizar_datos_lote_inventario(
+    id_inventario: int,
+    request: ActualizarDatosLoteInventarioRequest,
+):
+    inventario = _obtener_inventario_actual(id_inventario)
+    if not inventario:
+        raise HTTPException(status_code=404, detail="Inventario no encontrado")
+
+    letra, numero = _validar_ubicacion(
+        request.ubicacionLetra,
+        request.ubicacionNumero,
+    )
+    fecha_caducidad = _validar_fecha_caducidad(request.fechaCaducidad)
+    precio_venta = (
+        request.precioVenta
+        if request.precioVenta is not None
+        else inventario.get("precioVenta")
+    )
+
+    with db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE inventario_producto
+                SET codigoLote = %s,
+                    fechaCaducidad = %s,
+                    precioVenta = %s,
+                    ubicacionLetra = %s,
+                    ubicacionNumero = %s
+                WHERE idInventario = %s
+                """,
+                [
+                    _clean_optional(request.codigoLote) or "SIN_LOTE",
+                    fecha_caducidad,
+                    precio_venta,
+                    letra,
+                    numero,
+                    id_inventario,
+                ],
+            )
+
+    return _obtener_inventario_actual(id_inventario)
+
+
 def _obtener_inventario_actual(id_inventario: int):
     return fetch_one(
         "SELECT * FROM vw_inventario_actual WHERE idInventario = %s",
         [id_inventario],
     )
+
+
+def _validar_ubicacion(
+    ubicacion_letra: str | None,
+    ubicacion_numero: int | None,
+) -> tuple[str | None, int | None]:
+    letra = ubicacion_letra.strip().upper() if ubicacion_letra else None
+    numero = ubicacion_numero
+
+    if (letra is None) != (numero is None):
+        raise HTTPException(
+            status_code=400,
+            detail="La ubicacion debe incluir letra y numero, o dejar ambos vacios.",
+        )
+
+    if letra is not None and (len(letra) != 1 or letra < "A" or letra > "Z"):
+        raise HTTPException(
+            status_code=400,
+            detail="La letra del estante debe ser una letra de la A a la Z.",
+        )
+
+    return letra, numero
+
+
+def _validar_fecha_caducidad(value: str | None) -> date | None:
+    if not value:
+        return None
+
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="La fecha de caducidad debe usar el formato YYYY-MM-DD.",
+        ) from exc
+
+
+def _clean_optional(value: str | None) -> str | None:
+    if value is None:
+        return None
+
+    value = value.strip()
+    return value or None
