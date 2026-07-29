@@ -24,13 +24,16 @@ class ContenidoPedidos extends StatefulWidget {
   });
 
   @override
-  State<ContenidoPedidos> createState() => _ContenidoPedidosState();
+  State<ContenidoPedidos> createState() =>
+      _ContenidoPedidosState();
 }
 
 class _ContenidoPedidosState extends State<ContenidoPedidos> {
-  final ComprasApiService _comprasApiService = ComprasApiService();
+  final ComprasApiService _comprasApiService =
+      ComprasApiService();
 
-  final TextEditingController _busquedaController = TextEditingController();
+  final TextEditingController _busquedaController =
+      TextEditingController();
 
   bool _mostrarMenuNuevaOrden = false;
   bool _cargando = true;
@@ -40,10 +43,12 @@ class _ContenidoPedidosState extends State<ContenidoPedidos> {
   String? _error;
 
   List<CompraResumen> _compras = [];
+
   int _pagina = 1;
   int _limite = 25;
   int _totalCompras = 0;
   int _totalPaginas = 1;
+
   bool _hayAnterior = false;
   bool _haySiguiente = false;
 
@@ -59,7 +64,9 @@ class _ContenidoPedidosState extends State<ContenidoPedidos> {
     super.dispose();
   }
 
-  Future<void> _cargarCompras({int? pagina}) async {
+  Future<void> _cargarCompras({
+    int? pagina,
+  }) async {
     setState(() {
       _cargando = true;
       _error = null;
@@ -71,7 +78,9 @@ class _ContenidoPedidosState extends State<ContenidoPedidos> {
         'Cancelados' => 'CANCELADA',
         _ => null,
       };
-      final resultado = await _comprasApiService.listarComprasPaginadas(
+
+      final resultado =
+          await _comprasApiService.listarComprasPaginadas(
         busqueda: _busquedaController.text,
         estatus: estatus,
         pagina: pagina ?? _pagina,
@@ -101,7 +110,9 @@ class _ContenidoPedidosState extends State<ContenidoPedidos> {
     }
   }
 
-  void _mostrarError(String mensaje) {
+  void _mostrarError(
+    String mensaje,
+  ) {
     if (!mounted) {
       return;
     }
@@ -113,7 +124,9 @@ class _ContenidoPedidosState extends State<ContenidoPedidos> {
     });
   }
 
-  void _mostrarMensaje(String mensaje) {
+  void _mostrarMensaje(
+    String mensaje,
+  ) {
     if (!mounted) {
       return;
     }
@@ -143,7 +156,8 @@ class _ContenidoPedidosState extends State<ContenidoPedidos> {
   Future<void> _cancelarCompra(
     CompraResumen compra,
   ) async {
-    if (compra.estatus == 'CANCELADA' || _procesando) {
+    if (compra.estatus == 'CANCELADA' ||
+        _procesando) {
       return;
     }
 
@@ -155,7 +169,7 @@ class _ContenidoPedidosState extends State<ContenidoPedidos> {
             'Cancelar compra',
           ),
           content: Text(
-            'Se cancelara la compra '
+            'Se cancelará la compra '
             'CMP-${compra.idCompra}.',
           ),
           actions: [
@@ -192,7 +206,8 @@ class _ContenidoPedidosState extends State<ContenidoPedidos> {
       await _comprasApiService.cancelarCompra(
         idCompra: compra.idCompra,
         idUsuario: widget.usuario.id,
-        observaciones: 'Cancelada desde interfaz de pedidos',
+        observaciones:
+            'Cancelada desde interfaz de pedidos',
       );
 
       _mostrarMensaje(
@@ -229,7 +244,8 @@ class _ContenidoPedidosState extends State<ContenidoPedidos> {
     });
 
     try {
-      final registrada = await _comprasApiService.registrarCompra(
+      final registrada =
+          await _comprasApiService.registrarCompra(
         compra,
       );
 
@@ -263,94 +279,134 @@ class _ContenidoPedidosState extends State<ContenidoPedidos> {
     }
   }
 
+  void _abrirNuevaOrden() {
+    setState(() {
+      _mostrarMenuNuevaOrden = true;
+    });
+  }
+
+  void _cerrarNuevaOrden() {
+    setState(() {
+      _mostrarMenuNuevaOrden = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
+      height: double.infinity,
       color: _fondoExterior,
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment:
+            CrossAxisAlignment.stretch,
         children: [
           Expanded(
-            child: Align(
-              alignment: Alignment.topLeft,
-              child: SingleChildScrollView(
-                child: Container(
-                  width: double.infinity,
-                  color: _fondoPagina,
-                  padding: const EdgeInsets.fromLTRB(
-                    22,
-                    22,
-                    22,
-                    32,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(
+                22,
+                22,
+                22,
+                32,
+              ),
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                children: [
+                  _EncabezadoPedidos(
+                    onNuevaOrden:
+                        _abrirNuevaOrden,
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _EncabezadoPedidos(
-                        onNuevaOrden: () {
-                          setState(() {
-                            _mostrarMenuNuevaOrden = true;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 28),
-                      _ResumenPedidos(
-                        compras: _compras,
-                      ),
-                      const SizedBox(height: 28),
-                      if (_cargando)
-                        const _EstadoPedidos(
-                          mensaje: 'Cargando compras...',
-                        )
-                      else if (_error != null)
-                        _EstadoPedidos(
-                          mensaje: _error!,
-                          onReintentar: _cargarCompras,
-                        )
-                      else
-                        _PanelPedidos(
-                          busquedaController: _busquedaController,
-                          filtroSeleccionado: _filtroSeleccionado,
-                          onFiltroSeleccionado: (filtro) {
-                            setState(() {
-                              _filtroSeleccionado = filtro;
-                            });
-                            _cargarCompras(pagina: 1);
-                          },
-                          onBuscar: () {
-                            _cargarCompras(pagina: 1);
-                          },
-                          compras: _compras,
-                          pagina: _pagina,
-                          totalPaginas: _totalPaginas,
-                          total: _totalCompras,
-                          limite: _limite,
-                          hayAnterior: _hayAnterior,
-                          haySiguiente: _haySiguiente,
-                          onAnterior: () => _cargarCompras(pagina: _pagina - 1),
-                          onSiguiente: () =>
-                              _cargarCompras(pagina: _pagina + 1),
-                          procesando: _procesando,
-                          onDetalle: _mostrarDetalle,
-                          onCancelar: _cancelarCompra,
-                        ),
-                    ],
+                  const SizedBox(height: 28),
+                  _ResumenPedidos(
+                    compras: _compras,
                   ),
-                ),
+                  const SizedBox(height: 28),
+                  if (_cargando)
+                    const _EstadoPedidos(
+                      mensaje:
+                          'Cargando compras...',
+                    )
+                  else if (_error != null)
+                    _EstadoPedidos(
+                      mensaje: _error!,
+                      onReintentar:
+                          _cargarCompras,
+                    )
+                  else
+                    _PanelPedidos(
+                      busquedaController:
+                          _busquedaController,
+                      filtroSeleccionado:
+                          _filtroSeleccionado,
+                      onFiltroSeleccionado:
+                          (filtro) {
+                        setState(() {
+                          _filtroSeleccionado =
+                              filtro;
+                        });
+
+                        _cargarCompras(
+                          pagina: 1,
+                        );
+                      },
+                      onBuscar: () {
+                        _cargarCompras(
+                          pagina: 1,
+                        );
+                      },
+                      compras: _compras,
+                      pagina: _pagina,
+                      totalPaginas:
+                          _totalPaginas,
+                      total: _totalCompras,
+                      limite: _limite,
+                      hayAnterior:
+                          _hayAnterior,
+                      haySiguiente:
+                          _haySiguiente,
+                      onAnterior: () {
+                        _cargarCompras(
+                          pagina: _pagina - 1,
+                        );
+                      },
+                      onSiguiente: () {
+                        _cargarCompras(
+                          pagina: _pagina + 1,
+                        );
+                      },
+                      procesando:
+                          _procesando,
+                      onDetalle:
+                          _mostrarDetalle,
+                      onCancelar:
+                          _cancelarCompra,
+                    ),
+                ],
               ),
             ),
           ),
           if (_mostrarMenuNuevaOrden)
-            MenuCartaPedidos(
-              idUsuario: widget.usuario.id,
-              guardando: _procesando,
-              onCerrar: () {
-                setState(() {
-                  _mostrarMenuNuevaOrden = false;
-                });
-              },
-              onGuardarOrden: _registrarCompra,
+            Padding(
+              padding:
+                  const EdgeInsets.fromLTRB(
+                0,
+                20,
+                14,
+                20,
+              ),
+              child: MenuCartaPedidos(
+                key: const ValueKey(
+                  'nueva-orden',
+                ),
+                idUsuario:
+                    widget.usuario.id,
+                guardando: _procesando,
+                onCerrar:
+                    _cerrarNuevaOrden,
+                onGuardarOrden:
+                    _registrarCompra,
+              ),
             ),
         ],
       ),
@@ -371,23 +427,28 @@ class _EncabezadoPedidos extends StatelessWidget {
       children: [
         const Expanded(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
             children: [
               Text(
                 'Lista de Pedidos',
                 style: TextStyle(
                   color: _textoPrincipal,
                   fontSize: 27,
-                  fontWeight: FontWeight.w900,
+                  fontWeight:
+                      FontWeight.w900,
                 ),
               ),
               SizedBox(height: 6),
               Text(
-                'Compras registradas y seguimiento de ordenes a proveedores.',
+                'Compras registradas y seguimiento de órdenes a proveedores.',
                 style: TextStyle(
-                  color: Color(0xFF214025),
+                  color: Color(
+                    0xFF214025,
+                  ),
                   fontSize: 13,
-                  fontWeight: FontWeight.w500,
+                  fontWeight:
+                      FontWeight.w500,
                 ),
               ),
             ],
@@ -407,20 +468,28 @@ class _EncabezadoPedidos extends StatelessWidget {
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 12,
-                fontWeight: FontWeight.w900,
+                fontWeight:
+                    FontWeight.w900,
               ),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: _verdeOscuro,
+              backgroundColor:
+                  _verdeOscuro,
               elevation: 7,
-              shadowColor: _verdeOscuro.withValues(
+              shadowColor:
+                  _verdeOscuro.withValues(
                 alpha: 0.35,
               ),
-              padding: const EdgeInsets.symmetric(
+              padding:
+                  const EdgeInsets.symmetric(
                 horizontal: 27,
               ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
+              shape:
+                  RoundedRectangleBorder(
+                borderRadius:
+                    BorderRadius.circular(
+                  18,
+                ),
               ),
             ),
           ),
@@ -441,13 +510,15 @@ class _ResumenPedidos extends StatelessWidget {
   Widget build(BuildContext context) {
     final registradas = compras
         .where(
-          (compra) => compra.estatus == 'REGISTRADA',
+          (compra) =>
+              compra.estatus == 'REGISTRADA',
         )
         .length;
 
     final canceladas = compras
         .where(
-          (compra) => compra.estatus == 'CANCELADA',
+          (compra) =>
+              compra.estatus == 'CANCELADA',
         )
         .length;
 
@@ -464,8 +535,10 @@ class _ResumenPedidos extends StatelessWidget {
           child: _TarjetaResumenPedido(
             titulo: 'TOTAL',
             valor: '${compras.length}',
-            icono: Icons.shopping_cart_outlined,
-            fondoIcono: const Color(0xFFEAF7DF),
+            icono:
+                Icons.shopping_cart_outlined,
+            fondoIcono:
+                const Color(0xFFEAF7DF),
             colorIcono: _verdeOscuro,
           ),
         ),
@@ -474,8 +547,10 @@ class _ResumenPedidos extends StatelessWidget {
           child: _TarjetaResumenPedido(
             titulo: 'REGISTRADAS',
             valor: '$registradas',
-            icono: Icons.assignment_outlined,
-            fondoIcono: const Color(0xFFE8F1FF),
+            icono:
+                Icons.assignment_outlined,
+            fondoIcono:
+                const Color(0xFFE8F1FF),
             colorIcono: _azul,
           ),
         ),
@@ -486,8 +561,10 @@ class _ResumenPedidos extends StatelessWidget {
             valor: ConfigMoneda.formato(
               total,
             ),
-            icono: Icons.payments_outlined,
-            fondoIcono: const Color(0xFFEAF7DF),
+            icono:
+                Icons.payments_outlined,
+            fondoIcono:
+                const Color(0xFFEAF7DF),
             colorIcono: _verdeOscuro,
           ),
         ),
@@ -496,8 +573,10 @@ class _ResumenPedidos extends StatelessWidget {
           child: _TarjetaResumenPedido(
             titulo: 'CANCELADAS',
             valor: '$canceladas',
-            icono: Icons.cancel_outlined,
-            fondoIcono: const Color(0xFFFFE8E8),
+            icono:
+                Icons.cancel_outlined,
+            fondoIcono:
+                const Color(0xFFFFE8E8),
             colorIcono: _rojo,
           ),
         ),
@@ -536,7 +615,8 @@ class _TarjetaResumenPedido extends StatelessWidget {
         border: Border.all(
           color: _bordeSuave,
         ),
-        borderRadius: BorderRadius.circular(9),
+        borderRadius:
+            BorderRadius.circular(9),
       ),
       child: Row(
         children: [
@@ -545,7 +625,8 @@ class _TarjetaResumenPedido extends StatelessWidget {
             height: 43,
             decoration: BoxDecoration(
               color: fondoIcono,
-              borderRadius: BorderRadius.circular(7),
+              borderRadius:
+                  BorderRadius.circular(7),
             ),
             child: Icon(
               icono,
@@ -556,17 +637,24 @@ class _TarjetaResumenPedido extends StatelessWidget {
           const SizedBox(width: 20),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
+              mainAxisAlignment:
+                  MainAxisAlignment.center,
               children: [
                 Text(
                   titulo,
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF34423B),
+                  overflow:
+                      TextOverflow.ellipsis,
+                  style:
+                      const TextStyle(
+                    color: Color(
+                      0xFF34423B,
+                    ),
                     fontSize: 10,
-                    fontWeight: FontWeight.w800,
+                    fontWeight:
+                        FontWeight.w800,
                     letterSpacing: 0.7,
                   ),
                 ),
@@ -574,11 +662,14 @@ class _TarjetaResumenPedido extends StatelessWidget {
                 Text(
                   valor,
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  overflow:
+                      TextOverflow.ellipsis,
+                  style:
+                      const TextStyle(
                     color: _textoPrincipal,
                     fontSize: 20,
-                    fontWeight: FontWeight.w900,
+                    fontWeight:
+                        FontWeight.w900,
                   ),
                 ),
               ],
@@ -591,11 +682,13 @@ class _TarjetaResumenPedido extends StatelessWidget {
 }
 
 class _PanelPedidos extends StatelessWidget {
-  final TextEditingController busquedaController;
+  final TextEditingController
+      busquedaController;
 
   final String filtroSeleccionado;
 
-  final ValueChanged<String> onFiltroSeleccionado;
+  final ValueChanged<String>
+      onFiltroSeleccionado;
 
   final VoidCallback onBuscar;
 
@@ -606,14 +699,17 @@ class _PanelPedidos extends StatelessWidget {
   final int limite;
   final bool hayAnterior;
   final bool haySiguiente;
+
   final VoidCallback onAnterior;
   final VoidCallback onSiguiente;
 
   final bool procesando;
 
-  final ValueChanged<CompraResumen> onDetalle;
+  final ValueChanged<CompraResumen>
+      onDetalle;
 
-  final ValueChanged<CompraResumen> onCancelar;
+  final ValueChanged<CompraResumen>
+      onCancelar;
 
   const _PanelPedidos({
     required this.busquedaController,
@@ -637,9 +733,11 @@ class _PanelPedidos extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment:
+          CrossAxisAlignment.stretch,
       children: [
         Container(
+          width: double.infinity,
           padding: const EdgeInsets.fromLTRB(
             18,
             20,
@@ -651,7 +749,8 @@ class _PanelPedidos extends StatelessWidget {
             border: Border.all(
               color: _bordeSuave,
             ),
-            borderRadius: BorderRadius.circular(9),
+            borderRadius:
+                BorderRadius.circular(9),
           ),
           child: Row(
             children: [
@@ -659,57 +758,83 @@ class _PanelPedidos extends StatelessWidget {
                 width: 280,
                 height: 36,
                 child: TextField(
-                  controller: busquedaController,
+                  controller:
+                      busquedaController,
                   onChanged: (_) {
                     onBuscar();
                   },
-                  cursorColor: _verdeOscuro,
-                  style: const TextStyle(
-                    color: _textoPrincipal,
+                  cursorColor:
+                      _verdeOscuro,
+                  style:
+                      const TextStyle(
+                    color:
+                        _textoPrincipal,
                     fontSize: 12,
                   ),
-                  decoration: InputDecoration(
+                  decoration:
+                      InputDecoration(
                     filled: true,
                     fillColor: Colors.white,
-                    hintText: 'Buscar por compra, folio o proveedor...',
-                    hintStyle: const TextStyle(
-                      color: Color(0xFF7E8790),
+                    hintText:
+                        'Buscar por compra, folio o proveedor...',
+                    hintStyle:
+                        const TextStyle(
+                      color: Color(
+                        0xFF7E8790,
+                      ),
                       fontSize: 12,
                     ),
-                    prefixIcon: const Icon(
+                    prefixIcon:
+                        const Icon(
                       Icons.search,
                       size: 18,
-                      color: Color(0xFF34423B),
+                      color: Color(
+                        0xFF34423B,
+                      ),
                     ),
-                    prefixIconConstraints: const BoxConstraints(
+                    prefixIconConstraints:
+                        const BoxConstraints(
                       minWidth: 36,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(
+                    contentPadding:
+                        const EdgeInsets
+                            .symmetric(
                       horizontal: 10,
                       vertical: 8,
                     ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(
-                        6,
-                      ),
-                      borderSide: const BorderSide(
-                        color: Color(0xFFC8D6C0),
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(
-                        6,
-                      ),
-                      borderSide: const BorderSide(
-                        color: Color(0xFFC8D6C0),
+                    border:
+                        OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius
+                              .circular(6),
+                      borderSide:
+                          const BorderSide(
+                        color: Color(
+                          0xFFC8D6C0,
+                        ),
                       ),
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(
-                        6,
+                    enabledBorder:
+                        OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius
+                              .circular(6),
+                      borderSide:
+                          const BorderSide(
+                        color: Color(
+                          0xFFC8D6C0,
+                        ),
                       ),
-                      borderSide: const BorderSide(
-                        color: _verdeOscuro,
+                    ),
+                    focusedBorder:
+                        OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius
+                              .circular(6),
+                      borderSide:
+                          const BorderSide(
+                        color:
+                            _verdeOscuro,
                         width: 1.2,
                       ),
                     ),
@@ -718,8 +843,10 @@ class _PanelPedidos extends StatelessWidget {
               ),
               const Spacer(),
               _FiltroEstadoPedidos(
-                seleccionado: filtroSeleccionado,
-                onSeleccionar: onFiltroSeleccionado,
+                seleccionado:
+                    filtroSeleccionado,
+                onSeleccionar:
+                    onFiltroSeleccionado,
               ),
             ],
           ),
@@ -727,16 +854,23 @@ class _PanelPedidos extends StatelessWidget {
         const SizedBox(height: 18),
         if (compras.isEmpty)
           const _EstadoPedidos(
-            mensaje: 'No hay compras para mostrar',
+            mensaje:
+                'No hay compras para mostrar',
           )
         else
           LayoutBuilder(
-            builder: (context, constraints) {
+            builder: (
+              context,
+              constraints,
+            ) {
               final anchoTabla =
-                  constraints.maxWidth < 940 ? 940.0 : constraints.maxWidth;
+                  constraints.maxWidth < 940
+                      ? 940.0
+                      : constraints.maxWidth;
 
               return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
+                scrollDirection:
+                    Axis.horizontal,
                 child: SizedBox(
                   width: anchoTabla,
                   child: _TablaPedidos(
@@ -770,8 +904,10 @@ class _PaginadorPedidos extends StatelessWidget {
   final int totalPaginas;
   final int total;
   final int limite;
+
   final bool hayAnterior;
   final bool haySiguiente;
+
   final VoidCallback onAnterior;
   final VoidCallback onSiguiente;
 
@@ -788,38 +924,62 @@ class _PaginadorPedidos extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final desde = total == 0 ? 0 : ((pagina - 1) * limite) + 1;
-    final hasta = total == 0 ? 0 : (desde + limite - 1).clamp(0, total);
+    final desde = total == 0
+        ? 0
+        : ((pagina - 1) * limite) + 1;
+
+    final hasta = total == 0
+        ? 0
+        : (desde + limite - 1).clamp(
+            0,
+            total,
+          );
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 8,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: _bordeSuave),
-        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: _bordeSuave,
+        ),
+        borderRadius:
+            BorderRadius.circular(8),
       ),
       child: Row(
         children: [
           Expanded(
             child: Text(
-              '$desde-$hasta de $total | Pagina $pagina de $totalPaginas',
+              '$desde-$hasta de $total | '
+              'Página $pagina de $totalPaginas',
               style: const TextStyle(
                 color: _textoSecundario,
                 fontSize: 12,
-                fontWeight: FontWeight.w800,
+                fontWeight:
+                    FontWeight.w800,
               ),
             ),
           ),
           IconButton(
-            onPressed: hayAnterior ? onAnterior : null,
-            tooltip: 'Pagina anterior',
-            icon: const Icon(Icons.chevron_left),
+            onPressed: hayAnterior
+                ? onAnterior
+                : null,
+            tooltip: 'Página anterior',
+            icon: const Icon(
+              Icons.chevron_left,
+            ),
             color: _verdeOscuro,
           ),
           IconButton(
-            onPressed: haySiguiente ? onSiguiente : null,
-            tooltip: 'Pagina siguiente',
-            icon: const Icon(Icons.chevron_right),
+            onPressed: haySiguiente
+                ? onSiguiente
+                : null,
+            tooltip: 'Página siguiente',
+            icon: const Icon(
+              Icons.chevron_right,
+            ),
             color: _verdeOscuro,
           ),
         ],
@@ -831,7 +991,8 @@ class _PaginadorPedidos extends StatelessWidget {
 class _FiltroEstadoPedidos extends StatelessWidget {
   final String seleccionado;
 
-  final ValueChanged<String> onSeleccionar;
+  final ValueChanged<String>
+      onSeleccionar;
 
   const _FiltroEstadoPedidos({
     required this.seleccionado,
@@ -851,34 +1012,39 @@ class _FiltroEstadoPedidos extends StatelessWidget {
             0xFFC8D6C0,
           ),
         ),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius:
+            BorderRadius.circular(6),
       ),
       child: Row(
         children: [
           _BotonFiltroPedido(
             texto: 'Todos',
-            activo: seleccionado == 'Todos',
+            activo:
+                seleccionado == 'Todos',
             onTap: () {
               onSeleccionar('Todos');
             },
           ),
           _BotonFiltroPedido(
             texto: 'Registradas',
-            activo: seleccionado == 'Pendientes',
+            activo:
+                seleccionado == 'Pendientes',
             onTap: () {
               onSeleccionar('Pendientes');
             },
           ),
           _BotonFiltroPedido(
             texto: 'Completadas',
-            activo: seleccionado == 'Completados',
+            activo:
+                seleccionado == 'Completados',
             onTap: () {
               onSeleccionar('Completados');
             },
           ),
           _BotonFiltroPedido(
             texto: 'Canceladas',
-            activo: seleccionado == 'Cancelados',
+            activo:
+                seleccionado == 'Cancelados',
             onTap: () {
               onSeleccionar('Cancelados');
             },
@@ -907,7 +1073,8 @@ class _BotonFiltroPedido extends StatelessWidget {
         height: 28,
         child: ElevatedButton(
           onPressed: onTap,
-          style: ElevatedButton.styleFrom(
+          style:
+              ElevatedButton.styleFrom(
             elevation: 0,
             padding: EdgeInsets.zero,
             backgroundColor: activo
@@ -915,17 +1082,24 @@ class _BotonFiltroPedido extends StatelessWidget {
                     0xFFF6F4F1,
                   )
                 : Colors.white,
-            foregroundColor: _textoPrincipal,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(5),
+            foregroundColor:
+                _textoPrincipal,
+            shape:
+                RoundedRectangleBorder(
+              borderRadius:
+                  BorderRadius.circular(5),
             ),
           ),
           child: Text(
             texto,
             style: TextStyle(
               fontSize: 10,
-              fontWeight: activo ? FontWeight.w900 : FontWeight.w700,
-              color: activo ? _verdeOscuro : _textoPrincipal,
+              fontWeight: activo
+                  ? FontWeight.w900
+                  : FontWeight.w700,
+              color: activo
+                  ? _verdeOscuro
+                  : _textoPrincipal,
             ),
           ),
         ),
@@ -938,9 +1112,11 @@ class _TablaPedidos extends StatelessWidget {
   final List<CompraResumen> compras;
   final bool procesando;
 
-  final ValueChanged<CompraResumen> onDetalle;
+  final ValueChanged<CompraResumen>
+      onDetalle;
 
-  final ValueChanged<CompraResumen> onCancelar;
+  final ValueChanged<CompraResumen>
+      onCancelar;
 
   const _TablaPedidos({
     required this.compras,
@@ -953,11 +1129,11 @@ class _TablaPedidos extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        for (var index = 0; index < compras.length; index++) ...[
+        for (var index = 0;
+            index < compras.length;
+            index++) ...[
           if (index > 0)
-            const SizedBox(
-              height: 10,
-            ),
+            const SizedBox(height: 10),
           _FilaPedido(
             compra: compras[index],
             procesando: procesando,
@@ -974,9 +1150,11 @@ class _FilaPedido extends StatelessWidget {
   final CompraResumen compra;
   final bool procesando;
 
-  final ValueChanged<CompraResumen> onDetalle;
+  final ValueChanged<CompraResumen>
+      onDetalle;
 
-  final ValueChanged<CompraResumen> onCancelar;
+  final ValueChanged<CompraResumen>
+      onCancelar;
 
   const _FilaPedido({
     required this.compra,
@@ -987,7 +1165,8 @@ class _FilaPedido extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cancelada = compra.estatus == 'CANCELADA';
+    final cancelada =
+        compra.estatus == 'CANCELADA';
 
     return Container(
       padding: const EdgeInsets.fromLTRB(
@@ -998,13 +1177,15 @@ class _FilaPedido extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius:
+            BorderRadius.circular(8),
         border: Border.all(
           color: _bordeSuave,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(
+            color:
+                Colors.black.withValues(
               alpha: 0.05,
             ),
             blurRadius: 10,
@@ -1021,7 +1202,8 @@ class _FilaPedido extends StatelessWidget {
                 Container(
                   width: 42,
                   height: 42,
-                  decoration: BoxDecoration(
+                  decoration:
+                      BoxDecoration(
                     color: cancelada
                         ? const Color(
                             0xFFFFE8E8,
@@ -1029,43 +1211,62 @@ class _FilaPedido extends StatelessWidget {
                         : const Color(
                             0xFFEAF7DF,
                           ),
-                    borderRadius: BorderRadius.circular(
-                      8,
-                    ),
+                    borderRadius:
+                        BorderRadius
+                            .circular(8),
                   ),
                   child: Icon(
-                    Icons.shopping_cart_outlined,
-                    color: cancelada ? _rojo : _verdeOscuro,
+                    Icons
+                        .shopping_cart_outlined,
+                    color: cancelada
+                        ? _rojo
+                        : _verdeOscuro,
                     size: 22,
                   ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment:
+                        CrossAxisAlignment
+                            .start,
                     children: [
                       Text(
                         'CMP-${compra.idCompra}',
                         maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: _textoPrincipal,
+                        overflow:
+                            TextOverflow
+                                .ellipsis,
+                        style:
+                            const TextStyle(
+                          color:
+                              _textoPrincipal,
                           fontSize: 14,
-                          fontWeight: FontWeight.w900,
+                          fontWeight:
+                              FontWeight.w900,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(
+                        height: 4,
+                      ),
                       Text(
-                        compra.usuario.trim().isEmpty
+                        compra.usuario
+                                .trim()
+                                .isEmpty
                             ? 'Sin usuario'
                             : 'Registrada por '
                                 '${compra.usuario}',
                         maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: _textoSecundario,
+                        overflow:
+                            TextOverflow
+                                .ellipsis,
+                        style:
+                            const TextStyle(
+                          color:
+                              _textoSecundario,
                           fontSize: 10,
-                          fontWeight: FontWeight.w700,
+                          fontWeight:
+                              FontWeight.w700,
                         ),
                       ),
                     ],
@@ -1079,29 +1280,39 @@ class _FilaPedido extends StatelessWidget {
             child: _MetricaPedido(
               titulo: 'Fecha',
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
                   Text(
                     _formatoFecha(
                       compra.fecha,
                     ),
                     maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: _textoPrincipal,
+                    overflow:
+                        TextOverflow.ellipsis,
+                    style:
+                        const TextStyle(
+                      color:
+                          _textoPrincipal,
                       fontSize: 11,
-                      fontWeight: FontWeight.w900,
+                      fontWeight:
+                          FontWeight.w900,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(
+                    height: 2,
+                  ),
                   Text(
                     _formatoHora(
                       compra.fecha,
                     ),
-                    style: const TextStyle(
-                      color: _textoSecundario,
+                    style:
+                        const TextStyle(
+                      color:
+                          _textoSecundario,
                       fontSize: 10,
-                      fontWeight: FontWeight.w600,
+                      fontWeight:
+                          FontWeight.w600,
                     ),
                   ),
                 ],
@@ -1113,15 +1324,20 @@ class _FilaPedido extends StatelessWidget {
             child: _MetricaPedido(
               titulo: 'Proveedor',
               child: Text(
-                compra.proveedor.trim().isEmpty
+                compra.proveedor
+                        .trim()
+                        .isEmpty
                     ? 'Sin proveedor'
                     : compra.proveedor,
                 maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                overflow:
+                    TextOverflow.ellipsis,
+                style:
+                    const TextStyle(
                   color: _textoPrincipal,
                   fontSize: 12,
-                  fontWeight: FontWeight.w900,
+                  fontWeight:
+                      FontWeight.w900,
                 ),
               ),
             ),
@@ -1131,15 +1347,21 @@ class _FilaPedido extends StatelessWidget {
             child: _MetricaPedido(
               titulo: 'Folio',
               child: Text(
-                compra.folioProveedor?.trim().isNotEmpty == true
+                compra.folioProveedor
+                            ?.trim()
+                            .isNotEmpty ==
+                        true
                     ? compra.folioProveedor!
                     : 'Sin folio',
                 maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                overflow:
+                    TextOverflow.ellipsis,
+                style:
+                    const TextStyle(
                   color: _textoPrincipal,
                   fontSize: 11,
-                  fontWeight: FontWeight.w800,
+                  fontWeight:
+                      FontWeight.w800,
                 ),
               ),
             ),
@@ -1153,11 +1375,14 @@ class _FilaPedido extends StatelessWidget {
                   compra.total,
                 ),
                 maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                overflow:
+                    TextOverflow.ellipsis,
+                style:
+                    const TextStyle(
                   color: _verdeOscuro,
                   fontSize: 12,
-                  fontWeight: FontWeight.w900,
+                  fontWeight:
+                      FontWeight.w900,
                 ),
               ),
             ),
@@ -1167,9 +1392,12 @@ class _FilaPedido extends StatelessWidget {
             child: _MetricaPedido(
               titulo: 'Estado',
               child: Align(
-                alignment: Alignment.centerLeft,
-                child: _BadgeEstadoPedido(
-                  estatus: compra.estatus,
+                alignment:
+                    Alignment.centerLeft,
+                child:
+                    _BadgeEstadoPedido(
+                  estatus:
+                      compra.estatus,
                 ),
               ),
             ),
@@ -1188,29 +1416,37 @@ class _FilaPedido extends StatelessWidget {
                               compra,
                             );
                           },
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
+                    padding:
+                        EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints(
                       minWidth: 32,
                       minHeight: 30,
                     ),
-                    tooltip: 'Ver detalle',
+                    tooltip:
+                        'Ver detalle',
                     icon: const Icon(
-                      Icons.remove_red_eye_outlined,
+                      Icons
+                          .remove_red_eye_outlined,
                     ),
                     color: _verdeOscuro,
                     iconSize: 18,
                   ),
                   const SizedBox(width: 6),
                   IconButton(
-                    onPressed: procesando || cancelada
-                        ? null
-                        : () {
-                            onCancelar(
-                              compra,
-                            );
-                          },
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
+                    onPressed:
+                        procesando ||
+                                cancelada
+                            ? null
+                            : () {
+                                onCancelar(
+                                  compra,
+                                );
+                              },
+                    padding:
+                        EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints(
                       minWidth: 32,
                       minHeight: 30,
                     ),
@@ -1218,7 +1454,9 @@ class _FilaPedido extends StatelessWidget {
                     icon: const Icon(
                       Icons.cancel_outlined,
                     ),
-                    color: cancelada ? _textoSecundario : _rojo,
+                    color: cancelada
+                        ? _textoSecundario
+                        : _rojo,
                     iconSize: 18,
                   ),
                 ],
@@ -1230,26 +1468,46 @@ class _FilaPedido extends StatelessWidget {
     );
   }
 
-  String _formatoFecha(DateTime? fecha) {
+  String _formatoFecha(
+    DateTime? fecha,
+  ) {
     if (fecha == null) {
       return 'Sin fecha';
     }
 
-    final dia = fecha.day.toString().padLeft(2, '0');
+    final dia =
+        fecha.day.toString().padLeft(
+              2,
+              '0',
+            );
 
-    final mes = fecha.month.toString().padLeft(2, '0');
+    final mes =
+        fecha.month.toString().padLeft(
+              2,
+              '0',
+            );
 
     return '$dia/$mes/${fecha.year}';
   }
 
-  String _formatoHora(DateTime? fecha) {
+  String _formatoHora(
+    DateTime? fecha,
+  ) {
     if (fecha == null) {
       return '';
     }
 
-    final hora = fecha.hour.toString().padLeft(2, '0');
+    final hora =
+        fecha.hour.toString().padLeft(
+              2,
+              '0',
+            );
 
-    final minuto = fecha.minute.toString().padLeft(2, '0');
+    final minuto =
+        fecha.minute.toString().padLeft(
+              2,
+              '0',
+            );
 
     return '$hora:$minuto';
   }
@@ -1267,21 +1525,25 @@ class _MetricaPedido extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(
+      padding:
+          const EdgeInsets.symmetric(
         horizontal: 8,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           Text(
             titulo,
             maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            overflow:
+                TextOverflow.ellipsis,
             style: const TextStyle(
               color: _textoSecundario,
               fontSize: 9,
-              fontWeight: FontWeight.w700,
+              fontWeight:
+                  FontWeight.w700,
             ),
           ),
           const SizedBox(height: 5),
@@ -1301,21 +1563,30 @@ class _BadgeEstadoPedido extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cancelada = estatus == 'CANCELADA';
+    final cancelada =
+        estatus == 'CANCELADA';
 
     return Container(
-      padding: const EdgeInsets.symmetric(
+      padding:
+          const EdgeInsets.symmetric(
         horizontal: 9,
         vertical: 5,
       ),
       decoration: BoxDecoration(
-        color: cancelada ? const Color(0xFFFFE8E8) : const Color(0xFFE8F5DD),
-        borderRadius: BorderRadius.circular(12),
+        color: cancelada
+            ? const Color(0xFFFFE8E8)
+            : const Color(0xFFE8F5DD),
+        borderRadius:
+            BorderRadius.circular(12),
       ),
       child: Text(
-        cancelada ? 'Cancelada' : 'Registrada',
+        cancelada
+            ? 'Cancelada'
+            : 'Registrada',
         style: TextStyle(
-          color: cancelada ? _rojo : _verdeOscuro,
+          color: cancelada
+              ? _rojo
+              : _verdeOscuro,
           fontSize: 9,
           fontWeight: FontWeight.w900,
         ),
@@ -1351,7 +1622,8 @@ class _EstadoPedidos extends StatelessWidget {
               style: const TextStyle(
                 color: _textoPrincipal,
                 fontSize: 15,
-                fontWeight: FontWeight.w800,
+                fontWeight:
+                    FontWeight.w800,
               ),
             ),
             if (onReintentar != null) ...[
@@ -1388,21 +1660,29 @@ class _DialogoDetalleCompra extends StatelessWidget {
       ),
       content: SizedBox(
         width: 680,
-        child: FutureBuilder<CompraDetalle>(
+        child:
+            FutureBuilder<CompraDetalle>(
           future: future,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
+          builder: (
+            context,
+            snapshot,
+          ) {
+            if (snapshot.connectionState ==
+                ConnectionState.waiting) {
               return const SizedBox(
                 height: 140,
                 child: Center(
-                  child: CircularProgressIndicator(),
+                  child:
+                      CircularProgressIndicator(),
                 ),
               );
             }
 
-            if (snapshot.hasError || !snapshot.hasData) {
+            if (snapshot.hasError ||
+                !snapshot.hasData) {
               return const _EstadoPedidos(
-                mensaje: 'No se pudo cargar el detalle',
+                mensaje:
+                    'No se pudo cargar el detalle',
               );
             }
 
@@ -1410,8 +1690,10 @@ class _DialogoDetalleCompra extends StatelessWidget {
 
             return SingleChildScrollView(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                mainAxisSize:
+                    MainAxisSize.min,
                 children: [
                   Wrap(
                     spacing: 12,
@@ -1433,7 +1715,8 @@ class _DialogoDetalleCompra extends StatelessWidget {
                       ),
                       _DatoDetalle(
                         'Folio proveedor',
-                        compra.folioProveedor ?? 'Sin folio',
+                        compra.folioProveedor ??
+                            'Sin folio',
                       ),
                       _DatoDetalle(
                         'Subtotal',
@@ -1463,21 +1746,30 @@ class _DialogoDetalleCompra extends StatelessWidget {
                   const Text(
                     'Productos',
                     style: TextStyle(
-                      color: _textoPrincipal,
+                      color:
+                          _textoPrincipal,
                       fontSize: 15,
-                      fontWeight: FontWeight.w900,
+                      fontWeight:
+                          FontWeight.w900,
                     ),
                   ),
                   const SizedBox(height: 10),
                   _TablaDetalleCompra(
-                    detalles: compra.detalles,
+                    detalles:
+                        compra.detalles,
                   ),
-                  if (compra.observaciones.isNotEmpty) ...[
-                    const SizedBox(height: 14),
+                  if (compra
+                      .observaciones
+                      .isNotEmpty) ...[
+                    const SizedBox(
+                      height: 14,
+                    ),
                     Text(
                       compra.observaciones,
-                      style: const TextStyle(
-                        color: _textoSecundario,
+                      style:
+                          const TextStyle(
+                        color:
+                            _textoSecundario,
                         fontSize: 12,
                       ),
                     ),
@@ -1503,7 +1795,8 @@ class _DialogoDetalleCompra extends StatelessWidget {
 }
 
 class _TablaDetalleCompra extends StatelessWidget {
-  final List<CompraProductoDetalle> detalles;
+  final List<CompraProductoDetalle>
+      detalles;
 
   const _TablaDetalleCompra({
     required this.detalles,
@@ -1524,13 +1817,17 @@ class _TablaDetalleCompra extends StatelessWidget {
       children: [
         for (final detalle in detalles)
           Container(
-            padding: const EdgeInsets.symmetric(
+            padding:
+                const EdgeInsets.symmetric(
               vertical: 8,
             ),
-            decoration: const BoxDecoration(
+            decoration:
+                const BoxDecoration(
               border: Border(
                 bottom: BorderSide(
-                  color: Color(0xFFE0E8D8),
+                  color: Color(
+                    0xFFE0E8D8,
+                  ),
                 ),
               ),
             ),
@@ -1540,8 +1837,10 @@ class _TablaDetalleCompra extends StatelessWidget {
                   flex: 4,
                   child: Text(
                     detalle.producto,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
+                    style:
+                        const TextStyle(
+                      fontWeight:
+                          FontWeight.w800,
                     ),
                   ),
                 ),
@@ -1558,7 +1857,8 @@ class _TablaDetalleCompra extends StatelessWidget {
                 Expanded(
                   child: Text(
                     ConfigMoneda.formato(
-                      detalle.costoUnitario,
+                      detalle
+                          .costoUnitario,
                     ),
                   ),
                 ),
@@ -1591,25 +1891,29 @@ class _DatoDetalle extends StatelessWidget {
     return SizedBox(
       width: 150,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           Text(
             label,
             style: const TextStyle(
               color: _textoSecundario,
               fontSize: 10,
-              fontWeight: FontWeight.w800,
+              fontWeight:
+                  FontWeight.w800,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             value,
             maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+            overflow:
+                TextOverflow.ellipsis,
             style: const TextStyle(
               color: _textoPrincipal,
               fontSize: 12,
-              fontWeight: FontWeight.w900,
+              fontWeight:
+                  FontWeight.w900,
             ),
           ),
         ],
@@ -1618,18 +1922,37 @@ class _DatoDetalle extends StatelessWidget {
   }
 }
 
-String _formatoFechaHora(DateTime? fecha) {
+String _formatoFechaHora(
+  DateTime? fecha,
+) {
   if (fecha == null) {
     return 'Sin fecha';
   }
 
-  final dia = fecha.day.toString().padLeft(2, '0');
+  final dia =
+      fecha.day.toString().padLeft(
+            2,
+            '0',
+          );
 
-  final mes = fecha.month.toString().padLeft(2, '0');
+  final mes =
+      fecha.month.toString().padLeft(
+            2,
+            '0',
+          );
 
-  final hora = fecha.hour.toString().padLeft(2, '0');
+  final hora =
+      fecha.hour.toString().padLeft(
+            2,
+            '0',
+          );
 
-  final minuto = fecha.minute.toString().padLeft(2, '0');
+  final minuto =
+      fecha.minute.toString().padLeft(
+            2,
+            '0',
+          );
 
-  return '$dia/$mes/${fecha.year} $hora:$minuto';
+  return '$dia/$mes/${fecha.year} '
+      '$hora:$minuto';
 }

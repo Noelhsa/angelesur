@@ -277,9 +277,23 @@ class _MenuCartaPedidosState extends State<MenuCartaPedidos> {
     return Container(
       width: 340,
       height: double.infinity,
-      decoration: const BoxDecoration(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(left: BorderSide(color: _bordeSuave)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _bordeSuave,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(
+              alpha: 0.08,
+            ),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -365,7 +379,6 @@ class _MenuCartaPedidosState extends State<MenuCartaPedidos> {
                       ),
           ),
           _AccionesNuevaOrden(
-            onCancelar: widget.onCerrar,
             onGuardar: _guardar,
             guardando: widget.guardando,
           ),
@@ -1105,12 +1118,10 @@ class _ContenedorCampo extends StatelessWidget {
 }
 
 class _AccionesNuevaOrden extends StatelessWidget {
-  final VoidCallback onCancelar;
   final VoidCallback onGuardar;
   final bool guardando;
 
   const _AccionesNuevaOrden({
-    required this.onCancelar,
     required this.onGuardar,
     required this.guardando,
   });
@@ -1119,77 +1130,66 @@ class _AccionesNuevaOrden extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 62,
-      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+      padding: const EdgeInsets.fromLTRB(
+        10,
+        10,
+        10,
+        10,
+      ),
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: _bordeSuave)),
+        border: Border(
+          top: BorderSide(
+            color: _bordeSuave,
+          ),
+        ),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: SizedBox(
-              height: 34,
-              child: OutlinedButton(
-                onPressed: guardando ? null : onCancelar,
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: _bordeSuave),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
-                child: const Text(
-                  'Cancelar',
-                  style: TextStyle(
-                    color: _textoPrincipal,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: SizedBox(
-              height: 34,
-              child: ElevatedButton.icon(
-                onPressed: guardando ? null : onGuardar,
-                icon: guardando
-                    ? const SizedBox(
-                        width: 13,
-                        height: 13,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(
-                        Icons.save_outlined,
-                        color: Colors.white,
-                        size: 13,
-                      ),
-                label: Text(
-                  guardando ? 'Guardando' : 'Guardar',
-                  style: const TextStyle(
+      child: SizedBox(
+        width: double.infinity,
+        height: 40,
+        child: ElevatedButton.icon(
+          onPressed: guardando ? null : onGuardar,
+          icon: guardando
+              ? const SizedBox(
+                  width: 13,
+                  height: 13,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
                     color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
                   ),
+                )
+              : const Icon(
+                  Icons.save_outlined,
+                  color: Colors.white,
+                  size: 14,
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _verde,
-                  disabledBackgroundColor: _verde.withValues(alpha: 0.65),
-                  elevation: 4,
-                  shadowColor: _verde.withValues(alpha: 0.35),
-                  padding: EdgeInsets.zero,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
-              ),
+          label: Text(
+            guardando
+                ? 'Guardando...'
+                : 'Guardar Orden',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
             ),
           ),
-        ],
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _verde,
+            disabledBackgroundColor: _verde.withValues(
+              alpha: 0.65,
+            ),
+            elevation: 4,
+            shadowColor: _verde.withValues(
+              alpha: 0.35,
+            ),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+        ),
       ),
     );
   }
