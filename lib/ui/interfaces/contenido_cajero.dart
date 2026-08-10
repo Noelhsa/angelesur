@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/usuario.dart';
 import '../../services/api_client.dart';
 import '../../services/caja_api_service.dart';
+import '../../services/corte_pdf_service.dart';
 import '../../services/cortes_api_service.dart';
 import '../../utils/config_moneda.dart';
 
@@ -950,6 +951,7 @@ class _DialogoRegistroCortes extends StatefulWidget {
 }
 
 class _DialogoRegistroCortesState extends State<_DialogoRegistroCortes> {
+  final CortePdfService _cortePdfService = const CortePdfService();
   final TextEditingController _busquedaController = TextEditingController();
   final TextEditingController _aperturaDesdeController =
       TextEditingController();
@@ -959,6 +961,7 @@ class _DialogoRegistroCortesState extends State<_DialogoRegistroCortes> {
   final TextEditingController _cierreHastaController = TextEditingController();
   bool _cargando = true;
   bool _cargandoDetalle = false;
+  bool _exportandoPdf = false;
   String? _error;
   String? _errorDetalle;
   List<CorteResumen> _cortes = [];
@@ -1065,6 +1068,43 @@ class _DialogoRegistroCortesState extends State<_DialogoRegistroCortes> {
       _errorDetalle = mensaje;
       _cargandoDetalle = false;
     });
+  }
+
+  Future<void> _exportarDetallePdf() async {
+    final detalle = _detalle;
+    if (detalle == null || _exportandoPdf) {
+      return;
+    }
+
+    setState(() {
+      _exportandoPdf = true;
+    });
+
+    try {
+      final path = await _cortePdfService.exportarCorte(detalle);
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            path == null ? 'Exportacion cancelada' : 'PDF guardado: $path',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo exportar el corte a PDF'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _exportandoPdf = false;
+        });
+      }
+    }
   }
 
   void _limpiarFiltros() {
@@ -1193,6 +1233,8 @@ class _DialogoRegistroCortesState extends State<_DialogoRegistroCortes> {
                                 detalle: _detalle,
                                 cargando: _cargandoDetalle,
                                 error: _errorDetalle,
+                                exportandoPdf: _exportandoPdf,
+                                onExportarPdf: _exportarDetallePdf,
                               ),
                             ),
                           ],
@@ -1697,12 +1739,16 @@ class _TarjetaRegistroCorte extends StatelessWidget {
 class _DetalleRegistroCorte extends StatelessWidget {
   final CorteDetalle? detalle;
   final bool cargando;
+  final bool exportandoPdf;
   final String? error;
+  final VoidCallback onExportarPdf;
 
   const _DetalleRegistroCorte({
     required this.detalle,
     required this.cargando,
+    required this.exportandoPdf,
     required this.error,
+    required this.onExportarPdf,
   });
 
   @override
@@ -1745,6 +1791,37 @@ class _DetalleRegistroCorte extends StatelessWidget {
                 ),
               ),
               _BadgeEstadoCorte(estado: corte.estado),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: exportandoPdf ? null : onExportarPdf,
+                icon: Icon(
+                  exportandoPdf
+                      ? Icons.hourglass_empty
+                      : Icons.picture_as_pdf_outlined,
+                  size: 16,
+                  color: Colors.white,
+                ),
+                label: Text(
+                  exportandoPdf ? 'Exportando...' : 'Exportar PDF',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _verdeOscuro,
+                  disabledBackgroundColor: _textoSecundario,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(7),
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -2140,13 +2217,9 @@ class _TarjetaResumenCaja extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: subtituloVerde
-                  ? _verdeOscuro
-                  : _textoSecundario,
+              color: subtituloVerde ? _verdeOscuro : _textoSecundario,
               fontSize: 10,
-              fontWeight: subtituloVerde
-                  ? FontWeight.w800
-                  : FontWeight.w500,
+              fontWeight: subtituloVerde ? FontWeight.w800 : FontWeight.w500,
               height: 1.25,
             ),
           ),
