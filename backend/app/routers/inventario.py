@@ -93,7 +93,7 @@ def listar_inventario_actual(
     elif estado_stock == "STOCK_BAJO":
         filtros.append("stockActual > 0 AND stockActual <= 15")
     elif estado_stock == "EN_EXISTENCIA":
-        filtros.append("stockActual > 15")
+        filtros.append("stockActual > 0")
 
     if busqueda:
         filtros.append(

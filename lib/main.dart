@@ -25,6 +25,7 @@ import 'ui/interfaces/menu_superior_catalogo.dart';
 import 'ui/login/login_screen.dart';
 import 'ui/interfaces/contenido_devolucion.dart';
 import 'utils/config_moneda.dart';
+import 'utils/texto_busqueda.dart';
 
 const Color _fondoApp = Color(0xFF181A20);
 const Color _fondoContenido = Color(0xFFE2E2E2);
@@ -197,17 +198,23 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
   }
 
   List<Medicamento> get _medicamentosFiltrados {
-    final texto = _busquedaController.text.trim().toLowerCase();
+    final texto = normalizarTextoBusqueda(_busquedaController.text);
 
     if (texto.isEmpty) {
       return _medicamentos;
     }
 
     return _medicamentos.where((medicamento) {
-      return medicamento.nombre.toLowerCase().contains(texto) ||
-          medicamento.codigoBarras.toLowerCase().contains(texto) ||
-          medicamento.detalle.toLowerCase().contains(texto) ||
-          medicamento.categoria.toLowerCase().contains(texto);
+      final textoProducto = normalizarTextoBusqueda(
+        [
+          medicamento.nombre,
+          medicamento.codigoBarras,
+          medicamento.detalle,
+          medicamento.categoria,
+        ].join(' '),
+      );
+
+      return textoProducto.contains(texto);
     }).toList();
   }
 

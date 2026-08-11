@@ -89,8 +89,7 @@ class _ContenidoCatalogoInventarioState
               producto.categoria == _categoriaSeleccionada;
 
       final coincideEstado = switch (_estadoSeleccionado) {
-        'En existencia' =>
-          producto.estadoStock == EstadoStockInventario.enExistencia,
+        'En existencia' => producto.stockActual > 0,
         'Stock bajo' => producto.estadoStock == EstadoStockInventario.stockBajo,
         'Agotado' => producto.estadoStock == EstadoStockInventario.agotado,
         _ => true,
