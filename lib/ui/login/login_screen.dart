@@ -4,10 +4,23 @@ import '../../models/usuario.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_api_service.dart';
 
-const Color _fondoApp = Color(0xFF181A20);
-const Color _verde = Color(0xFF58D000);
-const Color _verdeOscuro = Color(0xFF2F6E00);
-const Color _texto = Color(0xFF101010);
+// ============================================================================
+// COLORES
+// ============================================================================
+
+const Color _azulPrincipal = Color(0xFF276AC2);
+const Color _azulBoton = Color(0xFF2D73D2);
+const Color _azulLink = Color(0xFF0755D7);
+
+const Color _fondoCampo = Color(0xFFF5F7FA);
+
+const Color _texto = Color(0xFF171717);
+const Color _textoSecundario = Color(0xFF616B7B);
+const Color _linea = Color(0xFFE2E5E9);
+
+// ============================================================================
+// LOGIN SCREEN
+// ============================================================================
 
 class LoginScreen extends StatefulWidget {
   final ValueChanged<Usuario> onLogin;
@@ -21,8 +34,13 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
+// ============================================================================
+// ESTADO
+// ============================================================================
+
 class _LoginScreenState extends State<LoginScreen> {
   final AuthApiService _authApiService = AuthApiService();
+
   final TextEditingController _usuarioController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
@@ -30,12 +48,21 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _ocultarPassword = true;
   String? _error;
 
+  // ==========================================================================
+  // LIBERAR CONTROLADORES
+  // ==========================================================================
+
   @override
   void dispose() {
     _usuarioController.dispose();
     _passwordController.dispose();
+
     super.dispose();
   }
+
+  // ==========================================================================
+  // INICIAR SESIÓN
+  // ==========================================================================
 
   Future<void> _iniciarSesion() async {
     final username = _usuarioController.text.trim();
@@ -45,6 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         _error = 'Ingresa usuario y contrasena';
       });
+
       return;
     }
 
@@ -71,6 +99,10 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // ==========================================================================
+  // MOSTRAR ERROR
+  // ==========================================================================
+
   void _mostrarError(String mensaje) {
     if (!mounted) {
       return;
@@ -82,125 +114,452 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
+  // ==========================================================================
+  // FECHA ACTUAL
+  // ==========================================================================
+
+  String _obtenerFechaActual() {
+    final fecha = DateTime.now();
+
+    const meses = <String>[
+      '',
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
+    ];
+
+    return '${fecha.day} de ${meses[fecha.month]}, ${fecha.year}';
+  }
+
+  // ==========================================================================
+  // INTERFAZ
+  // ==========================================================================
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _fondoApp,
-      body: Center(
-        child: Container(
-          width: 390,
-          padding: const EdgeInsets.fromLTRB(34, 32, 34, 30),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x33000000),
-                blurRadius: 20,
-                offset: Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Image.asset(
-                'assets/sistema/logo_principal.png',
-                height: 78,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(height: 22),
-              const Text(
-                'Iniciar sesion',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: _texto,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 24),
-              TextField(
-                controller: _usuarioController,
-                enabled: !_cargando,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'Usuario',
-                  prefixIcon: Icon(Icons.person_outline),
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: _passwordController,
-                enabled: !_cargando,
-                obscureText: _ocultarPassword,
-                onSubmitted: (_) => _iniciarSesion(),
-                decoration: InputDecoration(
-                  labelText: 'Contrasena',
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(
-                    onPressed: _cargando
-                        ? null
-                        : () {
-                            setState(() {
-                              _ocultarPassword = !_ocultarPassword;
-                            });
-                          },
-                    icon: Icon(
-                      _ocultarPassword
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
-                    ),
-                  ),
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  _error!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Color(0xFFE21F1F),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 22),
-              SizedBox(
-                height: 46,
-                child: ElevatedButton(
-                  onPressed: _cargando ? null : _iniciarSesion,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _verde,
-                    foregroundColor: _verdeOscuro,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(7),
-                    ),
-                  ),
-                  child: _cargando
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: _verdeOscuro,
-                          ),
-                        )
-                      : const Text(
-                          'Entrar',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final ancho = constraints.maxWidth;
+
+            return Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  // ==========================================================
+                  // PANEL AZUL IZQUIERDO
+                  // ==========================================================
+
+                  SizedBox(
+                    width: ancho * 0.36,
+                    height: double.infinity,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: _azulPrincipal,
+                        borderRadius: BorderRadius.circular(22),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 35,
+                          vertical: 35,
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              // ==================================================
+                              // BIENVENIDO
+                              // ==================================================
+
+                              const Text(
+                                'Bienvenido a',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+
+                              const SizedBox(height: 30),
+
+                              // ==================================================
+                              // LOGO
+                              // ==================================================
+
+                              Container(
+                                width: 100,
+                                height: 100,
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(22),
+                                  child: Image.asset(
+                                    'assets/sistema/isotipo_farmacia.png',
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (
+                                      context,
+                                      error,
+                                      stackTrace,
+                                    ) {
+                                      return const Icon(
+                                        Icons.local_pharmacy_outlined,
+                                        color: _azulPrincipal,
+                                        size: 45,
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(height: 30),
+
+                              // ==================================================
+                              // FARMACIA ANGELES
+                              // ==================================================
+
+                              const Text(
+                                'FARMACIA ANGELES',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.4,
+                                ),
+                              ),
+
+                              const SizedBox(height: 13),
+
+                              // ==================================================
+                              // FECHA
+                              // ==================================================
+
+                              Text(
+                                _obtenerFechaActual(),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Color(0xFFD3E0F1),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                ),
+                      ),
+                    ),
+                  ),
+
+                  // ==========================================================
+                  // ESPACIO ENTRE PANELES
+                  // ==========================================================
+
+                  const SizedBox(width: 28),
+
+                  // ==========================================================
+                  // PANEL DERECHO
+                  // ==========================================================
+
+                  Expanded(
+                    child: Center(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 55,
+                          vertical: 35,
+                        ),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            maxWidth: 455,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // ==================================================
+                              // TITULO
+                              // ==================================================
+
+                              const Text(
+                                'Iniciar sesión',
+                                style: TextStyle(
+                                  color: _texto,
+                                  fontSize: 31,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+
+                              const SizedBox(height: 34),
+
+                              // ==================================================
+                              // USUARIO
+                              // ==================================================
+
+                              const Text(
+                                'Usuario',
+                                style: TextStyle(
+                                  color: _texto,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+
+                              const SizedBox(height: 8),
+
+                              TextField(
+                                controller: _usuarioController,
+                                enabled: !_cargando,
+                                textInputAction: TextInputAction.next,
+                                style: const TextStyle(
+                                  color: _texto,
+                                  fontSize: 15,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'Ingresa tu usuario',
+                                  hintStyle: const TextStyle(
+                                    color: Color(0xFF697488),
+                                    fontSize: 15,
+                                  ),
+                                  filled: true,
+                                  fillColor: _fondoCampo,
+                                  contentPadding:
+                                      const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 17,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(7),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(7),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(7),
+                                    borderSide: const BorderSide(
+                                      color: _azulBoton,
+                                      width: 1.2,
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(height: 22),
+
+                              // ==================================================
+                              // CONTRASEÑA
+                              // ==================================================
+
+                              const Text(
+                                'Contraseña',
+                                style: TextStyle(
+                                  color: _texto,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+
+                              const SizedBox(height: 8),
+
+                              TextField(
+                                controller: _passwordController,
+                                enabled: !_cargando,
+                                obscureText: _ocultarPassword,
+                                textInputAction: TextInputAction.done,
+                                onSubmitted: (_) {
+                                  if (!_cargando) {
+                                    _iniciarSesion();
+                                  }
+                                },
+                                style: const TextStyle(
+                                  color: _texto,
+                                  fontSize: 15,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'Ingresa tu contraseña',
+                                  hintStyle: const TextStyle(
+                                    color: Color(0xFF697488),
+                                    fontSize: 15,
+                                  ),
+                                  filled: true,
+                                  fillColor: _fondoCampo,
+                                  contentPadding:
+                                      const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 17,
+                                  ),
+                                  suffixIcon: IconButton(
+                                    tooltip: _ocultarPassword
+                                        ? 'Mostrar contraseña'
+                                        : 'Ocultar contraseña',
+                                    onPressed: _cargando
+                                        ? null
+                                        : () {
+                                            setState(() {
+                                              _ocultarPassword =
+                                                  !_ocultarPassword;
+                                            });
+                                          },
+                                    icon: Icon(
+                                      _ocultarPassword
+                                          ? Icons.visibility_outlined
+                                          : Icons.visibility_off_outlined,
+                                      size: 20,
+                                      color: _textoSecundario,
+                                    ),
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(7),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(7),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(7),
+                                    borderSide: const BorderSide(
+                                      color: _azulBoton,
+                                      width: 1.2,
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                              // ==================================================
+                              // ERROR
+                              // ==================================================
+
+                              if (_error != null) ...[
+                                const SizedBox(height: 12),
+                                Text(
+                                  _error!,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Color(0xFFE21F1F),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+
+                              // ==================================================
+                              // BOTÓN INGRESAR
+                              // ==================================================
+
+                              const SizedBox(height: 48),
+
+                              SizedBox(
+                                height: 47,
+                                child: ElevatedButton(
+                                  onPressed:
+                                      _cargando ? null : _iniciarSesion,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _azulBoton,
+                                    foregroundColor: Colors.white,
+                                    disabledBackgroundColor:
+                                        _azulBoton.withValues(
+                                      alpha: 0.65,
+                                    ),
+                                    disabledForegroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(7),
+                                    ),
+                                  ),
+                                  child: _cargando
+                                      ? const SizedBox(
+                                          width: 19,
+                                          height: 19,
+                                          child:
+                                              CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : const Text(
+                                          'Ingresar',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                ),
+                              ),
+
+                              const SizedBox(height: 31),
+
+                              // ==================================================
+                              // LÍNEA
+                              // ==================================================
+
+                              Container(
+                                height: 1,
+                                color: _linea,
+                              ),
+
+                              const SizedBox(height: 5),
+
+                              // ==================================================
+                              // RECUPERACIÓN
+                              // ==================================================
+
+                              Column(
+                                children: [
+                                  const Text(
+                                    '¿No recuerdas tu contraseña?',
+                                    style: TextStyle(
+                                      color: _textoSecundario,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 1),
+
+                                  TextButton(
+                                    onPressed: () {},
+                                    style: TextButton.styleFrom(
+                                      padding: EdgeInsets.zero,
+                                      minimumSize: const Size(0, 25),
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    child: const Text(
+                                      'Contactar al administrador',
+                                      style: TextStyle(
+                                        color: _azulLink,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
