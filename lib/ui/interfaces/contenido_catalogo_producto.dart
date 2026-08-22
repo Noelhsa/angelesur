@@ -4,14 +4,14 @@ import '../../services/api_client.dart';
 import '../../services/productos_api_service.dart';
 import 'menu_carta_catalogo_producto.dart';
 
-const Color _fondoPagina = Color(0xFFF8F6F5);
+const Color _fondoPagina = Color(0xFFE2E2E2);
 const Color _verdeOscuro = Color(0xFF397800);
 const Color _azul = Color(0xFF0B63CE);
 const Color _rojo = Color(0xFFE02020);
 const Color _textoPrincipal = Color(0xFF1F2933);
 const Color _textoSecundario = Color(0xFF667085);
 const Color _bordeSuave = Color(0xFFD9E6D3);
-const Color _grisCampo = Color(0xFFF8F7F4);
+const Color _grisCampo = Color(0xFFFFFFFF);
 
 const List<String> _categoriasProducto = [
   'General',
@@ -51,6 +51,7 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
   String? _error;
 
   List<ProductoCatalogoApi> _productos = [];
+
   int _pagina = 1;
   int _limite = 25;
   int _totalProductos = 0;
@@ -111,7 +112,9 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
     }).toList();
   }
 
-  Future<void> _cargarProductos({int? pagina}) async {
+  Future<void> _cargarProductos({
+    int? pagina,
+  }) async {
     setState(() {
       _cargando = true;
       _error = null;
@@ -129,6 +132,7 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
         'Inactivo' => false,
         _ => null,
       };
+
       final categoria = _categoriaSeleccionada == 'Todas las categorias'
           ? null
           : _categoriaSeleccionada;
@@ -164,7 +168,9 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
         _cargando = false;
       });
     } on ApiException catch (error) {
-      _mostrarError(error.message);
+      _mostrarError(
+        error.message,
+      );
     } catch (_) {
       _mostrarError(
         'No se pudo cargar el catalogo de productos',
@@ -172,7 +178,9 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
     }
   }
 
-  void _mostrarError(String mensaje) {
+  void _mostrarError(
+    String mensaje,
+  ) {
     if (!mounted) {
       return;
     }
@@ -184,14 +192,18 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
     });
   }
 
-  void _mostrarMensaje(String mensaje) {
+  void _mostrarMensaje(
+    String mensaje,
+  ) {
     if (!mounted) {
       return;
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(mensaje),
+        content: Text(
+          mensaje,
+        ),
       ),
     );
   }
@@ -217,7 +229,9 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
         },
       );
     } on ApiException catch (error) {
-      _mostrarMensaje(error.message);
+      _mostrarMensaje(
+        error.message,
+      );
     } catch (_) {
       _mostrarMensaje(
         'No se pudo cargar el detalle',
@@ -267,7 +281,9 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
 
       await _cargarProductos();
     } on ApiException catch (error) {
-      _mostrarMensaje(error.message);
+      _mostrarMensaje(
+        error.message,
+      );
     } catch (_) {
       _mostrarMensaje(
         'No se pudo guardar el producto',
@@ -309,7 +325,9 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
 
       await _cargarProductos();
     } on ApiException catch (error) {
-      _mostrarMensaje(error.message);
+      _mostrarMensaje(
+        error.message,
+      );
     } catch (_) {
       _mostrarMensaje(
         'No se pudo registrar el producto',
@@ -342,7 +360,9 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
 
       await _cargarProductos();
     } on ApiException catch (error) {
-      _mostrarMensaje(error.message);
+      _mostrarMensaje(
+        error.message,
+      );
     } catch (_) {
       _mostrarMensaje(
         'No se pudo cambiar el estado del producto',
@@ -390,7 +410,10 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
                       setState(() {
                         _categoriaSeleccionada = value;
                       });
-                      _cargarProductos(pagina: 1);
+
+                      _cargarProductos(
+                        pagina: 1,
+                      );
                     },
                     onEstadoChanged: (value) {
                       if (value == null) {
@@ -400,7 +423,10 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
                       setState(() {
                         _estadoSeleccionado = value;
                       });
-                      _cargarProductos(pagina: 1);
+
+                      _cargarProductos(
+                        pagina: 1,
+                      );
                     },
                     onTipoChanged: (value) {
                       if (value == null) {
@@ -411,9 +437,15 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
                         _tipoSeleccionado = value;
                       });
 
-                      _cargarProductos(pagina: 1);
+                      _cargarProductos(
+                        pagina: 1,
+                      );
                     },
-                    onBuscar: () => _cargarProductos(pagina: 1),
+                    onBuscar: () {
+                      _cargarProductos(
+                        pagina: 1,
+                      );
+                    },
                     onRefrescar: _cargarProductos,
                     onNuevoProducto: () {
                       setState(() {
@@ -470,8 +502,16 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
                     limite: _limite,
                     hayAnterior: _hayAnterior,
                     haySiguiente: _haySiguiente,
-                    onAnterior: () => _cargarProductos(pagina: _pagina - 1),
-                    onSiguiente: () => _cargarProductos(pagina: _pagina + 1),
+                    onAnterior: () {
+                      _cargarProductos(
+                        pagina: _pagina - 1,
+                      );
+                    },
+                    onSiguiente: () {
+                      _cargarProductos(
+                        pagina: _pagina + 1,
+                      );
+                    },
                   ),
                 ],
               ),
@@ -492,20 +532,24 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
   }
 }
 
+// ============================================================================
+// PANEL SUPERIOR DE FILTROS
+// ============================================================================
+
 class _PanelFiltrosProducto extends StatelessWidget {
   final TextEditingController busquedaController;
 
   final String categoriaSeleccionada;
   final List<String> categorias;
+
   final String estadoSeleccionado;
   final String tipoSeleccionado;
+
   final bool procesando;
   final bool soloLectura;
 
   final ValueChanged<String?> onCategoriaChanged;
-
   final ValueChanged<String?> onEstadoChanged;
-
   final ValueChanged<String?> onTipoChanged;
 
   final VoidCallback onBuscar;
@@ -531,6 +575,7 @@ class _PanelFiltrosProducto extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.fromLTRB(
         18,
         14,
@@ -538,24 +583,23 @@ class _PanelFiltrosProducto extends StatelessWidget {
         14,
       ),
       decoration: BoxDecoration(
-        color: _fondoPagina,
+        color: Colors.white,
         border: Border.all(
           color: _bordeSuave,
         ),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Wrap(
-        spacing: 14,
-        runSpacing: 12,
-        crossAxisAlignment: WrapCrossAlignment.end,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SizedBox(
             width: 240,
             child: _CampoBusqueda(
               controller: busquedaController,
-              onSubmitted: onBuscar,
+              onBuscar: onBuscar,
             ),
           ),
+          const SizedBox(width: 14),
           SizedBox(
             width: 175,
             child: _CampoDropdown(
@@ -569,15 +613,17 @@ class _PanelFiltrosProducto extends StatelessWidget {
               onChanged: onTipoChanged,
             ),
           ),
+          const SizedBox(width: 14),
           SizedBox(
             width: 190,
             child: _CampoDropdown(
-              etiqueta: 'Categoria',
+              etiqueta: 'Categoría',
               valor: categoriaSeleccionada,
               opciones: categorias,
               onChanged: onCategoriaChanged,
             ),
           ),
+          const SizedBox(width: 14),
           SizedBox(
             width: 170,
             child: _CampoDropdown(
@@ -591,69 +637,132 @@ class _PanelFiltrosProducto extends StatelessWidget {
               onChanged: onEstadoChanged,
             ),
           ),
-          _BotonSecundarioCatalogo(
-            texto: 'Buscar',
-            icono: Icons.search,
-            onTap: onBuscar,
-          ),
-          _BotonSecundarioCatalogo(
-            texto: 'Actualizar',
-            icono: Icons.refresh,
-            onTap: onRefrescar,
-          ),
-          if (!soloLectura)
-            _BotonPrincipalCatalogo(
-              texto: procesando ? 'Guardando...' : 'Nuevo Producto',
-              icono: Icons.add,
-              onTap: procesando ? null : onNuevoProducto,
+          const Spacer(),
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: _BotonSecundarioCatalogo(
+              texto: 'Actualizar',
+              icono: Icons.refresh,
+              onTap: onRefrescar,
             ),
+          ),
+          if (!soloLectura) ...[
+            const SizedBox(width: 10),
+            Padding(
+              padding: const EdgeInsets.only(top: 5),
+              child: _BotonPrincipalCatalogo(
+                texto: procesando ? 'Guardando...' : 'Nuevo Producto',
+                icono: Icons.add,
+                onTap: procesando ? null : onNuevoProducto,
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
+// ============================================================================
+// CAMPO DE BÚSQUEDA
+// ============================================================================
+
 class _CampoBusqueda extends StatelessWidget {
   final TextEditingController controller;
-  final VoidCallback onSubmitted;
+  final VoidCallback onBuscar;
 
   const _CampoBusqueda({
     required this.controller,
-    required this.onSubmitted,
+    required this.onBuscar,
   });
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      onSubmitted: (_) {
-        onSubmitted();
-      },
-      decoration: InputDecoration(
-        labelText: 'Buscar producto',
-        hintText: 'Nombre, codigo o categoria',
-        prefixIcon: const Icon(
-          Icons.search,
-          size: 18,
-        ),
-        filled: true,
-        fillColor: _grisCampo,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(5),
-          borderSide: const BorderSide(
-            color: Color(0xFFC8D6C0),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Buscar',
+          style: TextStyle(
+            color: _textoSecundario,
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
           ),
         ),
-        isDense: true,
-      ),
+        const SizedBox(height: 6),
+        SizedBox(
+          height: 34,
+          child: TextField(
+            controller: controller,
+            onSubmitted: (_) {
+              onBuscar();
+            },
+            style: const TextStyle(
+              color: _textoPrincipal,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: _grisCampo,
+              hintText: 'Nombre, codigo o categoria',
+              hintStyle: const TextStyle(
+                color: _textoPrincipal,
+                fontSize: 11,
+                fontWeight: FontWeight.w400,
+              ),
+              prefixIcon: const Icon(
+                Icons.search,
+                size: 16,
+              ),
+              suffixIcon: IconButton(
+                onPressed: onBuscar,
+                padding: EdgeInsets.zero,
+                icon: const Icon(
+                  Icons.arrow_forward,
+                  size: 16,
+                ),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 7,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(5),
+                borderSide: const BorderSide(
+                  color: Color(0xFFC8D6C0),
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(5),
+                borderSide: const BorderSide(
+                  color: Color(0xFFC8D6C0),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(5),
+                borderSide: const BorderSide(
+                  color: _verdeOscuro,
+                  width: 1.2,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
+
+// ============================================================================
+// DROPDOWNS
+// ============================================================================
 
 class _CampoDropdown extends StatelessWidget {
   final String etiqueta;
   final String valor;
   final List<String> opciones;
+
   final ValueChanged<String?> onChanged;
 
   const _CampoDropdown({
@@ -665,33 +774,85 @@ class _CampoDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final value = opciones.contains(valor) ? valor : opciones.first;
+    final valorSeguro = opciones.contains(valor) ? valor : opciones.first;
 
-    return DropdownButtonFormField<String>(
-      initialValue: value,
-      isExpanded: true,
-      decoration: InputDecoration(
-        labelText: etiqueta,
-        filled: true,
-        fillColor: _grisCampo,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(5),
-          borderSide: const BorderSide(
-            color: Color(0xFFC8D6C0),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          etiqueta,
+          style: const TextStyle(
+            color: _textoSecundario,
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
           ),
         ),
-        isDense: true,
-      ),
-      items: opciones.map((opcion) {
-        return DropdownMenuItem<String>(
-          value: opcion,
-          child: Text(opcion),
-        );
-      }).toList(),
-      onChanged: onChanged,
+        const SizedBox(height: 6),
+        SizedBox(
+          height: 34,
+          child: DropdownButtonFormField<String>(
+            initialValue: valorSeguro,
+            isExpanded: true,
+            icon: const Icon(
+              Icons.keyboard_arrow_down,
+              size: 16,
+              color: _textoSecundario,
+            ),
+            style: const TextStyle(
+              color: _textoPrincipal,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: _grisCampo,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 7,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(5),
+                borderSide: const BorderSide(
+                  color: Color(0xFFC8D6C0),
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(5),
+                borderSide: const BorderSide(
+                  color: Color(0xFFC8D6C0),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(5),
+                borderSide: const BorderSide(
+                  color: _verdeOscuro,
+                  width: 1.2,
+                ),
+              ),
+            ),
+            items: opciones.map(
+              (opcion) {
+                return DropdownMenuItem<String>(
+                  value: opcion,
+                  child: Text(
+                    opcion,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              },
+            ).toList(),
+            onChanged: onChanged,
+          ),
+        ),
+      ],
     );
   }
 }
+
+// ============================================================================
+// BOTÓN ACTUALIZAR
+// ============================================================================
 
 class _BotonSecundarioCatalogo extends StatelessWidget {
   final String texto;
@@ -707,37 +868,47 @@ class _BotonSecundarioCatalogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 42,
-      child: OutlinedButton.icon(
+      width: 138,
+      height: 32,
+      child: ElevatedButton.icon(
         onPressed: onTap,
         icon: Icon(
           icono,
-          size: 16,
-          color: _textoSecundario,
+          size: 14,
+          color: Colors.white,
         ),
         label: Text(
           texto,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
-            color: _textoPrincipal,
-            fontSize: 12,
+            color: Colors.white,
+            fontSize: 10,
             fontWeight: FontWeight.w800,
           ),
         ),
-        style: OutlinedButton.styleFrom(
+        style: ElevatedButton.styleFrom(
+          elevation: 2,
+          backgroundColor: const Color(0xFF417A00),
+          foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(
-            horizontal: 14,
+            horizontal: 10,
           ),
-          side: const BorderSide(
-            color: Color(0xFFC8D6C0),
+          shadowColor: const Color(0xFF417A00).withValues(
+            alpha: 0.25,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(5),
+            borderRadius: BorderRadius.circular(6),
           ),
         ),
       ),
     );
   }
 }
+
+// ============================================================================
+// BOTÓN NUEVO PRODUCTO
+// ============================================================================
 
 class _BotonPrincipalCatalogo extends StatelessWidget {
   final String texto;
@@ -753,30 +924,37 @@ class _BotonPrincipalCatalogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 42,
+      width: 138,
+      height: 32,
       child: ElevatedButton.icon(
         onPressed: onTap,
         icon: Icon(
           icono,
-          size: 16,
+          size: 14,
           color: Colors.white,
         ),
         label: Text(
           texto,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.w900,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
           ),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: _verdeOscuro,
-          elevation: 0,
+          elevation: 2,
+          backgroundColor: _azul,
+          foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(
-            horizontal: 16,
+            horizontal: 10,
+          ),
+          shadowColor: _azul.withValues(
+            alpha: 0.25,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(5),
+            borderRadius: BorderRadius.circular(6),
           ),
         ),
       ),
@@ -784,15 +962,17 @@ class _BotonPrincipalCatalogo extends StatelessWidget {
   }
 }
 
+// ============================================================================
+// TABLA DE PRODUCTOS
+// ============================================================================
+
 class _TablaProductos extends StatelessWidget {
   final List<ProductoCatalogoApi> productos;
   final bool procesando;
   final bool soloLectura;
 
   final ValueChanged<ProductoCatalogoApi> onDetalle;
-
   final ValueChanged<ProductoCatalogoApi> onEditar;
-
   final ValueChanged<ProductoCatalogoApi> onCambiarEstado;
 
   const _TablaProductos({
@@ -828,6 +1008,10 @@ class _TablaProductos extends StatelessWidget {
   }
 }
 
+// ============================================================================
+// PAGINADOR
+// ============================================================================
+
 class _PaginadorCatalogoProducto extends StatelessWidget {
   final int pagina;
   final int totalPaginas;
@@ -852,20 +1036,32 @@ class _PaginadorCatalogoProducto extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final desde = total == 0 ? 0 : ((pagina - 1) * limite) + 1;
-    final hasta = total == 0 ? 0 : (desde + limite - 1).clamp(0, total);
+
+    final hasta = total == 0
+        ? 0
+        : (desde + limite - 1).clamp(
+            0,
+            total,
+          );
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 8,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _bordeSuave),
+        border: Border.all(
+          color: _bordeSuave,
+        ),
       ),
       child: Row(
         children: [
           Expanded(
             child: Text(
-              '$desde-$hasta de $total | Pagina $pagina de $totalPaginas',
+              '$desde-$hasta de $total | '
+              'Pagina $pagina de $totalPaginas',
               style: const TextStyle(
                 color: _textoSecundario,
                 fontSize: 12,
@@ -876,13 +1072,17 @@ class _PaginadorCatalogoProducto extends StatelessWidget {
           IconButton(
             onPressed: hayAnterior ? onAnterior : null,
             tooltip: 'Pagina anterior',
-            icon: const Icon(Icons.chevron_left),
+            icon: const Icon(
+              Icons.chevron_left,
+            ),
             color: _verdeOscuro,
           ),
           IconButton(
             onPressed: haySiguiente ? onSiguiente : null,
             tooltip: 'Pagina siguiente',
-            icon: const Icon(Icons.chevron_right),
+            icon: const Icon(
+              Icons.chevron_right,
+            ),
             color: _verdeOscuro,
           ),
         ],
@@ -891,15 +1091,17 @@ class _PaginadorCatalogoProducto extends StatelessWidget {
   }
 }
 
+// ============================================================================
+// FILA DE PRODUCTO
+// ============================================================================
+
 class _FilaProductoCatalogo extends StatelessWidget {
   final ProductoCatalogoApi producto;
   final bool procesando;
   final bool soloLectura;
 
   final ValueChanged<ProductoCatalogoApi> onDetalle;
-
   final ValueChanged<ProductoCatalogoApi> onEditar;
-
   final ValueChanged<ProductoCatalogoApi> onCambiarEstado;
 
   const _FilaProductoCatalogo({
@@ -932,7 +1134,10 @@ class _FilaProductoCatalogo extends StatelessWidget {
               alpha: 0.05,
             ),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: const Offset(
+              0,
+              4,
+            ),
           ),
         ],
       ),
@@ -1134,6 +1339,10 @@ class _FilaProductoCatalogo extends StatelessWidget {
   }
 }
 
+// ============================================================================
+// MÉTRICAS
+// ============================================================================
+
 class _MetricaProductoCatalogo extends StatelessWidget {
   final String titulo;
   final Widget child;
@@ -1171,6 +1380,10 @@ class _MetricaProductoCatalogo extends StatelessWidget {
   }
 }
 
+// ============================================================================
+// BADGE TIPO
+// ============================================================================
+
 class _Badge extends StatelessWidget {
   final String texto;
 
@@ -1204,6 +1417,10 @@ class _Badge extends StatelessWidget {
   }
 }
 
+// ============================================================================
+// BADGE ESTADO
+// ============================================================================
+
 class _BadgeEstado extends StatelessWidget {
   final bool activo;
 
@@ -1236,6 +1453,10 @@ class _BadgeEstado extends StatelessWidget {
     );
   }
 }
+
+// ============================================================================
+// ESTADO DE CARGA
+// ============================================================================
 
 class _EstadoProductos extends StatelessWidget {
   final String mensaje;
@@ -1283,6 +1504,10 @@ class _EstadoProductos extends StatelessWidget {
     );
   }
 }
+
+// ============================================================================
+// DIÁLOGO CREAR / EDITAR PRODUCTO
+// ============================================================================
 
 class _DialogoProducto extends StatefulWidget {
   final ProductoCatalogoApi? producto;
@@ -1352,13 +1577,9 @@ class _DialogoProductoState extends State<_DialogoProducto> {
   ];
 
   late final TextEditingController _codigoController;
-
   late final TextEditingController _nombreController;
-
   late final TextEditingController _descripcionController;
-
   late final TextEditingController _sustanciaController;
-
   late final TextEditingController _dosisCantidadController;
 
   late String _tipo;
@@ -1395,7 +1616,9 @@ class _DialogoProductoState extends State<_DialogoProducto> {
       text: producto?.sustanciaActiva ?? '',
     );
 
-    final dosis = _separarDosis(producto?.dosis);
+    final dosis = _separarDosis(
+      producto?.dosis,
+    );
 
     _dosisCantidadController = TextEditingController(
       text: dosis.cantidad,
@@ -1409,7 +1632,9 @@ class _DialogoProductoState extends State<_DialogoProducto> {
 
     _categoria = _opcionesCategoria(
       producto?.categoria,
-    ).contains(producto?.categoria)
+    ).contains(
+      producto?.categoria,
+    )
         ? producto!.categoria!
         : 'General';
 
@@ -1429,7 +1654,11 @@ class _DialogoProductoState extends State<_DialogoProducto> {
         ? producto!.edad!
         : 'GENERAL';
 
-    _dosisUnidad = _unidadesDosis.contains(dosis.unidad) ? dosis.unidad : 'mg';
+    _dosisUnidad = _unidadesDosis.contains(
+      dosis.unidad,
+    )
+        ? dosis.unidad
+        : 'mg';
 
     _manejaCaducidad = producto?.manejaCaducidad ?? false;
 
@@ -1462,7 +1691,9 @@ class _DialogoProductoState extends State<_DialogoProducto> {
 
     if (_tipo == 'MEDICAMENTO') {
       infoMedicamento = {
-        'presentacion': _presentacionNormalizada(_presentacion),
+        'presentacion': _presentacionNormalizada(
+          _presentacion,
+        ),
         'viaAdministracion': _via,
         'edad': _edad,
         'requiereReceta': _requiereReceta,
@@ -1500,7 +1731,9 @@ class _DialogoProductoState extends State<_DialogoProducto> {
     return '$cantidad $_dosisUnidad';
   }
 
-  String _presentacionNormalizada(String value) {
+  String _presentacionNormalizada(
+    String value,
+  ) {
     return switch (value) {
       'Capsula' => 'CAPSULA',
       'Tableta' => 'TABLETA',
@@ -1549,16 +1782,18 @@ class _DialogoProductoState extends State<_DialogoProducto> {
                         labelText: 'Tipo',
                         border: OutlineInputBorder(),
                       ),
-                      items: _tipos.map((tipo) {
-                        return DropdownMenuItem<String>(
-                          value: tipo,
-                          child: Text(
-                            _etiqueta(
-                              tipo,
+                      items: _tipos.map(
+                        (tipo) {
+                          return DropdownMenuItem<String>(
+                            value: tipo,
+                            child: Text(
+                              _etiqueta(
+                                tipo,
+                              ),
                             ),
-                          ),
-                        );
-                      }).toList(),
+                          );
+                        },
+                      ).toList(),
                       onChanged: (value) {
                         if (value == null) {
                           return;
@@ -1589,7 +1824,9 @@ class _DialogoProductoState extends State<_DialogoProducto> {
                 DropdownButtonFormField<String>(
                   initialValue: _opcionesCategoria(
                     _categoria,
-                  ).contains(_categoria)
+                  ).contains(
+                    _categoria,
+                  )
                       ? _categoria
                       : 'General',
                   decoration: const InputDecoration(
@@ -1598,14 +1835,16 @@ class _DialogoProductoState extends State<_DialogoProducto> {
                   ),
                   items: _opcionesCategoria(
                     _categoria,
-                  ).map((categoria) {
-                    return DropdownMenuItem<String>(
-                      value: categoria,
-                      child: Text(
-                        categoria,
-                      ),
-                    );
-                  }).toList(),
+                  ).map(
+                    (categoria) {
+                      return DropdownMenuItem<String>(
+                        value: categoria,
+                        child: Text(
+                          categoria,
+                        ),
+                      );
+                    },
+                  ).toList(),
                   onChanged: (value) {
                     if (value == null) {
                       return;
@@ -1637,19 +1876,25 @@ class _DialogoProductoState extends State<_DialogoProducto> {
                 controlAffinity: ListTileControlAffinity.leading,
               ),
               if (esMedicamento) ...[
-                const Divider(height: 24),
+                const Divider(
+                  height: 24,
+                ),
                 DropdownButtonFormField<String>(
                   initialValue: _presentacion,
                   decoration: const InputDecoration(
                     labelText: 'Presentacion',
                     border: OutlineInputBorder(),
                   ),
-                  items: _presentaciones.map((presentacion) {
-                    return DropdownMenuItem<String>(
-                      value: presentacion,
-                      child: Text(presentacion),
-                    );
-                  }).toList(),
+                  items: _presentaciones.map(
+                    (presentacion) {
+                      return DropdownMenuItem<String>(
+                        value: presentacion,
+                        child: Text(
+                          presentacion,
+                        ),
+                      );
+                    },
+                  ).toList(),
                   onChanged: (value) {
                     if (value == null) {
                       return;
@@ -1672,16 +1917,18 @@ class _DialogoProductoState extends State<_DialogoProducto> {
                           labelText: 'Via de administracion',
                           border: OutlineInputBorder(),
                         ),
-                        items: _vias.map((via) {
-                          return DropdownMenuItem<String>(
-                            value: via,
-                            child: Text(
-                              _etiqueta(
-                                via,
+                        items: _vias.map(
+                          (via) {
+                            return DropdownMenuItem<String>(
+                              value: via,
+                              child: Text(
+                                _etiqueta(
+                                  via,
+                                ),
                               ),
-                            ),
-                          );
-                        }).toList(),
+                            );
+                          },
+                        ).toList(),
                         onChanged: (value) {
                           if (value == null) {
                             return;
@@ -1703,16 +1950,18 @@ class _DialogoProductoState extends State<_DialogoProducto> {
                           labelText: 'Edad',
                           border: OutlineInputBorder(),
                         ),
-                        items: _edades.map((edad) {
-                          return DropdownMenuItem<String>(
-                            value: edad,
-                            child: Text(
-                              _etiqueta(
-                                edad,
+                        items: _edades.map(
+                          (edad) {
+                            return DropdownMenuItem<String>(
+                              value: edad,
+                              child: Text(
+                                _etiqueta(
+                                  edad,
+                                ),
                               ),
-                            ),
-                          );
-                        }).toList(),
+                            );
+                          },
+                        ).toList(),
                         onChanged: (value) {
                           if (value == null) {
                             return;
@@ -1754,12 +2003,16 @@ class _DialogoProductoState extends State<_DialogoProducto> {
                           labelText: 'Unidad',
                           border: OutlineInputBorder(),
                         ),
-                        items: _unidadesDosis.map((unidad) {
-                          return DropdownMenuItem<String>(
-                            value: unidad,
-                            child: Text(unidad),
-                          );
-                        }).toList(),
+                        items: _unidadesDosis.map(
+                          (unidad) {
+                            return DropdownMenuItem<String>(
+                              value: unidad,
+                              child: Text(
+                                unidad,
+                              ),
+                            );
+                          },
+                        ).toList(),
                         onChanged: (value) {
                           if (value == null) {
                             return;
@@ -1824,6 +2077,10 @@ class _DialogoProductoState extends State<_DialogoProducto> {
   }
 }
 
+// ============================================================================
+// CAMPO DE TEXTO DE DIÁLOGO
+// ============================================================================
+
 class _CampoTexto extends StatelessWidget {
   final String label;
   final TextEditingController controller;
@@ -1847,6 +2104,10 @@ class _CampoTexto extends StatelessWidget {
     );
   }
 }
+
+// ============================================================================
+// DIÁLOGO DETALLE PRODUCTO
+// ============================================================================
 
 class _DialogoDetalleProducto extends StatelessWidget {
   final ProductoCatalogoApi producto;
@@ -1898,7 +2159,9 @@ class _DialogoDetalleProducto extends StatelessWidget {
               producto.descripcion ?? 'Sin descripcion',
             ),
             if (producto.esMedicamento) ...[
-              const Divider(height: 22),
+              const Divider(
+                height: 22,
+              ),
               _DatoDetalle(
                 'Presentacion',
                 producto.presentacion ?? 'Sin presentacion',
@@ -1949,6 +2212,10 @@ class _DialogoDetalleProducto extends StatelessWidget {
   }
 }
 
+// ============================================================================
+// DATO DEL DETALLE
+// ============================================================================
+
 class _DatoDetalle extends StatelessWidget {
   final String label;
   final String value;
@@ -1994,7 +2261,13 @@ class _DatoDetalle extends StatelessWidget {
   }
 }
 
-String? _limpiar(String value) {
+// ============================================================================
+// FUNCIONES AUXILIARES
+// ============================================================================
+
+String? _limpiar(
+  String value,
+) {
   final text = value.trim();
 
   return text.isEmpty ? null : text;
@@ -2022,7 +2295,9 @@ List<String> _opcionesCategoria([
   return opciones;
 }
 
-_DosisEditada _separarDosis(String? value) {
+_DosisEditada _separarDosis(
+  String? value,
+) {
   final text = value?.trim() ?? '';
 
   if (text.isEmpty) {
@@ -2032,7 +2307,9 @@ _DosisEditada _separarDosis(String? value) {
     );
   }
 
-  final parts = text.split(RegExp(r'\s+'));
+  final parts = text.split(
+    RegExp(r'\s+'),
+  );
 
   if (parts.length < 2) {
     return _DosisEditada(
@@ -2042,12 +2319,19 @@ _DosisEditada _separarDosis(String? value) {
   }
 
   return _DosisEditada(
-    cantidad: parts.sublist(0, parts.length - 1).join(' '),
+    cantidad: parts
+        .sublist(
+          0,
+          parts.length - 1,
+        )
+        .join(' '),
     unidad: parts.last,
   );
 }
 
-String _presentacionVisible(String? value) {
+String _presentacionVisible(
+  String? value,
+) {
   return switch (value) {
     'CAPSULA' => 'Capsula',
     'TABLETA' => 'Tableta',
@@ -2074,7 +2358,9 @@ class _DosisEditada {
   });
 }
 
-String _etiqueta(String value) {
+String _etiqueta(
+  String value,
+) {
   if (value.isEmpty) {
     return value;
   }
