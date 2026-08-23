@@ -383,6 +383,10 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // ==============================================================
+          // CONTENIDO PRINCIPAL
+          // ==============================================================
+
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(
@@ -402,6 +406,12 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
                     tipoSeleccionado: _tipoSeleccionado,
                     procesando: _procesando,
                     soloLectura: widget.soloLectura,
+
+                    // IMPORTANTE:
+                    // permite adaptar la barra cuando el menú
+                    // derecho está abierto.
+                    menuNuevoProductoAbierto: _mostrarMenuNuevoProducto,
+
                     onCategoriaChanged: (value) {
                       if (value == null) {
                         return;
@@ -517,14 +527,53 @@ class _ContenidoCatalogoProductoState extends State<ContenidoCatalogoProducto> {
               ),
             ),
           ),
+
+          // ==============================================================
+          // MENÚ NUEVO PRODUCTO
+          //
+          // Se eleva 82 px como en la versión que te gustó,
+          // pero además aumentamos su altura para que llegue
+          // más abajo y no quede el hueco gris.
+          // ==============================================================
+
           if (_mostrarMenuNuevoProducto && !widget.soloLectura)
-            MenuCartaCatalogoProducto(
-              onCerrar: () {
-                setState(() {
-                  _mostrarMenuNuevoProducto = false;
-                });
-              },
-              onGuardarProducto: _guardarProductoDesdeCarta,
+            SizedBox(
+              width: 354,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  const desplazamientoSuperior = 82.0;
+
+                  return OverflowBox(
+                    alignment: Alignment.topCenter,
+                    minWidth: 354,
+                    maxWidth: 354,
+                    minHeight: constraints.maxHeight + desplazamientoSuperior,
+                    maxHeight: constraints.maxHeight + desplazamientoSuperior,
+                    child: Transform.translate(
+                      offset: const Offset(
+                        0,
+                        -82,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          0,
+                          8,
+                          14,
+                          8,
+                        ),
+                        child: MenuCartaCatalogoProducto(
+                          onCerrar: () {
+                            setState(() {
+                              _mostrarMenuNuevoProducto = false;
+                            });
+                          },
+                          onGuardarProducto: _guardarProductoDesdeCarta,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
         ],
       ),
@@ -548,6 +597,8 @@ class _PanelFiltrosProducto extends StatelessWidget {
   final bool procesando;
   final bool soloLectura;
 
+  final bool menuNuevoProductoAbierto;
+
   final ValueChanged<String?> onCategoriaChanged;
   final ValueChanged<String?> onEstadoChanged;
   final ValueChanged<String?> onTipoChanged;
@@ -564,6 +615,7 @@ class _PanelFiltrosProducto extends StatelessWidget {
     required this.tipoSeleccionado,
     required this.procesando,
     required this.soloLectura,
+    required this.menuNuevoProductoAbierto,
     required this.onCategoriaChanged,
     required this.onEstadoChanged,
     required this.onTipoChanged,
@@ -587,84 +639,182 @@ class _PanelFiltrosProducto extends StatelessWidget {
         border: Border.all(
           color: _bordeSuave,
         ),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(
+          8,
+        ),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 240,
-            child: _CampoBusqueda(
-              controller: busquedaController,
-              onBuscar: onBuscar,
-            ),
-          ),
-          const SizedBox(width: 14),
-          SizedBox(
-            width: 175,
-            child: _CampoDropdown(
-              etiqueta: 'Tipo',
-              valor: tipoSeleccionado,
-              opciones: const [
-                'Todos los tipos',
-                'Medicamentos',
-                'Productos',
+      child: LayoutBuilder(
+        builder: (
+          context,
+          constraints,
+        ) {
+          // ============================================================
+          // MENÚ CERRADO
+          // ============================================================
+
+          if (!menuNuevoProductoAbierto) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 240,
+                  child: _CampoBusqueda(
+                    controller: busquedaController,
+                    onBuscar: onBuscar,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                SizedBox(
+                  width: 175,
+                  child: _CampoDropdown(
+                    etiqueta: 'Tipo',
+                    valor: tipoSeleccionado,
+                    opciones: const [
+                      'Todos los tipos',
+                      'Medicamentos',
+                      'Productos',
+                    ],
+                    onChanged: onTipoChanged,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                SizedBox(
+                  width: 190,
+                  child: _CampoDropdown(
+                    etiqueta: 'Categoría',
+                    valor: categoriaSeleccionada,
+                    opciones: categorias,
+                    onChanged: onCategoriaChanged,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                SizedBox(
+                  width: 170,
+                  child: _CampoDropdown(
+                    etiqueta: 'Estado',
+                    valor: estadoSeleccionado,
+                    opciones: const [
+                      'Todos los estados',
+                      'Activo',
+                      'Inactivo',
+                    ],
+                    onChanged: onEstadoChanged,
+                  ),
+                ),
+                const Spacer(),
+                Padding(
+                  padding: const EdgeInsets.only(
+                    top: 4,
+                  ),
+                  child: _BotonSecundarioCatalogo(
+                    texto: 'Actualizar',
+                    icono: Icons.refresh,
+                    onTap: onRefrescar,
+                    ancho: 138,
+                  ),
+                ),
+                if (!soloLectura) ...[
+                  const SizedBox(width: 10),
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      top: 5,
+                    ),
+                    child: _BotonPrincipalCatalogo(
+                      texto: procesando ? 'Guardando...' : 'Nuevo Producto',
+                      icono: Icons.add,
+                      onTap: procesando ? null : onNuevoProducto,
+                    ),
+                  ),
+                ],
               ],
-              onChanged: onTipoChanged,
-            ),
-          ),
-          const SizedBox(width: 14),
-          SizedBox(
-            width: 190,
-            child: _CampoDropdown(
-              etiqueta: 'Categoría',
-              valor: categoriaSeleccionada,
-              opciones: categorias,
-              onChanged: onCategoriaChanged,
-            ),
-          ),
-          const SizedBox(width: 14),
-          SizedBox(
-            width: 170,
-            child: _CampoDropdown(
-              etiqueta: 'Estado',
-              valor: estadoSeleccionado,
-              opciones: const [
-                'Todos los estados',
-                'Activo',
-                'Inactivo',
-              ],
-              onChanged: onEstadoChanged,
-            ),
-          ),
-          const Spacer(),
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: _BotonSecundarioCatalogo(
-              texto: 'Actualizar',
-              icono: Icons.refresh,
-              onTap: onRefrescar,
-            ),
-          ),
-          if (!soloLectura) ...[
-            const SizedBox(width: 10),
-            Padding(
-              padding: const EdgeInsets.only(top: 5),
-              child: _BotonPrincipalCatalogo(
-                texto: procesando ? 'Guardando...' : 'Nuevo Producto',
-                icono: Icons.add,
-                onTap: procesando ? null : onNuevoProducto,
+            );
+          }
+
+          // ============================================================
+          // MENÚ NUEVO PRODUCTO ABIERTO
+          //
+          // Los campos se vuelven flexibles.
+          // Ya no usamos anchos fijos que exceden el área.
+          //
+          // El botón "Nuevo Producto" no se muestra porque el
+          // formulario ya está abierto.
+          //
+          // Esto elimina el RenderFlex amarillo/negro.
+          // ============================================================
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                flex: 20,
+                child: _CampoBusqueda(
+                  controller: busquedaController,
+                  onBuscar: onBuscar,
+                ),
               ),
-            ),
-          ],
-        ],
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 13,
+                child: _CampoDropdown(
+                  etiqueta: 'Tipo',
+                  valor: tipoSeleccionado,
+                  opciones: const [
+                    'Todos los tipos',
+                    'Medicamentos',
+                    'Productos',
+                  ],
+                  onChanged: onTipoChanged,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 15,
+                child: _CampoDropdown(
+                  etiqueta: 'Categoría',
+                  valor: categoriaSeleccionada,
+                  opciones: categorias,
+                  onChanged: onCategoriaChanged,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 14,
+                child: _CampoDropdown(
+                  etiqueta: 'Estado',
+                  valor: estadoSeleccionado,
+                  opciones: const [
+                    'Todos los estados',
+                    'Activo',
+                    'Inactivo',
+                  ],
+                  onChanged: onEstadoChanged,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Padding(
+                padding: const EdgeInsets.only(
+                  top: 4,
+                ),
+                child: _BotonSecundarioCatalogo(
+                  texto: 'Actualizar',
+                  icono: Icons.refresh,
+                  onTap: onRefrescar,
+
+                  // Más compacto únicamente cuando
+                  // el panel derecho está abierto.
+                  ancho: 108,
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
 // ============================================================================
-// CAMPO DE BÚSQUEDA
+// CAMPO BUSCAR
 // ============================================================================
 
 class _CampoBusqueda extends StatelessWidget {
@@ -728,19 +878,29 @@ class _CampoBusqueda extends StatelessWidget {
                 vertical: 7,
               ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(5),
+                borderRadius: BorderRadius.circular(
+                  5,
+                ),
                 borderSide: const BorderSide(
-                  color: Color(0xFFC8D6C0),
+                  color: Color(
+                    0xFFC8D6C0,
+                  ),
                 ),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(5),
+                borderRadius: BorderRadius.circular(
+                  5,
+                ),
                 borderSide: const BorderSide(
-                  color: Color(0xFFC8D6C0),
+                  color: Color(
+                    0xFFC8D6C0,
+                  ),
                 ),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(5),
+                borderRadius: BorderRadius.circular(
+                  5,
+                ),
                 borderSide: const BorderSide(
                   color: _verdeOscuro,
                   width: 1.2,
@@ -755,7 +915,7 @@ class _CampoBusqueda extends StatelessWidget {
 }
 
 // ============================================================================
-// DROPDOWNS
+// DROPDOWN
 // ============================================================================
 
 class _CampoDropdown extends StatelessWidget {
@@ -811,19 +971,29 @@ class _CampoDropdown extends StatelessWidget {
                 vertical: 7,
               ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(5),
+                borderRadius: BorderRadius.circular(
+                  5,
+                ),
                 borderSide: const BorderSide(
-                  color: Color(0xFFC8D6C0),
+                  color: Color(
+                    0xFFC8D6C0,
+                  ),
                 ),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(5),
+                borderRadius: BorderRadius.circular(
+                  5,
+                ),
                 borderSide: const BorderSide(
-                  color: Color(0xFFC8D6C0),
+                  color: Color(
+                    0xFFC8D6C0,
+                  ),
                 ),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(5),
+                borderRadius: BorderRadius.circular(
+                  5,
+                ),
                 borderSide: const BorderSide(
                   color: _verdeOscuro,
                   width: 1.2,
@@ -859,16 +1029,21 @@ class _BotonSecundarioCatalogo extends StatelessWidget {
   final IconData icono;
   final VoidCallback onTap;
 
+  // Permite reducirlo únicamente cuando
+  // el formulario derecho está abierto.
+  final double ancho;
+
   const _BotonSecundarioCatalogo({
     required this.texto,
     required this.icono,
     required this.onTap,
+    this.ancho = 138,
   });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 138,
+      width: ancho,
       height: 32,
       child: ElevatedButton.icon(
         onPressed: onTap,
@@ -889,16 +1064,22 @@ class _BotonSecundarioCatalogo extends StatelessWidget {
         ),
         style: ElevatedButton.styleFrom(
           elevation: 2,
-          backgroundColor: const Color(0xFF417A00),
+          backgroundColor: const Color(
+            0xFF417A00,
+          ),
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(
-            horizontal: 10,
+            horizontal: 8,
           ),
-          shadowColor: const Color(0xFF417A00).withValues(
+          shadowColor: const Color(
+            0xFF417A00,
+          ).withValues(
             alpha: 0.25,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(
+              6,
+            ),
           ),
         ),
       ),
@@ -954,7 +1135,9 @@ class _BotonPrincipalCatalogo extends StatelessWidget {
             alpha: 0.25,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(
+              6,
+            ),
           ),
         ),
       ),
@@ -963,7 +1146,7 @@ class _BotonPrincipalCatalogo extends StatelessWidget {
 }
 
 // ============================================================================
-// TABLA DE PRODUCTOS
+// TABLA PRODUCTOS
 // ============================================================================
 
 class _TablaProductos extends StatelessWidget {
@@ -1019,6 +1202,7 @@ class _PaginadorCatalogoProducto extends StatelessWidget {
   final int limite;
   final bool hayAnterior;
   final bool haySiguiente;
+
   final VoidCallback onAnterior;
   final VoidCallback onSiguiente;
 
@@ -1092,7 +1276,7 @@ class _PaginadorCatalogoProducto extends StatelessWidget {
 }
 
 // ============================================================================
-// FILA DE PRODUCTO
+// FILA PRODUCTO
 // ============================================================================
 
 class _FilaProductoCatalogo extends StatelessWidget {
@@ -1148,7 +1332,9 @@ class _FilaProductoCatalogo extends StatelessWidget {
             height: 42,
             decoration: BoxDecoration(
               color: _fondoIconoProducto(),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(
+                8,
+              ),
             ),
             child: Icon(
               producto.esMedicamento
@@ -1254,7 +1440,9 @@ class _FilaProductoCatalogo extends StatelessWidget {
                     iconSize: 18,
                   ),
                   if (!soloLectura) ...[
-                    const SizedBox(width: 4),
+                    const SizedBox(
+                      width: 4,
+                    ),
                     IconButton(
                       onPressed: procesando
                           ? null
@@ -1275,7 +1463,9 @@ class _FilaProductoCatalogo extends StatelessWidget {
                       color: _verdeOscuro,
                       iconSize: 18,
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(
+                      width: 4,
+                    ),
                     IconButton(
                       onPressed: procesando
                           ? null
@@ -1340,7 +1530,7 @@ class _FilaProductoCatalogo extends StatelessWidget {
 }
 
 // ============================================================================
-// MÉTRICAS
+// MÉTRICA PRODUCTO
 // ============================================================================
 
 class _MetricaProductoCatalogo extends StatelessWidget {
@@ -1401,13 +1591,19 @@ class _Badge extends StatelessWidget {
           vertical: 4,
         ),
         decoration: BoxDecoration(
-          color: const Color(0xFFEDEDEA),
-          borderRadius: BorderRadius.circular(4),
+          color: const Color(
+            0xFFEDEDEA,
+          ),
+          borderRadius: BorderRadius.circular(
+            4,
+          ),
         ),
         child: Text(
           texto,
           style: const TextStyle(
-            color: Color(0xFF5E675F),
+            color: Color(
+              0xFF5E675F,
+            ),
             fontSize: 9,
             fontWeight: FontWeight.w900,
           ),
@@ -1438,8 +1634,16 @@ class _BadgeEstado extends StatelessWidget {
           vertical: 4,
         ),
         decoration: BoxDecoration(
-          color: activo ? const Color(0xFFEAF8DD) : const Color(0xFFFFE8E8),
-          borderRadius: BorderRadius.circular(4),
+          color: activo
+              ? const Color(
+                  0xFFEAF8DD,
+                )
+              : const Color(
+                  0xFFFFE8E8,
+                ),
+          borderRadius: BorderRadius.circular(
+            4,
+          ),
         ),
         child: Text(
           activo ? 'Activo' : 'Inactivo',
@@ -1455,7 +1659,7 @@ class _BadgeEstado extends StatelessWidget {
 }
 
 // ============================================================================
-// ESTADO DE CARGA
+// ESTADO PRODUCTOS
 // ============================================================================
 
 class _EstadoProductos extends StatelessWidget {
@@ -1487,7 +1691,9 @@ class _EstadoProductos extends StatelessWidget {
               ),
             ),
             if (onReintentar != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(
+                height: 12,
+              ),
               ElevatedButton.icon(
                 onPressed: onReintentar,
                 icon: const Icon(
@@ -1577,9 +1783,13 @@ class _DialogoProductoState extends State<_DialogoProducto> {
   ];
 
   late final TextEditingController _codigoController;
+
   late final TextEditingController _nombreController;
+
   late final TextEditingController _descripcionController;
+
   late final TextEditingController _sustanciaController;
+
   late final TextEditingController _dosisCantidadController;
 
   late String _tipo;
@@ -1814,12 +2024,16 @@ class _DialogoProductoState extends State<_DialogoProducto> {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(
+                height: 12,
+              ),
               _CampoTexto(
                 label: 'Nombre',
                 controller: _nombreController,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(
+                height: 12,
+              ),
               if (!esMedicamento)
                 DropdownButtonFormField<String>(
                   initialValue: _opcionesCategoria(
@@ -1855,13 +2069,17 @@ class _DialogoProductoState extends State<_DialogoProducto> {
                     });
                   },
                 ),
-              const SizedBox(height: 12),
+              const SizedBox(
+                height: 12,
+              ),
               _CampoTexto(
                 label: 'Descripcion',
                 controller: _descripcionController,
                 maxLines: 2,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(
+                height: 8,
+              ),
               CheckboxListTile(
                 value: _manejaCaducidad,
                 onChanged: (value) {
@@ -2041,7 +2259,9 @@ class _DialogoProductoState extends State<_DialogoProducto> {
                 ),
               ],
               if (_error != null) ...[
-                const SizedBox(height: 8),
+                const SizedBox(
+                  height: 8,
+                ),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -2078,7 +2298,7 @@ class _DialogoProductoState extends State<_DialogoProducto> {
 }
 
 // ============================================================================
-// CAMPO DE TEXTO DE DIÁLOGO
+// CAMPO TEXTO DIÁLOGO
 // ============================================================================
 
 class _CampoTexto extends StatelessWidget {
@@ -2106,7 +2326,7 @@ class _CampoTexto extends StatelessWidget {
 }
 
 // ============================================================================
-// DIÁLOGO DETALLE PRODUCTO
+// DETALLE PRODUCTO
 // ============================================================================
 
 class _DialogoDetalleProducto extends StatelessWidget {
@@ -2213,7 +2433,7 @@ class _DialogoDetalleProducto extends StatelessWidget {
 }
 
 // ============================================================================
-// DATO DEL DETALLE
+// DATO DETALLE
 // ============================================================================
 
 class _DatoDetalle extends StatelessWidget {
@@ -2308,7 +2528,9 @@ _DosisEditada _separarDosis(
   }
 
   final parts = text.split(
-    RegExp(r'\s+'),
+    RegExp(
+      r'\s+',
+    ),
   );
 
   if (parts.length < 2) {
@@ -2324,7 +2546,9 @@ _DosisEditada _separarDosis(
           0,
           parts.length - 1,
         )
-        .join(' '),
+        .join(
+          ' ',
+        ),
     unidad: parts.last,
   );
 }
@@ -2367,12 +2591,16 @@ String _etiqueta(
 
   return value
       .toLowerCase()
-      .split('_')
+      .split(
+        '_',
+      )
       .where(
         (part) => part.isNotEmpty,
       )
       .map(
         (part) => '${part[0].toUpperCase()}${part.substring(1)}',
       )
-      .join(' ');
+      .join(
+        ' ',
+      );
 }

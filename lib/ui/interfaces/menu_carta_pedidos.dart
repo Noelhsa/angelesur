@@ -6,7 +6,6 @@ import '../../services/inventario_api_service.dart';
 import '../../services/productos_api_service.dart';
 import '../../services/proveedores_api_service.dart';
 import '../../utils/config_moneda.dart';
-import '../../utils/texto_busqueda.dart';
 
 const Color _verdeOscuro = Color(0xFF397800);
 const Color _verde = Color(0xFF64D20A);
@@ -796,20 +795,18 @@ class _SelectorProductoPedido extends StatelessWidget {
         focusNode: linea.productoFocusNode,
         displayStringForOption: _etiquetaProductoPedido,
         optionsBuilder: (value) {
-          final busqueda = normalizarTextoBusqueda(value.text);
+          final busqueda = value.text.trim().toLowerCase();
           if (busqueda.isEmpty) {
             return productos.take(20);
           }
 
           return productos.where((producto) {
-            final texto = normalizarTextoBusqueda(
-              [
-                producto.nombre,
-                producto.codigoBarras ?? '',
-                producto.categoria ?? '',
-                producto.tipo,
-              ].join(' '),
-            );
+            final texto = [
+              producto.nombre,
+              producto.codigoBarras ?? '',
+              producto.categoria ?? '',
+              producto.tipo,
+            ].join(' ').toLowerCase();
             return texto.contains(busqueda);
           }).take(20);
         },
