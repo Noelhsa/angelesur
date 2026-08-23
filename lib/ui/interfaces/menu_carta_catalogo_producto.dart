@@ -34,8 +34,11 @@ class MenuCartaCatalogoProducto extends StatefulWidget {
 }
 
 class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
-  final TextEditingController _codigoController =
-      TextEditingController(text: '750012345678');
+  // ==========================================================================
+  // CONTROLADORES
+  // ==========================================================================
+
+  final TextEditingController _codigoController = TextEditingController();
 
   final TextEditingController _nombreController = TextEditingController();
 
@@ -48,6 +51,10 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
 
   final TextEditingController _dosisCantidadController =
       TextEditingController();
+
+  // ==========================================================================
+  // ESTADO DEL FORMULARIO
+  // ==========================================================================
 
   String _claseSeleccionada = 'Producto';
   String _tipoSeleccionado = 'Producto';
@@ -62,6 +69,10 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
   bool _manejaCaducidad = false;
   bool _requiereReceta = false;
 
+  // ==========================================================================
+  // DISPOSE
+  // ==========================================================================
+
   @override
   void dispose() {
     _codigoController.dispose();
@@ -73,6 +84,10 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
 
     super.dispose();
   }
+
+  // ==========================================================================
+  // INTERFAZ
+  // ==========================================================================
 
   @override
   Widget build(BuildContext context) {
@@ -106,10 +121,19 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
       ),
       child: Column(
         children: [
+          // ==================================================================
+          // ENCABEZADO
+          // ==================================================================
+
           _EncabezadoNuevoMedicamento(
             onCerrar: widget.onCerrar,
             esMedicamento: esMedicamento,
           ),
+
+          // ==================================================================
+          // FORMULARIO
+          // ==================================================================
+
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(
@@ -121,12 +145,25 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ==========================================================
+                  // CÓDIGO DE BARRAS
+                  // ==========================================================
+
                   _CampoTextoCatalogo(
                     etiqueta: 'Codigo de barras',
                     controller: _codigoController,
+                    hintText: 'Ej: 750012345678',
                     suffixIcon: Icons.barcode_reader,
                   ),
-                  const SizedBox(height: 14),
+
+                  const SizedBox(
+                    height: 14,
+                  ),
+
+                  // ==========================================================
+                  // TIPO DE REGISTRO
+                  // ==========================================================
+
                   _CampoDropdownCatalogo(
                     etiqueta: 'Tipo de registro',
                     valor: _claseSeleccionada,
@@ -144,14 +181,21 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
 
                         if (value == 'Medicamento') {
                           _tipoSeleccionado = 'Tableta';
+
                           _viaAdministracionSeleccionada = 'TABLETA';
+
                           _edadSeleccionada = 'GENERAL';
+
                           _dosisUnidadSeleccionada = 'mg';
+
                           _categoriaSeleccionada = 'Analgesicos';
+
                           _manejaCaducidad = true;
+
                           _requiereReceta = false;
                         } else {
                           _categoriaSeleccionada = 'General';
+
                           _manejaCaducidad = false;
                         }
 
@@ -159,7 +203,15 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
                       });
                     },
                   ),
-                  const SizedBox(height: 14),
+
+                  const SizedBox(
+                    height: 14,
+                  ),
+
+                  // ==========================================================
+                  // NOMBRE
+                  // ==========================================================
+
                   _CampoTextoCatalogo(
                     etiqueta:
                         esMedicamento ? 'Nombre del medicamento' : 'Nombre',
@@ -168,14 +220,30 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
                         ? 'Ej: Ibuprofeno 400mg'
                         : 'Ej: Shampoo, alcohol, jeringa',
                   ),
-                  const SizedBox(height: 14),
+
+                  const SizedBox(
+                    height: 14,
+                  ),
+
+                  // ==========================================================
+                  // DESCRIPCIÓN
+                  // ==========================================================
+
                   _CampoTextoCatalogo(
                     etiqueta: 'Descripcion',
                     controller: _descripcionController,
                     hintText: 'Indicaciones terapeuticas y detalles...',
                     maxLines: 3,
                   ),
-                  const SizedBox(height: 14),
+
+                  const SizedBox(
+                    height: 14,
+                  ),
+
+                  // ==========================================================
+                  // PRODUCTO / MEDICAMENTO
+                  // ==========================================================
+
                   if (esMedicamento)
                     Row(
                       children: [
@@ -208,7 +276,9 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
                             },
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(
+                          width: 12,
+                        ),
                         Expanded(
                           child: _CampoDropdownCatalogo(
                             etiqueta: 'Via de Admin',
@@ -255,7 +325,15 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
                         });
                       },
                     ),
-                  const SizedBox(height: 14),
+
+                  const SizedBox(
+                    height: 14,
+                  ),
+
+                  // ==========================================================
+                  // MANEJA CADUCIDAD
+                  // ==========================================================
+
                   _OpcionCaducidadCatalogo(
                     value: _manejaCaducidad,
                     onChanged: (value) {
@@ -264,8 +342,15 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
                       });
                     },
                   ),
+
+                  // ==========================================================
+                  // CAMPOS DE MEDICAMENTO
+                  // ==========================================================
+
                   if (esMedicamento) ...[
-                    const SizedBox(height: 14),
+                    const SizedBox(
+                      height: 14,
+                    ),
                     Row(
                       children: [
                         Expanded(
@@ -274,7 +359,9 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
                             controller: _fechaController,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(
+                          width: 12,
+                        ),
                         Expanded(
                           child: _CampoTextoCatalogo(
                             etiqueta: 'Principio Activo',
@@ -284,7 +371,9 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(
+                      height: 14,
+                    ),
                     _CampoDropdownCatalogo(
                       etiqueta: 'Edad',
                       valor: _edadSeleccionada,
@@ -304,7 +393,9 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
                         });
                       },
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(
+                      height: 14,
+                    ),
                     _OpcionRecetaCatalogo(
                       value: _requiereReceta,
                       onChanged: (value) {
@@ -313,7 +404,9 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
                         });
                       },
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(
+                      height: 14,
+                    ),
                     Row(
                       children: [
                         Expanded(
@@ -323,7 +416,9 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
                             hintText: 'Ej: 500',
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(
+                          width: 12,
+                        ),
                         Expanded(
                           child: _CampoDropdownCatalogo(
                             etiqueta: 'Unidad',
@@ -354,14 +449,21 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
                       ],
                     ),
                   ],
-                  const SizedBox(height: 14),
-                  const _AreaCargarFoto(),
+
+                  // ==========================================================
+                  // ERROR
+                  // ==========================================================
+
                   if (_error != null) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(
+                      height: 12,
+                    ),
                     Text(
                       _error!,
                       style: const TextStyle(
-                        color: Color(0xFFE02020),
+                        color: Color(
+                          0xFFE02020,
+                        ),
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
                       ),
@@ -371,6 +473,11 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
               ),
             ),
           ),
+
+          // ==================================================================
+          // BOTONES
+          // ==================================================================
+
           _AccionesNuevoMedicamento(
             onCancelar: widget.onCerrar,
             onGuardar: _guardarProducto,
@@ -380,6 +487,10 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
       ),
     );
   }
+
+  // ==========================================================================
+  // GUARDAR PRODUCTO
+  // ==========================================================================
 
   void _guardarProducto() {
     final esMedicamento = _claseSeleccionada == 'Medicamento';
@@ -443,6 +554,10 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
   }
 }
 
+// ============================================================================
+// ENCABEZADO
+// ============================================================================
+
 class _EncabezadoNuevoMedicamento extends StatelessWidget {
   final VoidCallback onCerrar;
   final bool esMedicamento;
@@ -475,7 +590,9 @@ class _EncabezadoNuevoMedicamento extends StatelessWidget {
             color: _verdeOscuro,
             size: 17,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(
+            width: 8,
+          ),
           Expanded(
             child: Text(
               esMedicamento ? 'Nuevo Medicamento' : 'Nuevo Producto',
@@ -491,6 +608,10 @@ class _EncabezadoNuevoMedicamento extends StatelessWidget {
     );
   }
 }
+
+// ============================================================================
+// CAMPO TEXTO
+// ============================================================================
 
 class _CampoTextoCatalogo extends StatelessWidget {
   final String etiqueta;
@@ -528,6 +649,10 @@ class _CampoTextoCatalogo extends StatelessWidget {
     );
   }
 }
+
+// ============================================================================
+// MANEJA CADUCIDAD
+// ============================================================================
 
 class _OpcionCaducidadCatalogo extends StatelessWidget {
   final bool value;
@@ -571,7 +696,9 @@ class _OpcionCaducidadCatalogo extends StatelessWidget {
                 );
               },
             ),
-            const SizedBox(width: 6),
+            const SizedBox(
+              width: 6,
+            ),
             const Expanded(
               child: Text(
                 'Maneja caducidad',
@@ -588,6 +715,10 @@ class _OpcionCaducidadCatalogo extends StatelessWidget {
     );
   }
 }
+
+// ============================================================================
+// REQUIERE RECETA
+// ============================================================================
 
 class _OpcionRecetaCatalogo extends StatelessWidget {
   final bool value;
@@ -631,7 +762,9 @@ class _OpcionRecetaCatalogo extends StatelessWidget {
                 );
               },
             ),
-            const SizedBox(width: 6),
+            const SizedBox(
+              width: 6,
+            ),
             const Expanded(
               child: Text(
                 'Requiere receta',
@@ -648,6 +781,10 @@ class _OpcionRecetaCatalogo extends StatelessWidget {
     );
   }
 }
+
+// ============================================================================
+// FECHA
+// ============================================================================
 
 class _CampoFechaCatalogo extends StatelessWidget {
   final String etiqueta;
@@ -720,6 +857,10 @@ class _CampoFechaCatalogo extends StatelessWidget {
   }
 }
 
+// ============================================================================
+// DROPDOWN
+// ============================================================================
+
 class _CampoDropdownCatalogo extends StatelessWidget {
   final String etiqueta;
   final String valor;
@@ -769,6 +910,10 @@ class _CampoDropdownCatalogo extends StatelessWidget {
   }
 }
 
+// ============================================================================
+// CONTENEDOR DE CAMPO
+// ============================================================================
+
 class _ContenedorCampoCatalogo extends StatelessWidget {
   final String etiqueta;
   final Widget child;
@@ -791,7 +936,9 @@ class _ContenedorCampoCatalogo extends StatelessWidget {
             fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 5),
+        const SizedBox(
+          height: 5,
+        ),
         ConstrainedBox(
           constraints: const BoxConstraints(
             minHeight: 38,
@@ -803,140 +950,9 @@ class _ContenedorCampoCatalogo extends StatelessWidget {
   }
 }
 
-class _AreaCargarFoto extends StatelessWidget {
-  const _AreaCargarFoto();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Cargar foto',
-          style: TextStyle(
-            color: _textoPrincipal,
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 5),
-        Container(
-          height: 142,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(
-              8,
-            ),
-            border: Border.all(
-              color: const Color(
-                0xFFC8D6C0,
-              ),
-              width: 1,
-              style: BorderStyle.solid,
-            ),
-          ),
-          child: const CustomPaint(
-            painter: _DashedBorderPainter(),
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.add_a_photo_outlined,
-                    color: _verdeOscuro,
-                    size: 28,
-                  ),
-                  SizedBox(height: 12),
-                  Text(
-                    'Haz clic o arrastra la imagen del\nproducto aqui',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: _textoPrincipal,
-                      fontSize: 11,
-                      height: 1.35,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    'JPG, PNG HASTA 5MB',
-                    style: TextStyle(
-                      color: _textoSecundario,
-                      fontSize: 8,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _DashedBorderPainter extends CustomPainter {
-  const _DashedBorderPainter();
-
-  @override
-  void paint(
-    Canvas canvas,
-    Size size,
-  ) {
-    const double dashWidth = 6;
-    const double dashSpace = 5;
-
-    final paint = Paint()
-      ..color = const Color(
-        0xFFC8D6C0,
-      )
-      ..strokeWidth = 1
-      ..style = PaintingStyle.stroke;
-
-    final rect = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      const Radius.circular(
-        8,
-      ),
-    );
-
-    final path = Path()
-      ..addRRect(
-        rect,
-      );
-
-    final metrics = path.computeMetrics();
-
-    for (final metric in metrics) {
-      double distance = 0;
-
-      while (distance < metric.length) {
-        final nextDistance = distance + dashWidth;
-
-        final extractPath = metric.extractPath(
-          distance,
-          nextDistance,
-        );
-
-        canvas.drawPath(
-          extractPath,
-          paint,
-        );
-
-        distance = nextDistance + dashSpace;
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(
-    covariant CustomPainter oldDelegate,
-  ) {
-    return false;
-  }
-}
+// ============================================================================
+// BOTONES INFERIORES
+// ============================================================================
 
 class _AccionesNuevoMedicamento extends StatelessWidget {
   final VoidCallback onCancelar;
@@ -981,7 +997,9 @@ class _AccionesNuevoMedicamento extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: _textoPrincipal,
                   side: const BorderSide(
-                    color: Color(0xFFC8D6C0),
+                    color: Color(
+                      0xFFC8D6C0,
+                    ),
                     width: 1,
                   ),
                   shape: RoundedRectangleBorder(
@@ -1002,7 +1020,9 @@ class _AccionesNuevoMedicamento extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(width: 12),
+          const SizedBox(
+            width: 12,
+          ),
 
           // ============================================================
           // GUARDAR
@@ -1056,6 +1076,10 @@ class _AccionesNuevoMedicamento extends StatelessWidget {
     );
   }
 }
+
+// ============================================================================
+// FUNCIONES AUXILIARES
+// ============================================================================
 
 String? _limpiar(
   String value,
@@ -1128,6 +1152,10 @@ String _formatoFechaVisible(
 
   return '$dia/$mes/${fecha.year}';
 }
+
+// ============================================================================
+// DECORACIÓN DE CAMPOS
+// ============================================================================
 
 InputDecoration _decoracionCampo({
   String? hintText,
