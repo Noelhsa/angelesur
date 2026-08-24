@@ -31,6 +31,7 @@ class BarraLateralIzquierda extends StatelessWidget {
       child: Column(
         children: [
           const SizedBox(height: 18),
+
           Expanded(
             child: SingleChildScrollView(
               child: Column(
@@ -121,23 +122,21 @@ class BarraLateralIzquierda extends StatelessWidget {
               ),
             ),
           ),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(
-              Icons.settings_outlined,
-              size: 20,
-              color: _colorIcono,
-            ),
-          ),
-          const SizedBox(height: 8),
+
+          // ============================================================
+          // CERRAR SESIÓN
+          // ============================================================
+
           IconButton(
             onPressed: onLogout,
+            tooltip: 'Cerrar sesión',
             icon: const Icon(
               Icons.logout,
               size: 20,
               color: _colorRojo,
             ),
           ),
+
           const SizedBox(height: 18),
         ],
       ),
@@ -192,7 +191,9 @@ class _BotonMenuLateral extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 4,
+                ),
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
@@ -229,7 +230,9 @@ class _BotonMenuLateral extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 4,
+              ),
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(

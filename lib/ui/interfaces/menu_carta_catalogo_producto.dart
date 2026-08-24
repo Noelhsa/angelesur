@@ -44,8 +44,6 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
 
   final TextEditingController _descripcionController = TextEditingController();
 
-  final TextEditingController _fechaController = TextEditingController();
-
   final TextEditingController _principioActivoController =
       TextEditingController();
 
@@ -53,7 +51,7 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
       TextEditingController();
 
   // ==========================================================================
-  // ESTADO DEL FORMULARIO
+  // ESTADO
   // ==========================================================================
 
   String _claseSeleccionada = 'Producto';
@@ -78,7 +76,6 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
     _codigoController.dispose();
     _nombreController.dispose();
     _descripcionController.dispose();
-    _fechaController.dispose();
     _principioActivoController.dispose();
     _dosisCantidadController.dispose();
 
@@ -351,29 +348,25 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
                     const SizedBox(
                       height: 14,
                     ),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _CampoFechaCatalogo(
-                            etiqueta: 'Fecha de caducidad',
-                            controller: _fechaController,
-                          ),
-                        ),
-                        const SizedBox(
-                          width: 12,
-                        ),
-                        Expanded(
-                          child: _CampoTextoCatalogo(
-                            etiqueta: 'Principio Activo',
-                            controller: _principioActivoController,
-                            hintText: 'Ej: Naproxeno',
-                          ),
-                        ),
-                      ],
+
+                    // ========================================================
+                    // PRINCIPIO ACTIVO - TODO EL ANCHO
+                    // ========================================================
+
+                    _CampoTextoCatalogo(
+                      etiqueta: 'Principio Activo',
+                      controller: _principioActivoController,
+                      hintText: 'Ej: Naproxeno',
                     ),
+
                     const SizedBox(
                       height: 14,
                     ),
+
+                    // ========================================================
+                    // EDAD
+                    // ========================================================
+
                     _CampoDropdownCatalogo(
                       etiqueta: 'Edad',
                       valor: _edadSeleccionada,
@@ -393,9 +386,15 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
                         });
                       },
                     ),
+
                     const SizedBox(
                       height: 14,
                     ),
+
+                    // ========================================================
+                    // REQUIERE RECETA
+                    // ========================================================
+
                     _OpcionRecetaCatalogo(
                       value: _requiereReceta,
                       onChanged: (value) {
@@ -404,9 +403,15 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
                         });
                       },
                     ),
+
                     const SizedBox(
                       height: 14,
                     ),
+
+                    // ========================================================
+                    // DOSIS
+                    // ========================================================
+
                     Row(
                       children: [
                         Expanded(
@@ -783,81 +788,6 @@ class _OpcionRecetaCatalogo extends StatelessWidget {
 }
 
 // ============================================================================
-// FECHA
-// ============================================================================
-
-class _CampoFechaCatalogo extends StatelessWidget {
-  final String etiqueta;
-  final TextEditingController controller;
-
-  const _CampoFechaCatalogo({
-    required this.etiqueta,
-    required this.controller,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _ContenedorCampoCatalogo(
-      etiqueta: etiqueta,
-      child: TextField(
-        controller: controller,
-        readOnly: true,
-        onTap: () {
-          _seleccionarFecha(
-            context,
-          );
-        },
-        cursorColor: _verdeOscuro,
-        style: const TextStyle(
-          color: _textoPrincipal,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-        decoration: _decoracionCampo(
-          hintText: 'Seleccionar fecha',
-          suffixIcon: Icons.calendar_month_outlined,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _seleccionarFecha(
-    BuildContext context,
-  ) async {
-    final inicial = _fechaDesdeTexto(
-          controller.text,
-        ) ??
-        DateTime.now().add(
-          const Duration(
-            days: 365,
-          ),
-        );
-
-    final seleccionada = await showDatePicker(
-      context: context,
-      initialDate: inicial,
-      firstDate: DateTime(
-        2000,
-      ),
-      lastDate: DateTime(
-        2100,
-      ),
-      helpText: 'Selecciona caducidad',
-      cancelText: 'Cancelar',
-      confirmText: 'Aceptar',
-    );
-
-    if (seleccionada == null) {
-      return;
-    }
-
-    controller.text = _formatoFechaVisible(
-      seleccionada,
-    );
-  }
-}
-
-// ============================================================================
 // DROPDOWN
 // ============================================================================
 
@@ -1109,48 +1039,6 @@ String _categoriaNormalizada(
   String value,
 ) {
   return value;
-}
-
-DateTime? _fechaDesdeTexto(
-  String value,
-) {
-  final parts = value.trim().split('/');
-
-  if (parts.length != 3) {
-    return null;
-  }
-
-  final day = int.tryParse(parts[0]);
-
-  final month = int.tryParse(parts[1]);
-
-  final year = int.tryParse(parts[2]);
-
-  if (day == null || month == null || year == null) {
-    return null;
-  }
-
-  return DateTime(
-    year,
-    month,
-    day,
-  );
-}
-
-String _formatoFechaVisible(
-  DateTime fecha,
-) {
-  final dia = fecha.day.toString().padLeft(
-        2,
-        '0',
-      );
-
-  final mes = fecha.month.toString().padLeft(
-        2,
-        '0',
-      );
-
-  return '$dia/$mes/${fecha.year}';
 }
 
 // ============================================================================
