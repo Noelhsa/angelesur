@@ -38,9 +38,17 @@ class _MenuCartaDevolucionProveedorState
       TextEditingController(text: '1');
   final TextEditingController _observacionesController =
       TextEditingController();
+  final TextEditingController _busquedaController = TextEditingController();
+  final TextEditingController _fechaDesdeController = TextEditingController();
+  final TextEditingController _fechaHastaController = TextEditingController();
+  final TextEditingController _totalMinController = TextEditingController();
+  final TextEditingController _totalMaxController = TextEditingController();
 
   bool _cargando = true;
   bool _cargandoDetalle = false;
+  int _pagina = 1;
+  int _totalPaginas = 1;
+  int _total = 0;
 
   String? _error;
   String _motivo = 'OTRO';
@@ -62,26 +70,47 @@ class _MenuCartaDevolucionProveedorState
   void dispose() {
     _cantidadController.dispose();
     _observacionesController.dispose();
+    _busquedaController.dispose();
+    _fechaDesdeController.dispose();
+    _fechaHastaController.dispose();
+    _totalMinController.dispose();
+    _totalMaxController.dispose();
     super.dispose();
   }
 
-  Future<void> _cargarCompras() async {
+  Future<void> _cargarCompras({int pagina = 1}) async {
     setState(() {
       _cargando = true;
       _error = null;
     });
 
     try {
-      final compras = await widget.comprasApiService.listarCompras(
+      final resultado = await widget.comprasApiService.listarComprasPaginadas(
+        busqueda: _textoONulo(_busquedaController.text),
         estatus: 'REGISTRADA',
-        limite: 300,
+        fechaDesde: _textoONulo(_fechaDesdeController.text),
+        fechaHasta: _textoONulo(_fechaHastaController.text),
+        totalMin: _decimalONulo(_totalMinController.text),
+        totalMax: _decimalONulo(_totalMaxController.text),
+        pagina: pagina,
+        limite: 25,
       );
+      final compras = resultado.items;
 
       if (!mounted) return;
 
       setState(() {
         _compras = compras;
+        _pagina = resultado.pagina;
+        _totalPaginas = resultado.totalPaginas;
+        _total = resultado.total;
         _cargando = false;
+        if (_idCompra != null &&
+            !compras.any((compra) => compra.idCompra == _idCompra)) {
+          _idCompra = null;
+          _idCompraDetalle = null;
+          _compraDetalle = null;
+        }
 
         if (compras.isEmpty) {
           _error = 'No se pudieron cargar compras registradas';
@@ -95,6 +124,31 @@ class _MenuCartaDevolucionProveedorState
         _cargando = false;
       });
     }
+  }
+
+  Future<void> _seleccionarFecha(TextEditingController controller) async {
+    final ahora = DateTime.now();
+    final inicial = DateTime.tryParse(controller.text) ?? ahora;
+    final fecha = await showDatePicker(
+      context: context,
+      initialDate: inicial,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(ahora.year + 2),
+    );
+
+    if (fecha == null || !mounted) return;
+
+    controller.text = _formatoFechaApi(fecha);
+    _cargarCompras(pagina: 1);
+  }
+
+  void _limpiarFiltros() {
+    _busquedaController.clear();
+    _fechaDesdeController.clear();
+    _fechaHastaController.clear();
+    _totalMinController.clear();
+    _totalMaxController.clear();
+    _cargarCompras(pagina: 1);
   }
 
   Future<void> _seleccionarCompra(int? idCompra) async {
@@ -255,9 +309,94 @@ class _MenuCartaDevolucionProveedorState
                       ),
                     )
                   else ...[
+                    _CampoTexto(
+                      etiqueta: 'Buscar compra',
+                      controller: _busquedaController,
+                      hintText: 'Folio, proveedor, producto, lote...',
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: (_) => _cargarCompras(pagina: 1),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _CampoFecha(
+                            etiqueta: 'Desde',
+                            controller: _fechaDesdeController,
+                            onTap: () =>
+                                _seleccionarFecha(_fechaDesdeController),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _CampoFecha(
+                            etiqueta: 'Hasta',
+                            controller: _fechaHastaController,
+                            onTap: () =>
+                                _seleccionarFecha(_fechaHastaController),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _CampoTexto(
+                            etiqueta: 'Min',
+                            controller: _totalMinController,
+                            keyboardType: TextInputType.number,
+                            onSubmitted: (_) => _cargarCompras(pagina: 1),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _CampoTexto(
+                            etiqueta: 'Max',
+                            controller: _totalMaxController,
+                            keyboardType: TextInputType.number,
+                            onSubmitted: (_) => _cargarCompras(pagina: 1),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _cargarCompras(pagina: 1),
+                            icon: const Icon(Icons.search, size: 15),
+                            label: const Text('Buscar'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: _limpiarFiltros,
+                          icon: const Icon(Icons.clear, size: 18),
+                          tooltip: 'Limpiar filtros',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    _PaginadorOrigen(
+                      pagina: _pagina,
+                      totalPaginas: _totalPaginas,
+                      total: _total,
+                      onAnterior: _pagina > 1
+                          ? () => _cargarCompras(pagina: _pagina - 1)
+                          : null,
+                      onSiguiente: _pagina < _totalPaginas
+                          ? () => _cargarCompras(pagina: _pagina + 1)
+                          : null,
+                    ),
+                    const SizedBox(height: 18),
                     _CampoDropdownInt(
                       etiqueta: 'Compra origen',
-                      valor: _idCompra,
+                      valor:
+                          _compras.any((compra) => compra.idCompra == _idCompra)
+                              ? _idCompra
+                              : null,
                       hintText: 'Seleccione compra...',
                       opciones: [
                         for (final compra in _compras)
@@ -485,6 +624,8 @@ class _CampoTexto extends StatelessWidget {
   final String? hintText;
   final int maxLines;
   final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onSubmitted;
 
   const _CampoTexto({
     required this.etiqueta,
@@ -492,6 +633,8 @@ class _CampoTexto extends StatelessWidget {
     this.hintText,
     this.maxLines = 1,
     this.keyboardType,
+    this.textInputAction,
+    this.onSubmitted,
   });
 
   @override
@@ -502,6 +645,8 @@ class _CampoTexto extends StatelessWidget {
         controller: controller,
         maxLines: maxLines,
         keyboardType: keyboardType,
+        textInputAction: textInputAction,
+        onSubmitted: onSubmitted,
         cursorColor: _verdeOscuro,
         style: const TextStyle(
           color: _textoPrincipal,
@@ -512,6 +657,98 @@ class _CampoTexto extends StatelessWidget {
           hintText: hintText,
         ),
       ),
+    );
+  }
+}
+
+class _CampoFecha extends StatelessWidget {
+  final String etiqueta;
+  final TextEditingController controller;
+  final VoidCallback onTap;
+
+  const _CampoFecha({
+    required this.etiqueta,
+    required this.controller,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _ContenedorCampo(
+      etiqueta: etiqueta,
+      child: TextField(
+        controller: controller,
+        readOnly: true,
+        onTap: onTap,
+        cursorColor: _verdeOscuro,
+        style: const TextStyle(
+          color: _textoPrincipal,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+        decoration: _decoracionCampo(
+          hintText: 'YYYY-MM-DD',
+        ).copyWith(
+          suffixIcon: const Icon(
+            Icons.calendar_today_outlined,
+            size: 15,
+            color: _textoSecundario,
+          ),
+          suffixIconConstraints: const BoxConstraints(
+            minWidth: 30,
+            minHeight: 30,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PaginadorOrigen extends StatelessWidget {
+  final int pagina;
+  final int totalPaginas;
+  final int total;
+  final VoidCallback? onAnterior;
+  final VoidCallback? onSiguiente;
+
+  const _PaginadorOrigen({
+    required this.pagina,
+    required this.totalPaginas,
+    required this.total,
+    required this.onAnterior,
+    required this.onSiguiente,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        IconButton(
+          onPressed: onAnterior,
+          icon: const Icon(Icons.chevron_left, size: 18),
+          tooltip: 'Pagina anterior',
+          visualDensity: VisualDensity.compact,
+        ),
+        Expanded(
+          child: Text(
+            '$total resultados | Pagina $pagina de $totalPaginas',
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _textoSecundario,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        IconButton(
+          onPressed: onSiguiente,
+          icon: const Icon(Icons.chevron_right, size: 18),
+          tooltip: 'Pagina siguiente',
+          visualDensity: VisualDensity.compact,
+        ),
+      ],
     );
   }
 }
@@ -687,4 +924,10 @@ String? _textoONulo(String value) {
   final text = value.trim();
 
   return text.isEmpty ? null : text;
+}
+
+double? _decimalONulo(String value) {
+  final text = value.trim().replaceAll(',', '.');
+  if (text.isEmpty) return null;
+  return double.tryParse(text);
 }

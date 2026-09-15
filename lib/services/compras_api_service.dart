@@ -276,6 +276,10 @@ class ComprasApiService {
     String? busqueda,
     String? estatus,
     int? idProveedor,
+    String? fechaDesde,
+    String? fechaHasta,
+    double? totalMin,
+    double? totalMax,
     int pagina = 1,
     int limite = 25,
   }) async {
@@ -286,6 +290,10 @@ class ComprasApiService {
         'busqueda': busqueda.trim(),
       if (estatus != null && estatus.isNotEmpty) 'estatus': estatus,
       if (idProveedor != null) 'idProveedor': idProveedor.toString(),
+      if (fechaDesde != null && fechaDesde.isNotEmpty) 'fechaDesde': fechaDesde,
+      if (fechaHasta != null && fechaHasta.isNotEmpty) 'fechaHasta': fechaHasta,
+      if (totalMin != null) 'totalMin': totalMin.toStringAsFixed(2),
+      if (totalMax != null) 'totalMax': totalMax.toStringAsFixed(2),
     };
     final query = Uri(queryParameters: params).query;
     final response = await _apiClient.get('/compras?$query');
@@ -296,12 +304,20 @@ class ComprasApiService {
     String? busqueda,
     String? estatus,
     int? idProveedor,
+    String? fechaDesde,
+    String? fechaHasta,
+    double? totalMin,
+    double? totalMax,
     int limite = 100,
   }) async {
     final resultado = await listarComprasPaginadas(
       busqueda: busqueda,
       estatus: estatus,
       idProveedor: idProveedor,
+      fechaDesde: fechaDesde,
+      fechaHasta: fechaHasta,
+      totalMin: totalMin,
+      totalMax: totalMax,
       limite: limite,
     );
     return resultado.items;

@@ -39,6 +39,11 @@ class _MenuCartaDevolucionClienteState
       TextEditingController(text: '1');
   final TextEditingController _observacionesController =
       TextEditingController();
+  final TextEditingController _busquedaController = TextEditingController();
+  final TextEditingController _fechaDesdeController = TextEditingController();
+  final TextEditingController _fechaHastaController = TextEditingController();
+  final TextEditingController _totalMinController = TextEditingController();
+  final TextEditingController _totalMaxController = TextEditingController();
 
   bool _cargando = true;
   bool _cargandoDetalle = false;
@@ -64,6 +69,11 @@ class _MenuCartaDevolucionClienteState
   void dispose() {
     _cantidadController.dispose();
     _observacionesController.dispose();
+    _busquedaController.dispose();
+    _fechaDesdeController.dispose();
+    _fechaHastaController.dispose();
+    _totalMinController.dispose();
+    _totalMaxController.dispose();
     super.dispose();
   }
 
@@ -75,8 +85,13 @@ class _MenuCartaDevolucionClienteState
 
     try {
       final ventas = await widget.ventasApiService.listarVentas(
+        busqueda: _textoONulo(_busquedaController.text),
         estatus: 'PAGADA',
-        limite: 300,
+        fechaDesde: _textoONulo(_fechaDesdeController.text),
+        fechaHasta: _textoONulo(_fechaHastaController.text),
+        totalMin: _decimalONulo(_totalMinController.text),
+        totalMax: _decimalONulo(_totalMaxController.text),
+        limite: 50,
       );
 
       if (!mounted) return;
@@ -84,6 +99,12 @@ class _MenuCartaDevolucionClienteState
       setState(() {
         _ventas = ventas;
         _cargando = false;
+        if (_idVenta != null &&
+            !ventas.any((venta) => venta.idVenta == _idVenta)) {
+          _idVenta = null;
+          _idVentaDetalle = null;
+          _ventaDetalle = null;
+        }
         if (ventas.isEmpty) {
           _error = 'No se pudieron cargar ventas registradas';
         }
@@ -96,6 +117,31 @@ class _MenuCartaDevolucionClienteState
         _cargando = false;
       });
     }
+  }
+
+  Future<void> _seleccionarFecha(TextEditingController controller) async {
+    final ahora = DateTime.now();
+    final inicial = DateTime.tryParse(controller.text) ?? ahora;
+    final fecha = await showDatePicker(
+      context: context,
+      initialDate: inicial,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(ahora.year + 2),
+    );
+
+    if (fecha == null || !mounted) return;
+
+    controller.text = _formatoFechaApi(fecha);
+    _cargarVentas();
+  }
+
+  void _limpiarFiltros() {
+    _busquedaController.clear();
+    _fechaDesdeController.clear();
+    _fechaHastaController.clear();
+    _totalMinController.clear();
+    _totalMaxController.clear();
+    _cargarVentas();
   }
 
   Future<void> _seleccionarVenta(int? idVenta) async {
@@ -230,9 +276,81 @@ class _MenuCartaDevolucionClienteState
                       ),
                     )
                   else ...[
+                    _CampoTexto(
+                      etiqueta: 'Buscar venta',
+                      controller: _busquedaController,
+                      hintText: 'Folio, producto, lote, usuario...',
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: (_) => _cargarVentas(),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _CampoFecha(
+                            etiqueta: 'Desde',
+                            controller: _fechaDesdeController,
+                            onTap: () =>
+                                _seleccionarFecha(_fechaDesdeController),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _CampoFecha(
+                            etiqueta: 'Hasta',
+                            controller: _fechaHastaController,
+                            onTap: () =>
+                                _seleccionarFecha(_fechaHastaController),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _CampoTexto(
+                            etiqueta: 'Min',
+                            controller: _totalMinController,
+                            keyboardType: TextInputType.number,
+                            onSubmitted: (_) => _cargarVentas(),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _CampoTexto(
+                            etiqueta: 'Max',
+                            controller: _totalMaxController,
+                            keyboardType: TextInputType.number,
+                            onSubmitted: (_) => _cargarVentas(),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _cargarVentas,
+                            icon: const Icon(Icons.search, size: 15),
+                            label: const Text('Buscar'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: _limpiarFiltros,
+                          icon: const Icon(Icons.clear, size: 18),
+                          tooltip: 'Limpiar filtros',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
                     _CampoDropdownInt(
                       etiqueta: 'Venta origen',
-                      valor: _idVenta,
+                      valor: _ventas.any((venta) => venta.idVenta == _idVenta)
+                          ? _idVenta
+                          : null,
                       hintText: 'Seleccione transacción...',
                       opciones: [
                         for (final venta in _ventas)
@@ -463,6 +581,8 @@ class _CampoTexto extends StatelessWidget {
   final String? hintText;
   final int maxLines;
   final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onSubmitted;
 
   const _CampoTexto({
     required this.etiqueta,
@@ -470,6 +590,8 @@ class _CampoTexto extends StatelessWidget {
     this.hintText,
     this.maxLines = 1,
     this.keyboardType,
+    this.textInputAction,
+    this.onSubmitted,
   });
 
   @override
@@ -480,6 +602,8 @@ class _CampoTexto extends StatelessWidget {
         controller: controller,
         maxLines: maxLines,
         keyboardType: keyboardType,
+        textInputAction: textInputAction,
+        onSubmitted: onSubmitted,
         cursorColor: _verdeOscuro,
         style: const TextStyle(
           color: _textoPrincipal,
@@ -488,6 +612,49 @@ class _CampoTexto extends StatelessWidget {
         ),
         decoration: _decoracionCampo(
           hintText: hintText,
+        ),
+      ),
+    );
+  }
+}
+
+class _CampoFecha extends StatelessWidget {
+  final String etiqueta;
+  final TextEditingController controller;
+  final VoidCallback onTap;
+
+  const _CampoFecha({
+    required this.etiqueta,
+    required this.controller,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _ContenedorCampo(
+      etiqueta: etiqueta,
+      child: TextField(
+        controller: controller,
+        readOnly: true,
+        onTap: onTap,
+        cursorColor: _verdeOscuro,
+        style: const TextStyle(
+          color: _textoPrincipal,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+        decoration: _decoracionCampo(
+          hintText: 'YYYY-MM-DD',
+        ).copyWith(
+          suffixIcon: const Icon(
+            Icons.calendar_today_outlined,
+            size: 15,
+            color: _textoSecundario,
+          ),
+          suffixIconConstraints: const BoxConstraints(
+            minWidth: 30,
+            minHeight: 30,
+          ),
         ),
       ),
     );
@@ -690,4 +857,16 @@ InputDecoration _decoracionCampo({
 String? _textoONulo(String value) {
   final text = value.trim();
   return text.isEmpty ? null : text;
+}
+
+double? _decimalONulo(String value) {
+  final text = value.trim().replaceAll(',', '.');
+  if (text.isEmpty) return null;
+  return double.tryParse(text);
+}
+
+String _formatoFechaApi(DateTime fecha) {
+  final mes = fecha.month.toString().padLeft(2, '0');
+  final dia = fecha.day.toString().padLeft(2, '0');
+  return '${fecha.year}-$mes-$dia';
 }

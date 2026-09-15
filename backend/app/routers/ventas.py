@@ -41,7 +41,12 @@ def listar_ventas(
     estatus: Literal["PAGADA", "CANCELADA"] | None = None,
     id_corte: int | None = Query(default=None, alias="idCorte"),
     id_usuario: int | None = Query(default=None, alias="idUsuario"),
+    busqueda: str | None = Query(default=None, min_length=1),
     folio: str | None = Query(default=None, min_length=1),
+    fecha_desde: str | None = Query(default=None, alias="fechaDesde"),
+    fecha_hasta: str | None = Query(default=None, alias="fechaHasta"),
+    total_min: Decimal | None = Query(default=None, ge=0, alias="totalMin"),
+    total_max: Decimal | None = Query(default=None, ge=0, alias="totalMax"),
     limite: int = Query(default=100, ge=1, le=500),
 ):
     sql = _select_ventas_sql()
@@ -63,6 +68,45 @@ def listar_ventas(
     if folio:
         filtros.append("v.folio LIKE %s")
         params.append(f"%{folio}%")
+
+    if busqueda:
+        like = f"%{busqueda.strip()}%"
+        filtros.append(
+            """
+            (
+                v.folio LIKE %s
+                OR u.nombre LIKE %s
+                OR v.observaciones LIKE %s
+                OR CAST(v.idVenta AS CHAR) LIKE %s
+                OR CAST(v.total AS CHAR) LIKE %s
+                OR EXISTS (
+                    SELECT 1
+                    FROM venta_detalle vd
+                    INNER JOIN inventario_producto i ON i.idInventario = vd.idInventario
+                    INNER JOIN producto p ON p.idProducto = i.idProducto
+                    WHERE vd.idVenta = v.idVenta
+                      AND (p.nombre LIKE %s OR i.codigoLote LIKE %s)
+                )
+            )
+            """
+        )
+        params.extend([like, like, like, like, like, like, like])
+
+    if fecha_desde:
+        filtros.append("DATE(v.fecha) >= %s")
+        params.append(fecha_desde)
+
+    if fecha_hasta:
+        filtros.append("DATE(v.fecha) <= %s")
+        params.append(fecha_hasta)
+
+    if total_min is not None:
+        filtros.append("v.total >= %s")
+        params.append(total_min)
+
+    if total_max is not None:
+        filtros.append("v.total <= %s")
+        params.append(total_max)
 
     if filtros:
         sql += " WHERE " + " AND ".join(filtros)

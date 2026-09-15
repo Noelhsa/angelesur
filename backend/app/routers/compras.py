@@ -44,6 +44,10 @@ def listar_compras(
     busqueda: str | None = Query(default=None, min_length=1),
     estatus: Literal["REGISTRADA", "CANCELADA"] | None = None,
     id_proveedor: int | None = Query(default=None, alias="idProveedor"),
+    fecha_desde: str | None = Query(default=None, alias="fechaDesde"),
+    fecha_hasta: str | None = Query(default=None, alias="fechaHasta"),
+    total_min: Decimal | None = Query(default=None, ge=0, alias="totalMin"),
+    total_max: Decimal | None = Query(default=None, ge=0, alias="totalMax"),
     pagina: int = Query(default=1, ge=1),
     limite: int = Query(default=25, ge=5, le=100),
 ):
@@ -76,11 +80,21 @@ def listar_compras(
                 OR c.folioProveedor LIKE %s
                 OR p.nombre LIKE %s
                 OR u.nombre LIKE %s
+                OR c.observaciones LIKE %s
+                OR CAST(c.total AS CHAR) LIKE %s
+                OR EXISTS (
+                    SELECT 1
+                    FROM compra_detalle cd
+                    INNER JOIN producto pr ON pr.idProducto = cd.idProducto
+                    LEFT JOIN inventario_producto i ON i.idInventario = cd.idInventario
+                    WHERE cd.idCompra = c.idCompra
+                      AND (pr.nombre LIKE %s OR i.codigoLote LIKE %s)
+                )
             )
             """
         )
         like = f"%{busqueda.strip()}%"
-        params.extend([like, like, like, like])
+        params.extend([like, like, like, like, like, like, like, like])
 
     if estatus:
         filtros.append("c.estatus = %s")
@@ -89,6 +103,22 @@ def listar_compras(
     if id_proveedor is not None:
         filtros.append("c.idProveedor = %s")
         params.append(id_proveedor)
+
+    if fecha_desde:
+        filtros.append("DATE(c.fecha) >= %s")
+        params.append(fecha_desde)
+
+    if fecha_hasta:
+        filtros.append("DATE(c.fecha) <= %s")
+        params.append(fecha_hasta)
+
+    if total_min is not None:
+        filtros.append("c.total >= %s")
+        params.append(total_min)
+
+    if total_max is not None:
+        filtros.append("c.total <= %s")
+        params.append(total_max)
 
     where_sql = f" WHERE {' AND '.join(filtros)}" if filtros else ""
     total_row = fetch_one(

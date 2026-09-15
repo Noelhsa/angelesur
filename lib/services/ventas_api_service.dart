@@ -238,16 +238,30 @@ class VentasApiService {
   }
 
   Future<List<VentaResumen>> listarVentas({
+    String? busqueda,
     String? estatus,
+    String? fechaDesde,
+    String? fechaHasta,
+    double? totalMin,
+    double? totalMax,
     int limite = 100,
   }) async {
-    final params = <String>['limite=$limite'];
+    final query = Uri(
+      queryParameters: {
+        'limite': limite.toString(),
+        if (busqueda != null && busqueda.trim().isNotEmpty)
+          'busqueda': busqueda.trim(),
+        if (estatus != null && estatus.isNotEmpty) 'estatus': estatus,
+        if (fechaDesde != null && fechaDesde.isNotEmpty)
+          'fechaDesde': fechaDesde,
+        if (fechaHasta != null && fechaHasta.isNotEmpty)
+          'fechaHasta': fechaHasta,
+        if (totalMin != null) 'totalMin': totalMin.toStringAsFixed(2),
+        if (totalMax != null) 'totalMax': totalMax.toStringAsFixed(2),
+      },
+    ).query;
 
-    if (estatus != null && estatus.isNotEmpty) {
-      params.add('estatus=$estatus');
-    }
-
-    final response = await _apiClient.get('/ventas?${params.join('&')}');
+    final response = await _apiClient.get('/ventas?$query');
     final items = response as List<dynamic>;
 
     return items
