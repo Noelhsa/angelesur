@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     db_name: str = "farmacia_angeles_v2"
     api_host: str = "127.0.0.1"
     api_port: int = 8000
+    mariadb_bin: str = ""
+    backup_dir: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",

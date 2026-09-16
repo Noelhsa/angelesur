@@ -14,7 +14,7 @@ class BarraLateralIzquierda extends StatelessWidget {
   const BarraLateralIzquierda({
     super.key,
     required this.seleccionado,
-    this.indicesVisibles = const {0, 1, 2, 3, 4, 5, 6, 7, 8},
+    this.indicesVisibles = const {0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
     required this.onSeleccionar,
     required this.onLogout,
   });
@@ -104,6 +104,16 @@ class BarraLateralIzquierda extends StatelessWidget {
                       seleccionado: seleccionado,
                       icono: Icons.assignment_return_outlined,
                       texto: 'Devoluciones',
+                      onTap: onSeleccionar,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (_visible(9)) ...[
+                    _BotonMenuLateral(
+                      indice: 9,
+                      seleccionado: seleccionado,
+                      icono: Icons.backup_outlined,
+                      texto: 'Respaldos',
                       onTap: onSeleccionar,
                     ),
                     const SizedBox(height: 12),

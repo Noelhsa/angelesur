@@ -20,6 +20,7 @@ class PermisosUsuario {
   bool get puedeVerYastas => esJefe;
 
   bool get puedeEditarCatalogo => esJefe;
+  bool get puedeGestionarRespaldos => esJefe;
 
   Set<int> get menusPermitidos {
     return {
@@ -32,6 +33,7 @@ class PermisosUsuario {
       if (puedeVerProveedores) 6,
       if (puedeVerDevoluciones) 7,
       if (puedeVerYastas) 8,
+      if (puedeGestionarRespaldos) 9,
     };
   }
 

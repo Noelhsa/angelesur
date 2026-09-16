@@ -16,6 +16,7 @@ import 'ui/interfaces/contenido_catalogo_producto.dart';
 import 'ui/interfaces/contenido_historial.dart';
 import 'ui/interfaces/contenido_pedidos.dart';
 import 'ui/interfaces/contenido_proveedores.dart';
+import 'ui/interfaces/contenido_respaldos.dart';
 import 'ui/interfaces/contenido_usuarios.dart';
 import 'ui/interfaces/contenido_venta.dart';
 import 'ui/interfaces/contenido_yastas.dart';
@@ -165,6 +166,7 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
 
   bool _cargandoInventario = true;
   bool _procesandoVenta = false;
+  bool _respaldoEnCurso = false;
 
   String? _errorInventario;
 
@@ -984,6 +986,16 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
           usuario: widget.usuario,
         );
 
+      case 9:
+        if (!_permisos.puedeGestionarRespaldos) {
+          return const _InterfazSinPermiso();
+        }
+        return ContenidoRespaldos(
+          usuario: widget.usuario,
+          onRestaurado: widget.onLogout,
+          onOcupado: (value) => setState(() => _respaldoEnCurso = value),
+        );
+
       case 8:
         if (!_permisos.puedeVerYastas) {
           return const _InterfazSinPermiso();
@@ -1011,9 +1023,11 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
                 BarraLateralIzquierda(
                   seleccionado: _menuSeleccionado,
                   indicesVisibles: _permisos.menusPermitidos,
-                  onLogout: widget.onLogout,
+                  onLogout: () {
+                    if (!_respaldoEnCurso) widget.onLogout();
+                  },
                   onSeleccionar: (index) {
-                    if (!_permisos.puedeVerMenu(index)) {
+                    if (_respaldoEnCurso || !_permisos.puedeVerMenu(index)) {
                       return;
                     }
 
