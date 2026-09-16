@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../services/api_client.dart';
 import '../../services/productos_api_service.dart';
+import '../../models/vias_administracion.dart';
 import 'menu_carta_catalogo_producto.dart';
 
 const Color _fondoPagina = Color(0xFFE2E2E2);
@@ -1732,21 +1733,6 @@ class _DialogoProductoState extends State<_DialogoProducto> {
     'MEDICAMENTO',
   ];
 
-  static const List<String> _vias = [
-    'CAPSULA',
-    'TABLETA',
-    'PASTILLA',
-    'SUSPENSION',
-    'GOTAS',
-    'INYECCION',
-    'JARABE',
-    'CREMA',
-    'POMADA',
-    'AEROSOL',
-    'SOLUCION',
-    'OTRO',
-  ];
-
   static const List<String> _edades = [
     'GENERAL',
     'PEDIATRICO',
@@ -1795,7 +1781,7 @@ class _DialogoProductoState extends State<_DialogoProducto> {
   late String _tipo;
   late String _categoria;
   late String _presentacion;
-  late String _via;
+  String? _via;
   late String _edad;
   late String _dosisUnidad;
 
@@ -1852,11 +1838,11 @@ class _DialogoProductoState extends State<_DialogoProducto> {
       producto?.presentacion,
     );
 
-    _via = _vias.contains(
+    _via = viasAdministracion.containsKey(
       producto?.viaAdministracion,
     )
         ? producto!.viaAdministracion!
-        : 'OTRO';
+        : null;
 
     _edad = _edades.contains(
       producto?.edad,
@@ -2131,18 +2117,21 @@ class _DialogoProductoState extends State<_DialogoProducto> {
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         initialValue: _via,
+                        isExpanded: true,
+                        hint: const Text('Seleccionar'),
                         decoration: const InputDecoration(
                           labelText: 'Via de administracion',
                           border: OutlineInputBorder(),
                         ),
-                        items: _vias.map(
+                        items: viasAdministracion.keys.map(
                           (via) {
                             return DropdownMenuItem<String>(
                               value: via,
                               child: Text(
-                                _etiqueta(
+                                etiquetaViaAdministracion(
                                   via,
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             );
                           },
@@ -2388,11 +2377,7 @@ class _DialogoDetalleProducto extends StatelessWidget {
               ),
               _DatoDetalle(
                 'Via',
-                producto.viaAdministracion == null
-                    ? 'Sin via'
-                    : _etiqueta(
-                        producto.viaAdministracion!,
-                      ),
+                etiquetaViaAdministracion(producto.viaAdministracion),
               ),
               _DatoDetalle(
                 'Edad',

@@ -242,7 +242,7 @@ CREATE TABLE `info_medicamento` (
   `idInfo` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `idProducto` bigint(20) unsigned NOT NULL,
   `presentacion` varchar(80) DEFAULT NULL,
-  `viaAdministracion` enum('CAPSULA','TABLETA','PASTILLA','SUSPENSION','GOTAS','INYECCION','JARABE','CREMA','POMADA','AEROSOL','SOLUCION','OTRO') DEFAULT NULL,
+  `viaAdministracion` enum('ORAL','SUBLINGUAL','RECTAL','INTRAVENOSA','INTRAMUSCULAR','SUBCUTANEA','INTRADERMICA','TOPICA','INHALATORIA','OFTALMICA','OTICA','NASAL','VAGINAL') DEFAULT NULL,
   `edad` enum('PEDIATRICO','INFANTIL','ADULTO','GENERAL') DEFAULT 'GENERAL',
   `requiereReceta` tinyint(1) NOT NULL DEFAULT 0,
   `sustanciaActiva` varchar(150) DEFAULT NULL,

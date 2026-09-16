@@ -111,6 +111,12 @@ MariaDB no es una base embebida como SQLite. Para que la app "lleve todo adentro
 
 Los cambios incrementales de estructura de base se guardan en `backend/migrations`.
 
+- `20260916_vias_administracion.sql`: reemplaza las presentaciones que figuraban
+  como vias por las 13 vias de administracion. Aplicar con respaldo previo y la
+  aplicacion cerrada. Valores antiguos quedan en NULL para revision manual;
+  no se deduce la via a partir de la presentacion. No modifica presentacion.
+  La base inicial limpia ya incluye el ENUM actualizado.
+
 - `20260720_inventario_ubicacion_estante.sql`: agrega `ubicacionLetra` y `ubicacionNumero` a `inventario_producto`, y expone `ubicacionEstante` en las vistas de inventario.
 
 ## Ejecutable del backend para Windows

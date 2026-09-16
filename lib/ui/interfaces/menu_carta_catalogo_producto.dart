@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../services/productos_api_service.dart';
+import '../../models/vias_administracion.dart';
 
 const Color _verdeOscuro = Color(0xFF397800);
 const Color _verde = Color(0xFF64D20A);
@@ -56,7 +57,7 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
 
   String _claseSeleccionada = 'Producto';
   String _tipoSeleccionado = 'Producto';
-  String _viaAdministracionSeleccionada = 'TABLETA';
+  String? _viaAdministracionSeleccionada;
   String _edadSeleccionada = 'GENERAL';
   String _dosisUnidadSeleccionada = 'mg';
 
@@ -179,7 +180,7 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
                         if (value == 'Medicamento') {
                           _tipoSeleccionado = 'Tableta';
 
-                          _viaAdministracionSeleccionada = 'TABLETA';
+                          _viaAdministracionSeleccionada = null;
 
                           _edadSeleccionada = 'GENERAL';
 
@@ -280,20 +281,8 @@ class _MenuCartaCatalogoProductoState extends State<MenuCartaCatalogoProducto> {
                           child: _CampoDropdownCatalogo(
                             etiqueta: 'Via de Admin',
                             valor: _viaAdministracionSeleccionada,
-                            opciones: const [
-                              'CAPSULA',
-                              'TABLETA',
-                              'PASTILLA',
-                              'SUSPENSION',
-                              'GOTAS',
-                              'INYECCION',
-                              'JARABE',
-                              'CREMA',
-                              'POMADA',
-                              'AEROSOL',
-                              'SOLUCION',
-                              'OTRO',
-                            ],
+                            opciones: viasAdministracion.keys.toList(),
+                            etiquetas: viasAdministracion,
                             onChanged: (value) {
                               if (value == null) {
                                 return;
@@ -793,7 +782,8 @@ class _OpcionRecetaCatalogo extends StatelessWidget {
 
 class _CampoDropdownCatalogo extends StatelessWidget {
   final String etiqueta;
-  final String valor;
+  final String? valor;
+  final Map<String, String> etiquetas;
   final List<String> opciones;
 
   final ValueChanged<String?> onChanged;
@@ -802,6 +792,7 @@ class _CampoDropdownCatalogo extends StatelessWidget {
     required this.etiqueta,
     required this.valor,
     required this.opciones,
+    this.etiquetas = const {},
     required this.onChanged,
   });
 
@@ -810,7 +801,8 @@ class _CampoDropdownCatalogo extends StatelessWidget {
     return _ContenedorCampoCatalogo(
       etiqueta: etiqueta,
       child: DropdownButtonFormField<String>(
-        initialValue: opciones.contains(valor) ? valor : opciones.first,
+        initialValue: opciones.contains(valor) ? valor : null,
+        hint: const Text('Seleccionar'),
         isExpanded: true,
         icon: const Icon(
           Icons.keyboard_arrow_down,
@@ -828,7 +820,7 @@ class _CampoDropdownCatalogo extends StatelessWidget {
             return DropdownMenuItem<String>(
               value: opcion,
               child: Text(
-                opcion,
+                etiquetas[opcion] ?? opcion,
                 overflow: TextOverflow.ellipsis,
               ),
             );

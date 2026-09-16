@@ -9,18 +9,19 @@ router = APIRouter(prefix="/productos", tags=["productos"])
 
 TipoProducto = Literal["MEDICAMENTO", "PRODUCTO"]
 ViaAdministracion = Literal[
-    "CAPSULA",
-    "TABLETA",
-    "PASTILLA",
-    "SUSPENSION",
-    "GOTAS",
-    "INYECCION",
-    "JARABE",
-    "CREMA",
-    "POMADA",
-    "AEROSOL",
-    "SOLUCION",
-    "OTRO",
+    "ORAL",
+    "SUBLINGUAL",
+    "RECTAL",
+    "INTRAVENOSA",
+    "INTRAMUSCULAR",
+    "SUBCUTANEA",
+    "INTRADERMICA",
+    "TOPICA",
+    "INHALATORIA",
+    "OFTALMICA",
+    "OTICA",
+    "NASAL",
+    "VAGINAL",
 ]
 EdadMedicamento = Literal["PEDIATRICO", "INFANTIL", "ADULTO", "GENERAL"]
 
