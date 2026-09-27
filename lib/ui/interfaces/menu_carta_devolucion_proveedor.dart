@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/compras_api_service.dart';
 import '../../services/devoluciones_api_service.dart';
 
-const Color _fondoPanel = Color(0xFFF8F8F8);
+const Color _blanco = Color(0xFFFFFFFF);
 const Color _verdeOscuro = Color(0xFF397800);
 const Color _textoPrincipal = Color(0xFF101828);
 const Color _textoSecundario = Color(0xFF667085);
@@ -95,6 +95,7 @@ class _MenuCartaDevolucionProveedorState
         pagina: pagina,
         limite: 25,
       );
+
       final compras = resultado.items;
 
       if (!mounted) return;
@@ -105,6 +106,7 @@ class _MenuCartaDevolucionProveedorState
         _totalPaginas = resultado.totalPaginas;
         _total = resultado.total;
         _cargando = false;
+
         if (_idCompra != null &&
             !compras.any((compra) => compra.idCompra == _idCompra)) {
           _idCompra = null;
@@ -129,6 +131,7 @@ class _MenuCartaDevolucionProveedorState
   Future<void> _seleccionarFecha(TextEditingController controller) async {
     final ahora = DateTime.now();
     final inicial = DateTime.tryParse(controller.text) ?? ahora;
+
     final fecha = await showDatePicker(
       context: context,
       initialDate: inicial,
@@ -271,10 +274,10 @@ class _MenuCartaDevolucionProveedorState
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 250,
+      width: 340,
       height: double.infinity,
       decoration: BoxDecoration(
-        color: _fondoPanel,
+        color: _blanco,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _bordeSuave,
@@ -291,279 +294,251 @@ class _MenuCartaDevolucionProveedorState
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
+          _EncabezadoPanel(
+            onCerrar: widget.onCerrar,
+          ),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(12, 18, 12, 18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _EncabezadoPanel(
-                    onCerrar: widget.onCerrar,
-                  ),
-                  const SizedBox(height: 28),
-                  if (_cargando)
-                    const SizedBox(
-                      height: 180,
-                      child: Center(
-                        child: CircularProgressIndicator(),
-                      ),
-                    )
-                  else ...[
-                    _CampoTexto(
-                      etiqueta: 'Buscar compra',
-                      controller: _busquedaController,
-                      hintText: 'Folio, proveedor, producto, lote...',
-                      textInputAction: TextInputAction.search,
-                      onSubmitted: (_) => _cargarCompras(pagina: 1),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
+            child: _cargando
+                ? const Center(
+                    child: CircularProgressIndicator(),
+                  )
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(12, 16, 12, 18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: _CampoFecha(
-                            etiqueta: 'Desde',
-                            controller: _fechaDesdeController,
-                            onTap: () =>
-                                _seleccionarFecha(_fechaDesdeController),
-                          ),
+                        _CampoTexto(
+                          etiqueta: 'Buscar compra',
+                          controller: _busquedaController,
+                          hintText: 'Folio, proveedor, producto, lote...',
+                          textInputAction: TextInputAction.search,
+                          onSubmitted: (_) => _cargarCompras(pagina: 1),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _CampoFecha(
-                            etiqueta: 'Hasta',
-                            controller: _fechaHastaController,
-                            onTap: () =>
-                                _seleccionarFecha(_fechaHastaController),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _CampoTexto(
-                            etiqueta: 'Min',
-                            controller: _totalMinController,
-                            keyboardType: TextInputType.number,
-                            onSubmitted: (_) => _cargarCompras(pagina: 1),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _CampoTexto(
-                            etiqueta: 'Max',
-                            controller: _totalMaxController,
-                            keyboardType: TextInputType.number,
-                            onSubmitted: (_) => _cargarCompras(pagina: 1),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => _cargarCompras(pagina: 1),
-                            icon: const Icon(Icons.search, size: 15),
-                            label: const Text('Buscar'),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          onPressed: _limpiarFiltros,
-                          icon: const Icon(Icons.clear, size: 18),
-                          tooltip: 'Limpiar filtros',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    _PaginadorOrigen(
-                      pagina: _pagina,
-                      totalPaginas: _totalPaginas,
-                      total: _total,
-                      onAnterior: _pagina > 1
-                          ? () => _cargarCompras(pagina: _pagina - 1)
-                          : null,
-                      onSiguiente: _pagina < _totalPaginas
-                          ? () => _cargarCompras(pagina: _pagina + 1)
-                          : null,
-                    ),
-                    const SizedBox(height: 18),
-                    _CampoDropdownInt(
-                      etiqueta: 'Compra origen',
-                      valor:
-                          _compras.any((compra) => compra.idCompra == _idCompra)
-                              ? _idCompra
-                              : null,
-                      hintText: 'Seleccione compra...',
-                      opciones: [
-                        for (final compra in _compras)
-                          DropdownMenuItem<int>(
-                            value: compra.idCompra,
-                            child: Text(
-                              'CMP-${compra.idCompra} - ${compra.proveedor}',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                      ],
-                      onChanged: _seleccionarCompra,
-                    ),
-                    if (_cargandoDetalle) ...[
-                      const SizedBox(height: 12),
-                      const LinearProgressIndicator(),
-                    ],
-                    if (!_cargandoDetalle && _compraDetalle != null) ...[
-                      const SizedBox(height: 18),
-                      _CampoDropdownInt(
-                        etiqueta: 'Producto devuelto',
-                        valor: _idCompraDetalle,
-                        hintText: 'Seleccione producto...',
-                        opciones: [
-                          for (final detalle in _compraDetalle!.detalles)
-                            DropdownMenuItem<int>(
-                              value: detalle.idCompraDetalle,
-                              child: Text(
-                                '${detalle.producto} - cant. ${detalle.cantidad}',
-                                overflow: TextOverflow.ellipsis,
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _CampoFecha(
+                                etiqueta: 'Desde',
+                                controller: _fechaDesdeController,
+                                onTap: () =>
+                                    _seleccionarFecha(_fechaDesdeController),
                               ),
                             ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _CampoFecha(
+                                etiqueta: 'Hasta',
+                                controller: _fechaHastaController,
+                                onTap: () =>
+                                    _seleccionarFecha(_fechaHastaController),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _CampoTexto(
+                                etiqueta: 'Min',
+                                controller: _totalMinController,
+                                keyboardType: TextInputType.number,
+                                onSubmitted: (_) => _cargarCompras(pagina: 1),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _CampoTexto(
+                                etiqueta: 'Max',
+                                controller: _totalMaxController,
+                                keyboardType: TextInputType.number,
+                                onSubmitted: (_) => _cargarCompras(pagina: 1),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => _cargarCompras(pagina: 1),
+                                icon: const Icon(Icons.search, size: 15),
+                                label: const Text('Buscar'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              onPressed: _limpiarFiltros,
+                              icon: const Icon(Icons.clear, size: 18),
+                              tooltip: 'Limpiar filtros',
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        _PaginadorOrigen(
+                          pagina: _pagina,
+                          totalPaginas: _totalPaginas,
+                          total: _total,
+                          onAnterior: _pagina > 1
+                              ? () => _cargarCompras(pagina: _pagina - 1)
+                              : null,
+                          onSiguiente: _pagina < _totalPaginas
+                              ? () => _cargarCompras(pagina: _pagina + 1)
+                              : null,
+                        ),
+                        const SizedBox(height: 18),
+                        _CampoDropdownInt(
+                          etiqueta: 'Compra origen',
+                          valor: _compras
+                                  .any((compra) => compra.idCompra == _idCompra)
+                              ? _idCompra
+                              : null,
+                          hintText: 'Seleccione compra...',
+                          opciones: [
+                            for (final compra in _compras)
+                              DropdownMenuItem<int>(
+                                value: compra.idCompra,
+                                child: Text(
+                                  'CMP-${compra.idCompra} - ${compra.proveedor}',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                          ],
+                          onChanged: _seleccionarCompra,
+                        ),
+                        if (_cargandoDetalle) ...[
+                          const SizedBox(height: 12),
+                          const LinearProgressIndicator(),
                         ],
-                        onChanged: (value) {
-                          setState(() {
-                            _idCompraDetalle = value;
-                          });
-                        },
-                      ),
-                    ],
-                    const SizedBox(height: 18),
-                    _CampoTexto(
-                      etiqueta: 'Cantidad',
-                      controller: _cantidadController,
-                      keyboardType: TextInputType.number,
-                    ),
-                    const SizedBox(height: 18),
-                    _CampoDropdownString(
-                      etiqueta: 'Compensación',
-                      valor: _compensacion,
-                      opciones: const [
-                        DropdownMenuItem(
-                          value: 'EFECTIVO',
-                          child: Text('Efectivo'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'ELECTRONICO',
-                          child: Text('Electrónico'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'NOTA_CREDITO',
-                          child: Text('Nota crédito'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'REPOSICION_PRODUCTO',
-                          child: Text('Reposición'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'SIN_COMPENSACION',
-                          child: Text('Sin compensación'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-
-                        setState(() {
-                          _compensacion = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 18),
-                    _CampoDropdownString(
-                      etiqueta: 'Motivo',
-                      valor: _motivo,
-                      opciones: const [
-                        DropdownMenuItem(
-                          value: 'PRODUCTO_DANADO',
-                          child: Text('Producto dañado'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'CADUCADO',
-                          child: Text('Caducado'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'ERROR_COMPRA',
-                          child: Text('Error de compra'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'EXCEDENTE',
-                          child: Text('Excedente'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'CAMBIO_PRECIO',
-                          child: Text('Cambio de precio'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'OTRO',
-                          child: Text('Otro'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-
-                        setState(() {
-                          _motivo = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 22),
-                    _CampoTexto(
-                      etiqueta: 'Observaciones',
-                      controller: _observacionesController,
-                      hintText: 'Detalle la razón del retorno aquí...',
-                      maxLines: 4,
-                    ),
-                    if (_error != null) ...[
-                      const SizedBox(height: 16),
-                      Text(
-                        _error!,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: _rojo,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 90),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 40,
-                      child: ElevatedButton(
-                        onPressed: widget.procesando ? null : _guardar,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _verdeOscuro,
-                          disabledBackgroundColor:
-                              _verdeOscuro.withOpacity(0.55),
-                          elevation: 4,
-                          shadowColor: _verdeOscuro.withOpacity(0.25),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
+                        if (!_cargandoDetalle && _compraDetalle != null) ...[
+                          const SizedBox(height: 18),
+                          _CampoDropdownInt(
+                            etiqueta: 'Producto devuelto',
+                            valor: _idCompraDetalle,
+                            hintText: 'Seleccione producto...',
+                            opciones: [
+                              for (final detalle in _compraDetalle!.detalles)
+                                DropdownMenuItem<int>(
+                                  value: detalle.idCompraDetalle,
+                                  child: Text(
+                                    '${detalle.producto} - cant. ${detalle.cantidad}',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                            ],
+                            onChanged: (value) {
+                              setState(() {
+                                _idCompraDetalle = value;
+                              });
+                            },
                           ),
+                        ],
+                        const SizedBox(height: 18),
+                        _CampoTexto(
+                          etiqueta: 'Cantidad',
+                          controller: _cantidadController,
+                          keyboardType: TextInputType.number,
                         ),
-                        child: Text(
-                          widget.procesando ? 'Guardando...' : 'Guardar',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
+                        const SizedBox(height: 18),
+                        _CampoDropdownString(
+                          etiqueta: 'Compensación',
+                          valor: _compensacion,
+                          opciones: const [
+                            DropdownMenuItem(
+                              value: 'EFECTIVO',
+                              child: Text('Efectivo'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'ELECTRONICO',
+                              child: Text('Electrónico'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'NOTA_CREDITO',
+                              child: Text('Nota crédito'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'REPOSICION_PRODUCTO',
+                              child: Text('Reposición'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'SIN_COMPENSACION',
+                              child: Text('Sin compensación'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value == null) return;
+
+                            setState(() {
+                              _compensacion = value;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 18),
+                        _CampoDropdownString(
+                          etiqueta: 'Motivo',
+                          valor: _motivo,
+                          opciones: const [
+                            DropdownMenuItem(
+                              value: 'PRODUCTO_DANADO',
+                              child: Text('Producto dañado'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'CADUCADO',
+                              child: Text('Caducado'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'ERROR_COMPRA',
+                              child: Text('Error de compra'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'EXCEDENTE',
+                              child: Text('Excedente'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'CAMBIO_PRECIO',
+                              child: Text('Cambio de precio'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'OTRO',
+                              child: Text('Otro'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value == null) return;
+
+                            setState(() {
+                              _motivo = value;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 22),
+                        _CampoTexto(
+                          etiqueta: 'Observaciones',
+                          controller: _observacionesController,
+                          hintText: 'Detalle la razón del retorno aquí...',
+                          maxLines: 4,
+                        ),
+                        if (_error != null) ...[
+                          const SizedBox(height: 16),
+                          Text(
+                            _error!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: _rojo,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                        ),
-                      ),
+                        ],
+                      ],
                     ),
-                  ],
-                ],
-              ),
-            ),
+                  ),
+          ),
+          _AccionesDevolucionProveedor(
+            procesando: widget.procesando,
+            onGuardar: _guardar,
           ),
         ],
       ),
@@ -580,40 +555,124 @@ class _EncabezadoPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Icon(
-          Icons.keyboard_return,
-          color: _verdeOscuro,
-          size: 17,
+    return Container(
+      height: 62,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: const BoxDecoration(
+        color: _blanco,
+        border: Border(
+          bottom: BorderSide(
+            color: _bordeSuave,
+          ),
         ),
-        const SizedBox(width: 8),
-        const Expanded(
-          child: Text(
-            'Devolución a proveedor',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.keyboard_return,
+            color: _verdeOscuro,
+            size: 17,
+          ),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Devolución a proveedor',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: _textoPrincipal,
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: onCerrar,
+            icon: const Icon(
+              Icons.close,
               color: _textoPrincipal,
-              fontSize: 15,
+              size: 20,
+            ),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(
+              minWidth: 32,
+              minHeight: 32,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccionesDevolucionProveedor extends StatelessWidget {
+  final bool procesando;
+  final VoidCallback onGuardar;
+
+  const _AccionesDevolucionProveedor({
+    required this.procesando,
+    required this.onGuardar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 62,
+      padding: const EdgeInsets.fromLTRB(
+        10,
+        10,
+        10,
+        10,
+      ),
+      decoration: const BoxDecoration(
+        color: _blanco,
+        border: Border(
+          top: BorderSide(
+            color: _bordeSuave,
+          ),
+        ),
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 40,
+        child: ElevatedButton.icon(
+          onPressed: procesando ? null : onGuardar,
+          icon: procesando
+              ? const SizedBox(
+                  width: 13,
+                  height: 13,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(
+                  Icons.save_outlined,
+                  color: Colors.white,
+                  size: 14,
+                ),
+          label: Text(
+            procesando ? 'Guardando...' : 'Guardar',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
               fontWeight: FontWeight.w900,
             ),
           ),
-        ),
-        IconButton(
-          onPressed: onCerrar,
-          icon: const Icon(
-            Icons.close,
-            color: _textoSecundario,
-            size: 18,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _verdeOscuro,
+            disabledBackgroundColor: _verdeOscuro.withOpacity(0.55),
+            elevation: 4,
+            shadowColor: _verdeOscuro.withOpacity(0.25),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
           ),
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(
-            minWidth: 28,
-            minHeight: 28,
-          ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -914,6 +973,7 @@ String _formatoFechaApi(dynamic fecha) {
   if (fecha is DateTime) {
     final mes = fecha.month.toString().padLeft(2, '0');
     final dia = fecha.day.toString().padLeft(2, '0');
+
     return '${fecha.year}-$mes-$dia';
   }
 
@@ -928,6 +988,8 @@ String? _textoONulo(String value) {
 
 double? _decimalONulo(String value) {
   final text = value.trim().replaceAll(',', '.');
+
   if (text.isEmpty) return null;
+
   return double.tryParse(text);
 }

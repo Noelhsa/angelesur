@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-const Color _fondoPanel = Color(0xFFF8F8F8);
+const Color _blanco = Color(0xFFFFFFFF);
 const Color _verdeOscuro = Color(0xFF397800);
 const Color _textoPrincipal = Color(0xFF101828);
 const Color _textoSecundario = Color(0xFF667085);
@@ -123,10 +123,10 @@ class _MenuCartaYastasState extends State<MenuCartaYastas> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 250,
+      width: 340,
       height: double.infinity,
       decoration: BoxDecoration(
-        color: _fondoPanel,
+        color: _blanco,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _bordeSuave,
@@ -143,16 +143,15 @@ class _MenuCartaYastasState extends State<MenuCartaYastas> {
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
+          _TituloPanelYastas(
+            onCerrar: widget.onCerrar,
+          ),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
+              padding: const EdgeInsets.fromLTRB(12, 16, 12, 18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _TituloPanelYastas(
-                    onCerrar: widget.onCerrar,
-                  ),
-                  const SizedBox(height: 28),
                   _CampoDropdownYastas(
                     etiqueta: 'Tipo de servicio',
                     valor: _tipoServicio,
@@ -241,48 +240,13 @@ class _MenuCartaYastasState extends State<MenuCartaYastas> {
                       ),
                     ),
                   ],
-                  const SizedBox(height: 30),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 40,
-                    child: ElevatedButton.icon(
-                      onPressed: widget.guardando ? null : _guardar,
-                      icon: widget.guardando
-                          ? const SizedBox(
-                              width: 13,
-                              height: 13,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(
-                              Icons.save_outlined,
-                              color: Colors.white,
-                              size: 14,
-                            ),
-                      label: Text(
-                        widget.guardando ? 'Guardando...' : 'Guardar Tarifa',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _verdeOscuro,
-                        disabledBackgroundColor: _verdeOscuro.withOpacity(0.55),
-                        elevation: 4,
-                        shadowColor: _verdeOscuro.withOpacity(0.25),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
+          ),
+          _AccionesYastas(
+            guardando: widget.guardando,
+            onGuardar: _guardar,
           ),
         ],
       ),
@@ -299,41 +263,53 @@ class _TituloPanelYastas extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Icon(
-          Icons.receipt_long_outlined,
-          color: _verdeOscuro,
-          size: 17,
+    return Container(
+      height: 62,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: const BoxDecoration(
+        color: _blanco,
+        border: Border(
+          bottom: BorderSide(
+            color: _bordeSuave,
+          ),
         ),
-        const SizedBox(width: 8),
-        const Expanded(
-          child: Text(
-            'Nueva tarifa',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: _textoPrincipal,
-              fontSize: 15,
-              fontWeight: FontWeight.w900,
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.receipt_long_outlined,
+            color: _verdeOscuro,
+            size: 17,
+          ),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Nueva tarifa',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: _textoPrincipal,
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
-        ),
-        IconButton(
-          onPressed: onCerrar,
-          icon: const Icon(
-            Icons.close,
-            color: _textoSecundario,
-            size: 18,
+          IconButton(
+            onPressed: onCerrar,
+            icon: const Icon(
+              Icons.close,
+              color: _textoPrincipal,
+              size: 20,
+            ),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(
+              minWidth: 32,
+              minHeight: 32,
+            ),
+            tooltip: 'Cerrar',
           ),
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(
-            minWidth: 28,
-            minHeight: 28,
-          ),
-          tooltip: 'Cerrar',
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -466,12 +442,89 @@ class _ContenedorCampoYastas extends StatelessWidget {
           style: const TextStyle(
             color: _textoPrincipal,
             fontSize: 10,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 8),
-        child,
+        const SizedBox(height: 5),
+        ConstrainedBox(
+          constraints: const BoxConstraints(
+            minHeight: 38,
+          ),
+          child: child,
+        ),
       ],
+    );
+  }
+}
+
+class _AccionesYastas extends StatelessWidget {
+  final bool guardando;
+  final VoidCallback onGuardar;
+
+  const _AccionesYastas({
+    required this.guardando,
+    required this.onGuardar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 62,
+      padding: const EdgeInsets.fromLTRB(
+        10,
+        10,
+        10,
+        10,
+      ),
+      decoration: const BoxDecoration(
+        color: _blanco,
+        border: Border(
+          top: BorderSide(
+            color: _bordeSuave,
+          ),
+        ),
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 40,
+        child: ElevatedButton.icon(
+          onPressed: guardando ? null : onGuardar,
+          icon: guardando
+              ? const SizedBox(
+                  width: 13,
+                  height: 13,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(
+                  Icons.save_outlined,
+                  color: Colors.white,
+                  size: 14,
+                ),
+          label: Text(
+            guardando ? 'Guardando...' : 'Guardar Tarifa',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _verdeOscuro,
+            disabledBackgroundColor: _verdeOscuro.withOpacity(0.55),
+            elevation: 4,
+            shadowColor: _verdeOscuro.withOpacity(0.25),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

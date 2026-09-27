@@ -8,7 +8,7 @@ import '../../services/proveedores_api_service.dart';
 import '../../utils/config_moneda.dart';
 
 const Color _verdeOscuro = Color(0xFF397800);
-const Color _verde = Color(0xFF64D20A);
+const Color _verde = Color(0xFF3A7704);
 const Color _textoPrincipal = Color(0xFF101828);
 const Color _textoSecundario = Color(0xFF667085);
 const Color _bordeSuave = Color(0xFFD9E6D3);
@@ -519,26 +519,85 @@ class _MedioPagoPedido extends StatelessWidget {
   Widget build(BuildContext context) {
     return _ContenedorCampo(
       etiqueta: 'Pago de compra',
-      child: SegmentedButton<String>(
-        segments: const [
-          ButtonSegment(
-            value: 'EFECTIVO',
-            icon: Icon(Icons.payments_outlined, size: 15),
-            label: Text('Efectivo'),
+      child: Container(
+        height: 38,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: const Color(0xFF747B65),
+            width: 1,
           ),
-          ButtonSegment(
-            value: 'ELECTRONICO',
-            icon: Icon(Icons.credit_card, size: 15),
-            label: Text('Electronico'),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Row(
+          children: [
+            Expanded(
+              child: _OpcionMedioPagoPedido(
+                texto: 'Efectivo',
+                icono: Icons.check,
+                activo: valor == 'EFECTIVO',
+                onTap: () => onChanged('EFECTIVO'),
+              ),
+            ),
+            Container(
+              width: 1,
+              color: const Color(0xFF747B65),
+            ),
+            Expanded(
+              child: _OpcionMedioPagoPedido(
+                texto: 'Electronico',
+                icono: Icons.credit_card,
+                activo: valor == 'ELECTRONICO',
+                onTap: () => onChanged('ELECTRONICO'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OpcionMedioPagoPedido extends StatelessWidget {
+  final String texto;
+  final IconData icono;
+  final bool activo;
+  final VoidCallback onTap;
+
+  const _OpcionMedioPagoPedido({
+    required this.texto,
+    required this.icono,
+    required this.activo,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: activo ? const Color(0xFFEAF7DF) : Colors.white,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox.expand(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icono,
+                size: 15,
+                color: activo ? _verdeOscuro : _textoPrincipal,
+              ),
+              const SizedBox(width: 7),
+              Text(
+                texto,
+                style: TextStyle(
+                  color: activo ? _verdeOscuro : _textoPrincipal,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
           ),
-        ],
-        selected: {valor},
-        onSelectionChanged: (values) => onChanged(values.first),
-        style: ButtonStyle(
-          textStyle: WidgetStateProperty.all(
-            const TextStyle(fontSize: 10, fontWeight: FontWeight.w800),
-          ),
-          visualDensity: VisualDensity.compact,
         ),
       ),
     );

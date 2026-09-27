@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../models/usuario.dart';
 
-const Color _fondoPanel = Color(0xFFF8F8F8);
 const Color _verdeOscuro = Color(0xFF397800);
 const Color _textoPrincipal = Color(0xFF101828);
 const Color _textoSecundario = Color(0xFF667085);
@@ -43,22 +42,14 @@ class MenuCartaUsuario extends StatefulWidget {
   });
 
   @override
-  State<MenuCartaUsuario> createState() =>
-      _MenuCartaUsuarioState();
+  State<MenuCartaUsuario> createState() => _MenuCartaUsuarioState();
 }
 
 class _MenuCartaUsuarioState extends State<MenuCartaUsuario> {
-  final TextEditingController _nombreController =
-      TextEditingController();
-
-  final TextEditingController _usuarioController =
-      TextEditingController();
-
-  final TextEditingController _telefonoController =
-      TextEditingController();
-
-  final TextEditingController _passwordController =
-      TextEditingController();
+  final TextEditingController _nombreController = TextEditingController();
+  final TextEditingController _usuarioController = TextEditingController();
+  final TextEditingController _telefonoController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
   String? _rolSeleccionado;
   bool _usuarioActivo = true;
@@ -94,10 +85,11 @@ class _MenuCartaUsuarioState extends State<MenuCartaUsuario> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 250,
+      width: 340,
       height: double.infinity,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: _fondoPanel,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _bordeSuave,
@@ -113,25 +105,18 @@ class _MenuCartaUsuarioState extends State<MenuCartaUsuario> {
           ),
         ],
       ),
-      clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
+          _EncabezadoNuevoUsuario(
+            editando: _editando,
+            onCerrar: widget.onCerrar,
+          ),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(
-                12,
-                18,
-                12,
-                18,
-              ),
+              padding: const EdgeInsets.fromLTRB(12, 16, 12, 18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _EncabezadoNuevoUsuario(
-                    editando: _editando,
-                    onCerrar: widget.onCerrar,
-                  ),
-                  const SizedBox(height: 28),
                   _CampoTextoUsuario(
                     etiqueta: 'Nombre completo',
                     controller: _nombreController,
@@ -161,8 +146,7 @@ class _MenuCartaUsuarioState extends State<MenuCartaUsuario> {
                     suffixWidget: IconButton(
                       onPressed: () {
                         setState(() {
-                          _passwordVisible =
-                              !_passwordVisible;
+                          _passwordVisible = !_passwordVisible;
                         });
                       },
                       icon: Icon(
@@ -214,58 +198,13 @@ class _MenuCartaUsuarioState extends State<MenuCartaUsuario> {
                       ),
                     ),
                   ],
-                  const SizedBox(height: 70),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 40,
-                    child: ElevatedButton.icon(
-                      onPressed:
-                          widget.guardando ? null : _guardar,
-                      icon: widget.guardando
-                          ? const SizedBox(
-                              width: 13,
-                              height: 13,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(
-                              Icons.save_outlined,
-                              color: Colors.white,
-                              size: 14,
-                            ),
-                      label: Text(
-                        widget.guardando
-                            ? 'Guardando...'
-                            : 'Guardar Usuario',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _verdeOscuro,
-                        disabledBackgroundColor:
-                            _verdeOscuro.withValues(
-                          alpha: 0.55,
-                        ),
-                        elevation: 4,
-                        shadowColor:
-                            _verdeOscuro.withValues(
-                          alpha: 0.25,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(6),
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
+          ),
+          _AccionesUsuario(
+            onGuardar: _guardar,
+            guardando: widget.guardando,
           ),
         ],
       ),
@@ -284,16 +223,14 @@ class _MenuCartaUsuarioState extends State<MenuCartaUsuario> {
         (!_editando && password.isEmpty) ||
         rol == null) {
       setState(() {
-        _error =
-            'Nombre, usuario, contrasena y rol son obligatorios';
+        _error = 'Nombre, usuario, contrasena y rol son obligatorios';
       });
       return;
     }
 
     if (password.isNotEmpty && password.length < 4) {
       setState(() {
-        _error =
-            'La contrasena debe tener al menos 4 caracteres';
+        _error = 'La contrasena debe tener al menos 4 caracteres';
       });
       return;
     }
@@ -326,42 +263,51 @@ class _EncabezadoNuevoUsuario extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(
-          editando
-              ? Icons.edit_outlined
-              : Icons.person_add_alt_1,
-          color: _verdeOscuro,
-          size: 17,
+    return Container(
+      height: 62,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: _bordeSuave,
+          ),
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            editando ? 'Editar Usuario' : 'Nuevo Usuario',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: _textoPrincipal,
-              fontSize: 15,
-              fontWeight: FontWeight.w900,
+      ),
+      child: Row(
+        children: [
+          Icon(
+            editando ? Icons.edit_outlined : Icons.person_add_alt_1,
+            color: _verdeOscuro,
+            size: 17,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              editando ? 'Editar Usuario' : 'Nuevo Usuario',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: _textoPrincipal,
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
-        ),
-        IconButton(
-          onPressed: onCerrar,
-          icon: const Icon(
-            Icons.close,
-            color: _textoSecundario,
-            size: 18,
+          IconButton(
+            onPressed: onCerrar,
+            icon: const Icon(
+              Icons.close,
+              color: _textoPrincipal,
+              size: 20,
+            ),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(
+              minWidth: 32,
+              minHeight: 32,
+            ),
           ),
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(
-            minWidth: 28,
-            minHeight: 28,
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -504,10 +450,8 @@ class _CampoEstadoUsuario extends StatelessWidget {
                 activeThumbColor: Colors.white,
                 activeTrackColor: _verdeOscuro,
                 inactiveThumbColor: Colors.white,
-                inactiveTrackColor:
-                    const Color(0xFFC9C9C9),
-                materialTapTargetSize:
-                    MaterialTapTargetSize.shrinkWrap,
+                inactiveTrackColor: const Color(0xFFC9C9C9),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
             ),
           ],
@@ -535,13 +479,94 @@ class _ContenedorCampoUsuario extends StatelessWidget {
           etiqueta,
           style: const TextStyle(
             color: _textoPrincipal,
-            fontSize: 9,
-            fontWeight: FontWeight.w900,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 8),
-        child,
+        const SizedBox(height: 5),
+        ConstrainedBox(
+          constraints: const BoxConstraints(
+            minHeight: 38,
+          ),
+          child: child,
+        ),
       ],
+    );
+  }
+}
+
+class _AccionesUsuario extends StatelessWidget {
+  final VoidCallback onGuardar;
+  final bool guardando;
+
+  const _AccionesUsuario({
+    required this.onGuardar,
+    required this.guardando,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 62,
+      padding: const EdgeInsets.fromLTRB(
+        10,
+        10,
+        10,
+        10,
+      ),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(
+            color: _bordeSuave,
+          ),
+        ),
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 40,
+        child: ElevatedButton.icon(
+          onPressed: guardando ? null : onGuardar,
+          icon: guardando
+              ? const SizedBox(
+                  width: 13,
+                  height: 13,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(
+                  Icons.save_outlined,
+                  color: Colors.white,
+                  size: 14,
+                ),
+          label: Text(
+            guardando ? 'Guardando...' : 'Guardar Usuario',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _verdeOscuro,
+            disabledBackgroundColor: _verdeOscuro.withValues(
+              alpha: 0.55,
+            ),
+            elevation: 4,
+            shadowColor: _verdeOscuro.withValues(
+              alpha: 0.25,
+            ),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../../models/medicamento.dart';
 import '../../services/servicios_yastas_api_service.dart';
 import '../../utils/config_moneda.dart';
@@ -35,8 +34,7 @@ class ContenidoVenta extends StatefulWidget {
   });
 
   @override
-  State<ContenidoVenta> createState() =>
-      _ContenidoVentaState();
+  State<ContenidoVenta> createState() => _ContenidoVentaState();
 }
 
 class _ContenidoVentaState extends State<ContenidoVenta> {
@@ -96,8 +94,7 @@ class _ContenidoVentaState extends State<ContenidoVenta> {
           registrandoMovimiento: _registrandoMovimiento,
           onActualizar: _actualizarContenido,
           onNuevoMovimiento: _abrirNuevoMovimiento,
-          onEscanearCodigoBarras:
-              widget.onEscanearCodigoBarras,
+          onEscanearCodigoBarras: widget.onEscanearCodigoBarras,
           onSeleccionarSeccion: (seccion) {
             setState(() {
               _seccionSeleccionada = seccion;
@@ -107,8 +104,7 @@ class _ContenidoVentaState extends State<ContenidoVenta> {
         Expanded(
           child: _seccionSeleccionada == 'Yastas'
               ? ContenidoVentaYastas(
-                  busquedaController:
-                      widget.busquedaController,
+                  busquedaController: widget.busquedaController,
                   onAgregar: widget.onAgregarYastas,
                 )
               : _CatalogoMedicamentos(
@@ -149,127 +145,190 @@ class _BarraSuperiorVenta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final esYastas =
-        seccionSeleccionada == 'Yastas';
+    final esYastas = seccionSeleccionada == 'Yastas';
 
     return Container(
-      height: 78,
+      constraints: const BoxConstraints(
+        minHeight: 78,
+      ),
       padding: const EdgeInsets.only(
         left: 28,
         top: 20,
-        right: 28,
+        right: 18,
+        bottom: 10,
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final anchoBuscador = constraints.maxWidth < 780 ? 250.0 : 310.0;
+
+          if (constraints.maxWidth < 735) {
+            return Wrap(
+              spacing: 12,
+              runSpacing: 10,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                _BuscadorVenta(
+                  ancho: anchoBuscador,
+                  busquedaController: busquedaController,
+                  esYastas: esYastas,
+                  onEscanearCodigoBarras: onEscanearCodigoBarras,
+                ),
+                _ChipCategoria(
+                  texto: 'Medicamentos',
+                  activo: seccionSeleccionada == 'Medicamentos',
+                  onTap: () {
+                    onSeleccionarSeccion('Medicamentos');
+                  },
+                  ancho: 98,
+                ),
+                _ChipCategoria(
+                  texto: 'Yastas',
+                  activo: seccionSeleccionada == 'Yastas',
+                  onTap: () {
+                    onSeleccionarSeccion('Yastas');
+                  },
+                  ancho: 72,
+                ),
+                _BotonNuevoMovimientoVenta(
+                  registrandoMovimiento: registrandoMovimiento,
+                  onNuevoMovimiento: onNuevoMovimiento,
+                ),
+                _BotonActualizarVenta(
+                  actualizando: actualizando,
+                  onActualizar: onActualizar,
+                ),
+              ],
+            );
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _BuscadorVenta(
+                ancho: anchoBuscador,
+                busquedaController: busquedaController,
+                esYastas: esYastas,
+                onEscanearCodigoBarras: onEscanearCodigoBarras,
+              ),
+              const SizedBox(width: 18),
+              _ChipCategoria(
+                texto: 'Medicamentos',
+                activo: seccionSeleccionada == 'Medicamentos',
+                onTap: () {
+                  onSeleccionarSeccion('Medicamentos');
+                },
+                ancho: 98,
+              ),
+              const SizedBox(width: 13),
+              _ChipCategoria(
+                texto: 'Yastas',
+                activo: seccionSeleccionada == 'Yastas',
+                onTap: () {
+                  onSeleccionarSeccion('Yastas');
+                },
+                ancho: 72,
+              ),
+              const Spacer(),
+              _BotonNuevoMovimientoVenta(
+                registrandoMovimiento: registrandoMovimiento,
+                onNuevoMovimiento: onNuevoMovimiento,
+              ),
+              const SizedBox(width: 8),
+              _BotonActualizarVenta(
+                actualizando: actualizando,
+                onActualizar: onActualizar,
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _BuscadorVenta extends StatelessWidget {
+  final double ancho;
+  final TextEditingController busquedaController;
+  final bool esYastas;
+  final Future<void> Function(String codigoBarras) onEscanearCodigoBarras;
+
+  const _BuscadorVenta({
+    required this.ancho,
+    required this.busquedaController,
+    required this.esYastas,
+    required this.onEscanearCodigoBarras,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: ancho,
+      height: 40,
+      decoration: BoxDecoration(
+        color: _blanco,
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(
+          color: const Color(0xFFD6D6D6),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(
+              alpha: 0.04,
+            ),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 310,
-            height: 40,
-            decoration: BoxDecoration(
-              color: _blanco,
-              borderRadius: BorderRadius.circular(7),
-              border: Border.all(
-                color: const Color(0xFFD6D6D6),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(
-                    alpha: 0.04,
-                  ),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                const SizedBox(width: 12),
-                const Icon(
-                  Icons.search,
-                  size: 17,
-                  color: Color(0xFF52687C),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Transform.translate(
-                    offset: const Offset(0, -2),
-                    child: TextField(
-                      controller: busquedaController,
-                      onSubmitted:
-                          onEscanearCodigoBarras,
-                      cursorColor: _verdeOscuro,
-                      textAlign: TextAlign.left,
-                      style: const TextStyle(
-                        color: _texto,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: esYastas
-                            ? 'Buscar servicio...'
-                            : 'Buscar medicamento...',
-                        hintStyle: const TextStyle(
-                          color: Color(0xFF9A9A9A),
-                          fontSize: 9,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        border: InputBorder.none,
-                        isCollapsed: true,
-                        contentPadding:
-                            const EdgeInsets.only(
-                          left: 8,
-                          right: 8,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-              ],
-            ),
-          ),
-          const SizedBox(width: 18),
-          _ChipCategoria(
-            texto: 'Medicamentos',
-            activo: seccionSeleccionada ==
-                'Medicamentos',
-            onTap: () {
-              onSeleccionarSeccion(
-                'Medicamentos',
-              );
-            },
-            ancho: 98,
-          ),
-          const SizedBox(width: 13),
-          _ChipCategoria(
-            texto: 'Yastas',
-            activo: seccionSeleccionada == 'Yastas',
-            onTap: () {
-              onSeleccionarSeccion('Yastas');
-            },
-            ancho: 72,
-          ),
-          const Spacer(),
-          _BotonNuevoMovimientoVenta(
-            registrandoMovimiento:
-                registrandoMovimiento,
-            onNuevoMovimiento:
-                onNuevoMovimiento,
+          const SizedBox(width: 12),
+          const Icon(
+            Icons.search,
+            size: 17,
+            color: Color(0xFF52687C),
           ),
           const SizedBox(width: 8),
-          _BotonActualizarVenta(
-            actualizando: actualizando,
-            onActualizar: onActualizar,
+          Expanded(
+            child: Transform.translate(
+              offset: const Offset(0, -2),
+              child: TextField(
+                controller: busquedaController,
+                onSubmitted: onEscanearCodigoBarras,
+                cursorColor: _verdeOscuro,
+                textAlign: TextAlign.left,
+                style: const TextStyle(
+                  color: _texto,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                ),
+                decoration: InputDecoration(
+                  hintText:
+                      esYastas ? 'Buscar servicio...' : 'Buscar medicamento...',
+                  hintStyle: const TextStyle(
+                    color: Color(0xFF9A9A9A),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  border: InputBorder.none,
+                  isCollapsed: true,
+                  contentPadding: const EdgeInsets.only(
+                    left: 8,
+                    right: 8,
+                  ),
+                ),
+              ),
+            ),
           ),
+          const SizedBox(width: 12),
         ],
       ),
     );
   }
 }
 
-class _BotonNuevoMovimientoVenta
-    extends StatelessWidget {
+class _BotonNuevoMovimientoVenta extends StatelessWidget {
   final bool registrandoMovimiento;
   final VoidCallback onNuevoMovimiento;
 
@@ -284,9 +343,7 @@ class _BotonNuevoMovimientoVenta
       width: 138,
       height: 32,
       child: ElevatedButton.icon(
-        onPressed: registrandoMovimiento
-            ? null
-            : onNuevoMovimiento,
+        onPressed: registrandoMovimiento ? null : onNuevoMovimiento,
         icon: registrandoMovimiento
             ? const SizedBox(
                 width: 12,
@@ -302,9 +359,7 @@ class _BotonNuevoMovimientoVenta
                 color: Colors.white,
               ),
         label: Text(
-          registrandoMovimiento
-              ? 'Guardando...'
-              : 'Nuevo movimiento',
+          registrandoMovimiento ? 'Guardando...' : 'Nuevo movimiento',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
@@ -316,8 +371,7 @@ class _BotonNuevoMovimientoVenta
         style: ElevatedButton.styleFrom(
           elevation: 2,
           backgroundColor: _verdeOscuro,
-          disabledBackgroundColor:
-              _verdeOscuro.withValues(
+          disabledBackgroundColor: _verdeOscuro.withValues(
             alpha: 0.65,
           ),
           foregroundColor: Colors.white,
@@ -336,8 +390,7 @@ class _BotonNuevoMovimientoVenta
   }
 }
 
-class _BotonActualizarVenta
-    extends StatelessWidget {
+class _BotonActualizarVenta extends StatelessWidget {
   final bool actualizando;
   final VoidCallback onActualizar;
 
@@ -352,9 +405,7 @@ class _BotonActualizarVenta
       width: 138,
       height: 32,
       child: ElevatedButton.icon(
-        onPressed: actualizando
-            ? null
-            : onActualizar,
+        onPressed: actualizando ? null : onActualizar,
         icon: actualizando
             ? const SizedBox(
                 width: 12,
@@ -370,9 +421,7 @@ class _BotonActualizarVenta
                 color: Colors.white,
               ),
         label: Text(
-          actualizando
-              ? 'Actualizando'
-              : 'Actualizar',
+          actualizando ? 'Actualizando' : 'Actualizar',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
@@ -384,8 +433,7 @@ class _BotonActualizarVenta
         style: ElevatedButton.styleFrom(
           elevation: 2,
           backgroundColor: _verdeOscuro,
-          disabledBackgroundColor:
-              _verdeOscuro.withValues(
+          disabledBackgroundColor: _verdeOscuro.withValues(
             alpha: 0.65,
           ),
           foregroundColor: Colors.white,
@@ -426,11 +474,8 @@ class _ChipCategoria extends StatelessWidget {
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
           elevation: 0,
-          backgroundColor: activo
-              ? _verdeOscuro
-              : const Color(0xFFE3E3E3),
-          foregroundColor:
-              activo ? _blanco : _texto,
+          backgroundColor: activo ? _verdeOscuro : const Color(0xFFE3E3E3),
+          foregroundColor: activo ? _blanco : _texto,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -441,9 +486,7 @@ class _ChipCategoria extends StatelessWidget {
           style: TextStyle(
             color: activo ? _blanco : _texto,
             fontSize: 10,
-            fontWeight: activo
-                ? FontWeight.w700
-                : FontWeight.w500,
+            fontWeight: activo ? FontWeight.w700 : FontWeight.w500,
           ),
         ),
       ),
@@ -490,8 +533,7 @@ class _CatalogoMedicamentos extends StatelessWidget {
                   )
                 : Wrap(
                     alignment: WrapAlignment.start,
-                    crossAxisAlignment:
-                        WrapCrossAlignment.start,
+                    crossAxisAlignment: WrapCrossAlignment.start,
                     spacing: 14,
                     runSpacing: 15,
                     children: medicamentos.map(
@@ -613,8 +655,7 @@ class _TarjetaMedicamento extends StatelessWidget {
                   text: 'Stock: ',
                 ),
                 TextSpan(
-                  text:
-                      '${medicamento.stock} unidades',
+                  text: '${medicamento.stock} unidades',
                   style: const TextStyle(
                     fontWeight: FontWeight.w900,
                   ),
@@ -740,10 +781,8 @@ class _IlustracionProducto extends StatelessWidget {
       case 1:
         return _CajaMedicamento(
           texto: 'Paracetamol',
-          colorPrincipal:
-              const Color(0xFF55BFD2),
-          colorSecundario:
-              const Color(0xFFE9F6FA),
+          colorPrincipal: const Color(0xFF55BFD2),
+          colorSecundario: const Color(0xFFE9F6FA),
         );
 
       case 2:
@@ -752,19 +791,15 @@ class _IlustracionProducto extends StatelessWidget {
       case 3:
         return _CajaMedicamento(
           texto: 'Ibuprofeno',
-          colorPrincipal:
-              const Color(0xFFFF8500),
-          colorSecundario:
-              const Color(0xFFFFF0DE),
+          colorPrincipal: const Color(0xFFFF8500),
+          colorSecundario: const Color(0xFFFFF0DE),
         );
 
       case 4:
         return _CajaMedicamento(
           texto: 'Ome',
-          colorPrincipal:
-              const Color(0xFF0F8B70),
-          colorSecundario:
-              const Color(0xFFE7FFF8),
+          colorPrincipal: const Color(0xFF0F8B70),
+          colorSecundario: const Color(0xFFE7FFF8),
         );
 
       case 5:

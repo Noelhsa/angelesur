@@ -4,7 +4,7 @@ import '../../services/devoluciones_api_service.dart';
 import '../../services/ventas_api_service.dart';
 import '../../utils/config_moneda.dart';
 
-const Color _fondoPanel = Color(0xFFF8F8F8);
+const Color _blanco = Color(0xFFFFFFFF);
 const Color _verdeOscuro = Color(0xFF397800);
 const Color _textoPrincipal = Color(0xFF101828);
 const Color _textoSecundario = Color(0xFF667085);
@@ -238,10 +238,10 @@ class _MenuCartaDevolucionClienteState
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 250,
+      width: 340,
       height: double.infinity,
       decoration: BoxDecoration(
-        color: _fondoPanel,
+        color: _blanco,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _bordeSuave,
@@ -258,269 +258,242 @@ class _MenuCartaDevolucionClienteState
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
+          _EncabezadoPanel(
+            onCerrar: widget.onCerrar,
+          ),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(12, 18, 12, 18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _EncabezadoPanel(
-                    onCerrar: widget.onCerrar,
-                  ),
-                  const SizedBox(height: 28),
-                  if (_cargando)
-                    const SizedBox(
-                      height: 180,
-                      child: Center(
-                        child: CircularProgressIndicator(),
-                      ),
-                    )
-                  else ...[
-                    _CampoTexto(
-                      etiqueta: 'Buscar venta',
-                      controller: _busquedaController,
-                      hintText: 'Folio, producto, lote, usuario...',
-                      textInputAction: TextInputAction.search,
-                      onSubmitted: (_) => _cargarVentas(),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
+            child: _cargando
+                ? const Center(
+                    child: CircularProgressIndicator(),
+                  )
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(12, 16, 12, 18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: _CampoFecha(
-                            etiqueta: 'Desde',
-                            controller: _fechaDesdeController,
-                            onTap: () =>
-                                _seleccionarFecha(_fechaDesdeController),
-                          ),
+                        _CampoTexto(
+                          etiqueta: 'Buscar venta',
+                          controller: _busquedaController,
+                          hintText: 'Folio, producto, lote, usuario...',
+                          textInputAction: TextInputAction.search,
+                          onSubmitted: (_) => _cargarVentas(),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _CampoFecha(
-                            etiqueta: 'Hasta',
-                            controller: _fechaHastaController,
-                            onTap: () =>
-                                _seleccionarFecha(_fechaHastaController),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _CampoTexto(
-                            etiqueta: 'Min',
-                            controller: _totalMinController,
-                            keyboardType: TextInputType.number,
-                            onSubmitted: (_) => _cargarVentas(),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _CampoTexto(
-                            etiqueta: 'Max',
-                            controller: _totalMaxController,
-                            keyboardType: TextInputType.number,
-                            onSubmitted: (_) => _cargarVentas(),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _cargarVentas,
-                            icon: const Icon(Icons.search, size: 15),
-                            label: const Text('Buscar'),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          onPressed: _limpiarFiltros,
-                          icon: const Icon(Icons.clear, size: 18),
-                          tooltip: 'Limpiar filtros',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    _CampoDropdownInt(
-                      etiqueta: 'Venta origen',
-                      valor: _ventas.any((venta) => venta.idVenta == _idVenta)
-                          ? _idVenta
-                          : null,
-                      hintText: 'Seleccione transacción...',
-                      opciones: [
-                        for (final venta in _ventas)
-                          DropdownMenuItem<int>(
-                            value: venta.idVenta,
-                            child: Text(
-                              '${venta.folio} - ${ConfigMoneda.formato(venta.total)}',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                      ],
-                      onChanged: _seleccionarVenta,
-                    ),
-                    if (_cargandoDetalle) ...[
-                      const SizedBox(height: 12),
-                      const LinearProgressIndicator(),
-                    ],
-                    if (!_cargandoDetalle && _ventaDetalle != null) ...[
-                      const SizedBox(height: 18),
-                      _CampoDropdownInt(
-                        etiqueta: 'Producto devuelto',
-                        valor: _idVentaDetalle,
-                        hintText: 'Seleccione producto...',
-                        opciones: [
-                          for (final detalle in _ventaDetalle!.detalles)
-                            DropdownMenuItem<int>(
-                              value: detalle.idVentaDetalle,
-                              child: Text(
-                                '${detalle.producto} - cant. ${detalle.cantidad}',
-                                overflow: TextOverflow.ellipsis,
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _CampoFecha(
+                                etiqueta: 'Desde',
+                                controller: _fechaDesdeController,
+                                onTap: () =>
+                                    _seleccionarFecha(_fechaDesdeController),
                               ),
                             ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _CampoFecha(
+                                etiqueta: 'Hasta',
+                                controller: _fechaHastaController,
+                                onTap: () =>
+                                    _seleccionarFecha(_fechaHastaController),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _CampoTexto(
+                                etiqueta: 'Min',
+                                controller: _totalMinController,
+                                keyboardType: TextInputType.number,
+                                onSubmitted: (_) => _cargarVentas(),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _CampoTexto(
+                                etiqueta: 'Max',
+                                controller: _totalMaxController,
+                                keyboardType: TextInputType.number,
+                                onSubmitted: (_) => _cargarVentas(),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _cargarVentas,
+                                icon: const Icon(Icons.search, size: 15),
+                                label: const Text('Buscar'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              onPressed: _limpiarFiltros,
+                              icon: const Icon(Icons.clear, size: 18),
+                              tooltip: 'Limpiar filtros',
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                        _CampoDropdownInt(
+                          etiqueta: 'Venta origen',
+                          valor:
+                              _ventas.any((venta) => venta.idVenta == _idVenta)
+                                  ? _idVenta
+                                  : null,
+                          hintText: 'Seleccione transacción...',
+                          opciones: [
+                            for (final venta in _ventas)
+                              DropdownMenuItem<int>(
+                                value: venta.idVenta,
+                                child: Text(
+                                  '${venta.folio} - ${ConfigMoneda.formato(venta.total)}',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                          ],
+                          onChanged: _seleccionarVenta,
+                        ),
+                        if (_cargandoDetalle) ...[
+                          const SizedBox(height: 12),
+                          const LinearProgressIndicator(),
                         ],
-                        onChanged: (value) {
-                          setState(() {
-                            _idVentaDetalle = value;
-                          });
-                        },
-                      ),
-                    ],
-                    const SizedBox(height: 18),
-                    _CampoTexto(
-                      etiqueta: 'Cantidad',
-                      controller: _cantidadController,
-                      keyboardType: TextInputType.number,
-                    ),
-                    const SizedBox(height: 18),
-                    _CampoDropdownString(
-                      etiqueta: 'Método',
-                      valor: _metodo,
-                      opciones: const [
-                        DropdownMenuItem(
-                          value: 'EFECTIVO',
-                          child: Text('Efectivo'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'ELECTRONICO',
-                          child: Text('Electrónico'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'CAMBIO_PRODUCTO',
-                          child: Text('Cambio'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'SIN_DEVOLUCION_DINERO',
-                          child: Text('Sin dinero'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() {
-                          _metodo = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 18),
-                    _CampoDropdownString(
-                      etiqueta: 'Motivo',
-                      valor: _motivo,
-                      opciones: const [
-                        DropdownMenuItem(
-                          value: 'PRODUCTO_EQUIVOCADO',
-                          child: Text('Producto equivocado'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'PRODUCTO_DANADO',
-                          child: Text('Producto dañado'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'CADUCADO',
-                          child: Text('Caducado'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'ERROR_VENTA',
-                          child: Text('Error de venta'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'CLIENTE_SE_ARREPINTIO',
-                          child: Text('Cliente se arrepintió'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'OTRO',
-                          child: Text('Otro'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() {
-                          _motivo = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    _CheckRegresaInventario(
-                      value: _regresaAInventario,
-                      onChanged: (value) {
-                        setState(() {
-                          _regresaAInventario = value ?? true;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 22),
-                    _CampoTexto(
-                      etiqueta: 'Observaciones',
-                      controller: _observacionesController,
-                      hintText: 'Detalle la razón del retorno aquí...',
-                      maxLines: 4,
-                    ),
-                    if (_error != null) ...[
-                      const SizedBox(height: 16),
-                      Text(
-                        _error!,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: _rojo,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 90),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 40,
-                      child: ElevatedButton(
-                        onPressed: widget.procesando ? null : _guardar,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _verdeOscuro,
-                          disabledBackgroundColor:
-                              _verdeOscuro.withOpacity(0.55),
-                          elevation: 4,
-                          shadowColor: _verdeOscuro.withOpacity(0.25),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
+                        if (!_cargandoDetalle && _ventaDetalle != null) ...[
+                          const SizedBox(height: 18),
+                          _CampoDropdownInt(
+                            etiqueta: 'Producto devuelto',
+                            valor: _idVentaDetalle,
+                            hintText: 'Seleccione producto...',
+                            opciones: [
+                              for (final detalle in _ventaDetalle!.detalles)
+                                DropdownMenuItem<int>(
+                                  value: detalle.idVentaDetalle,
+                                  child: Text(
+                                    '${detalle.producto} - cant. ${detalle.cantidad}',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                            ],
+                            onChanged: (value) {
+                              setState(() {
+                                _idVentaDetalle = value;
+                              });
+                            },
                           ),
+                        ],
+                        const SizedBox(height: 18),
+                        _CampoTexto(
+                          etiqueta: 'Cantidad',
+                          controller: _cantidadController,
+                          keyboardType: TextInputType.number,
                         ),
-                        child: Text(
-                          widget.procesando ? 'Guardando...' : 'Guardar',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
+                        const SizedBox(height: 18),
+                        _CampoDropdownString(
+                          etiqueta: 'Método',
+                          valor: _metodo,
+                          opciones: const [
+                            DropdownMenuItem(
+                              value: 'EFECTIVO',
+                              child: Text('Efectivo'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'ELECTRONICO',
+                              child: Text('Electrónico'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'CAMBIO_PRODUCTO',
+                              child: Text('Cambio'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'SIN_DEVOLUCION_DINERO',
+                              child: Text('Sin dinero'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value == null) return;
+                            setState(() {
+                              _metodo = value;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 18),
+                        _CampoDropdownString(
+                          etiqueta: 'Motivo',
+                          valor: _motivo,
+                          opciones: const [
+                            DropdownMenuItem(
+                              value: 'PRODUCTO_EQUIVOCADO',
+                              child: Text('Producto equivocado'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'PRODUCTO_DANADO',
+                              child: Text('Producto dañado'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'CADUCADO',
+                              child: Text('Caducado'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'ERROR_VENTA',
+                              child: Text('Error de venta'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'CLIENTE_SE_ARREPINTIO',
+                              child: Text('Cliente se arrepintió'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'OTRO',
+                              child: Text('Otro'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value == null) return;
+                            setState(() {
+                              _motivo = value;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 20),
+                        _CheckRegresaInventario(
+                          value: _regresaAInventario,
+                          onChanged: (value) {
+                            setState(() {
+                              _regresaAInventario = value ?? true;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 22),
+                        _CampoTexto(
+                          etiqueta: 'Observaciones',
+                          controller: _observacionesController,
+                          hintText: 'Detalle la razón del retorno aquí...',
+                          maxLines: 4,
+                        ),
+                        if (_error != null) ...[
+                          const SizedBox(height: 16),
+                          Text(
+                            _error!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: _rojo,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                        ),
-                      ),
+                        ],
+                      ],
                     ),
-                  ],
-                ],
-              ),
-            ),
+                  ),
+          ),
+          _AccionesDevolucionCliente(
+            procesando: widget.procesando,
+            onGuardar: _guardar,
           ),
         ],
       ),
@@ -537,40 +510,124 @@ class _EncabezadoPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Icon(
-          Icons.keyboard_return,
-          color: _verdeOscuro,
-          size: 17,
+    return Container(
+      height: 62,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: const BoxDecoration(
+        color: _blanco,
+        border: Border(
+          bottom: BorderSide(
+            color: _bordeSuave,
+          ),
         ),
-        const SizedBox(width: 8),
-        const Expanded(
-          child: Text(
-            'Devolución de cliente',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.keyboard_return,
+            color: _verdeOscuro,
+            size: 17,
+          ),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Devolución de cliente',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: _textoPrincipal,
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: onCerrar,
+            icon: const Icon(
+              Icons.close,
               color: _textoPrincipal,
-              fontSize: 15,
+              size: 20,
+            ),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(
+              minWidth: 32,
+              minHeight: 32,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccionesDevolucionCliente extends StatelessWidget {
+  final bool procesando;
+  final VoidCallback onGuardar;
+
+  const _AccionesDevolucionCliente({
+    required this.procesando,
+    required this.onGuardar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 62,
+      padding: const EdgeInsets.fromLTRB(
+        10,
+        10,
+        10,
+        10,
+      ),
+      decoration: const BoxDecoration(
+        color: _blanco,
+        border: Border(
+          top: BorderSide(
+            color: _bordeSuave,
+          ),
+        ),
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 40,
+        child: ElevatedButton.icon(
+          onPressed: procesando ? null : onGuardar,
+          icon: procesando
+              ? const SizedBox(
+                  width: 13,
+                  height: 13,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(
+                  Icons.save_outlined,
+                  color: Colors.white,
+                  size: 14,
+                ),
+          label: Text(
+            procesando ? 'Guardando...' : 'Guardar',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
               fontWeight: FontWeight.w900,
             ),
           ),
-        ),
-        IconButton(
-          onPressed: onCerrar,
-          icon: const Icon(
-            Icons.close,
-            color: _textoSecundario,
-            size: 18,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _verdeOscuro,
+            disabledBackgroundColor: _verdeOscuro.withOpacity(0.55),
+            elevation: 4,
+            shadowColor: _verdeOscuro.withOpacity(0.25),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
           ),
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(
-            minWidth: 28,
-            minHeight: 28,
-          ),
         ),
-      ],
+      ),
     );
   }
 }

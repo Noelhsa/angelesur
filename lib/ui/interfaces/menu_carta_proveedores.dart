@@ -3,14 +3,10 @@ import 'package:flutter/material.dart';
 import '../../services/proveedores_api_service.dart';
 
 const Color _blanco = Color(0xFFFFFFFF);
-const Color _fondoPanel = Color(0xFFF8F8F8);
 const Color _fondoCampo = Color(0xFFF2F2F2);
-
 const Color _verdeOscuro = Color(0xFF397800);
-
 const Color _textoPrincipal = Color(0xFF101828);
 const Color _textoSecundario = Color(0xFF667085);
-
 const Color _bordeSuave = Color(0xFFD9E6D3);
 const Color _bordeCampo = Color(0xFFE0E0E0);
 const Color _rojo = Color(0xFFE02020);
@@ -36,12 +32,10 @@ class MenuCartaProveedores extends StatefulWidget {
   bool get esEdicion => proveedor != null;
 
   @override
-  State<MenuCartaProveedores> createState() =>
-      _MenuCartaProveedoresState();
+  State<MenuCartaProveedores> createState() => _MenuCartaProveedoresState();
 }
 
-class _MenuCartaProveedoresState
-    extends State<MenuCartaProveedores> {
+class _MenuCartaProveedoresState extends State<MenuCartaProveedores> {
   late final TextEditingController _nombreController;
   late final TextEditingController _contactoController;
   late final TextEditingController _telefonoController;
@@ -130,10 +124,10 @@ class _MenuCartaProveedoresState
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 260,
+      width: 340,
       height: double.infinity,
       decoration: BoxDecoration(
-        color: _fondoPanel,
+        color: _blanco,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _bordeSuave,
@@ -145,34 +139,32 @@ class _MenuCartaProveedoresState
               alpha: 0.08,
             ),
             blurRadius: 18,
-            offset: const Offset(-4, 6),
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
+          _TituloPanelProveedor(
+            esEdicion: widget.esEdicion,
+            guardando: widget.guardando,
+            onCerrar: widget.onCerrar,
+          ),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(
-                18,
-                22,
-                18,
+                12,
+                16,
+                12,
                 18,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _TituloPanelProveedor(
-                    esEdicion: widget.esEdicion,
-                    guardando: widget.guardando,
-                    onCerrar: widget.onCerrar,
-                  ),
-                  const SizedBox(height: 28),
                   _CampoProveedor(
                     etiqueta: 'Nombre del Proveedor',
-                    hintText:
-                        'Ej: Distribuidora Médica S.A.',
+                    hintText: 'Ej: Distribuidora Médica S.A.',
                     controller: _nombreController,
                     enabled: !widget.guardando,
                     onChanged: _limpiarError,
@@ -195,8 +187,7 @@ class _MenuCartaProveedoresState
                   const SizedBox(height: 18),
                   _CampoProveedor(
                     etiqueta: 'Dirección',
-                    hintText:
-                        'Calle, número, colonia y ciudad...',
+                    hintText: 'Calle, número, colonia y ciudad...',
                     controller: _direccionController,
                     enabled: !widget.guardando,
                     minLines: 4,
@@ -212,23 +203,10 @@ class _MenuCartaProveedoresState
               ),
             ),
           ),
-
-          /*
-           * El botón permanece fijo en la parte inferior.
-           * El área superior puede desplazarse cuando sea necesario.
-           */
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              18,
-              12,
-              18,
-              20,
-            ),
-            child: _BotonGuardarProveedor(
-              esEdicion: widget.esEdicion,
-              guardando: widget.guardando,
-              onGuardar: _guardar,
-            ),
+          _AccionesProveedor(
+            esEdicion: widget.esEdicion,
+            guardando: widget.guardando,
+            onGuardar: _guardar,
           ),
         ],
       ),
@@ -249,43 +227,53 @@ class _TituloPanelProveedor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Icon(
-          Icons.local_shipping_outlined,
-          color: _verdeOscuro,
-          size: 17,
+    return Container(
+      height: 62,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: const BoxDecoration(
+        color: _blanco,
+        border: Border(
+          bottom: BorderSide(
+            color: _bordeSuave,
+          ),
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            esEdicion
-                ? 'Editar Proveedor'
-                : 'Nuevo Proveedor',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: _textoPrincipal,
-              fontSize: 15,
-              fontWeight: FontWeight.w900,
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.local_shipping_outlined,
+            color: _verdeOscuro,
+            size: 17,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              esEdicion ? 'Editar Proveedor' : 'Nuevo Proveedor',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: _textoPrincipal,
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
-        ),
-        IconButton(
-          onPressed: guardando ? null : onCerrar,
-          icon: const Icon(
-            Icons.close,
-            color: _textoSecundario,
-            size: 18,
+          IconButton(
+            onPressed: guardando ? null : onCerrar,
+            icon: const Icon(
+              Icons.close,
+              color: _textoPrincipal,
+              size: 20,
+            ),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(
+              minWidth: 32,
+              minHeight: 32,
+            ),
+            tooltip: 'Cerrar',
           ),
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(
-            minWidth: 28,
-            minHeight: 28,
-          ),
-          tooltip: 'Cerrar',
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -313,6 +301,41 @@ class _CampoProveedor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return _ContenedorCampoProveedor(
+      etiqueta: etiqueta,
+      child: TextField(
+        controller: controller,
+        enabled: enabled,
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        minLines: minLines,
+        onChanged: onChanged,
+        cursorColor: _verdeOscuro,
+        style: const TextStyle(
+          color: _textoPrincipal,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+        decoration: _decoracionCampoProveedor(
+          hintText: hintText,
+          enabled: enabled,
+        ),
+      ),
+    );
+  }
+}
+
+class _ContenedorCampoProveedor extends StatelessWidget {
+  final String etiqueta;
+  final Widget child;
+
+  const _ContenedorCampoProveedor({
+    required this.etiqueta,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -321,67 +344,15 @@ class _CampoProveedor extends StatelessWidget {
           style: const TextStyle(
             color: _textoPrincipal,
             fontSize: 10,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          enabled: enabled,
-          keyboardType: keyboardType,
-          maxLines: maxLines,
-          minLines: minLines,
-          onChanged: onChanged,
-          cursorColor: _verdeOscuro,
-          style: const TextStyle(
-            color: _textoPrincipal,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
+        const SizedBox(height: 5),
+        ConstrainedBox(
+          constraints: const BoxConstraints(
+            minHeight: 38,
           ),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: enabled
-                ? _fondoCampo
-                : const Color(0xFFE8E8E8),
-            hintText: hintText,
-            hintStyle: const TextStyle(
-              color: _textoSecundario,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 11,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(6),
-              borderSide: const BorderSide(
-                color: _bordeCampo,
-                width: 1,
-              ),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(6),
-              borderSide: const BorderSide(
-                color: _bordeCampo,
-                width: 1,
-              ),
-            ),
-            disabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(6),
-              borderSide: const BorderSide(
-                color: Color(0xFFD4D6D2),
-                width: 1,
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(6),
-              borderSide: const BorderSide(
-                color: _verdeOscuro,
-                width: 1.2,
-              ),
-            ),
-          ),
+          child: child,
         ),
       ],
     );
@@ -435,6 +406,44 @@ class _MensajeErrorProveedor extends StatelessWidget {
   }
 }
 
+class _AccionesProveedor extends StatelessWidget {
+  final bool esEdicion;
+  final bool guardando;
+  final VoidCallback onGuardar;
+
+  const _AccionesProveedor({
+    required this.esEdicion,
+    required this.guardando,
+    required this.onGuardar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 62,
+      padding: const EdgeInsets.fromLTRB(
+        10,
+        10,
+        10,
+        10,
+      ),
+      decoration: const BoxDecoration(
+        color: _blanco,
+        border: Border(
+          top: BorderSide(
+            color: _bordeSuave,
+          ),
+        ),
+      ),
+      child: _BotonGuardarProveedor(
+        esEdicion: esEdicion,
+        guardando: guardando,
+        onGuardar: onGuardar,
+      ),
+    );
+  }
+}
+
 class _BotonGuardarProveedor extends StatelessWidget {
   final bool esEdicion;
   final bool guardando;
@@ -481,13 +490,15 @@ class _BotonGuardarProveedor extends StatelessWidget {
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: _verdeOscuro,
-          disabledBackgroundColor:
-              _verdeOscuro.withValues(
+          disabledBackgroundColor: _verdeOscuro.withValues(
             alpha: 0.55,
           ),
           elevation: 4,
           shadowColor: _verdeOscuro.withValues(
             alpha: 0.25,
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(6),
@@ -496,6 +507,54 @@ class _BotonGuardarProveedor extends StatelessWidget {
       ),
     );
   }
+}
+
+InputDecoration _decoracionCampoProveedor({
+  required String hintText,
+  required bool enabled,
+}) {
+  return InputDecoration(
+    filled: true,
+    fillColor: enabled ? _fondoCampo : const Color(0xFFE8E8E8),
+    hintText: hintText,
+    hintStyle: const TextStyle(
+      color: _textoSecundario,
+      fontSize: 11,
+      fontWeight: FontWeight.w600,
+    ),
+    contentPadding: const EdgeInsets.symmetric(
+      horizontal: 12,
+      vertical: 11,
+    ),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(6),
+      borderSide: const BorderSide(
+        color: _bordeCampo,
+        width: 1,
+      ),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(6),
+      borderSide: const BorderSide(
+        color: _bordeCampo,
+        width: 1,
+      ),
+    ),
+    disabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(6),
+      borderSide: const BorderSide(
+        color: Color(0xFFD4D6D2),
+        width: 1,
+      ),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(6),
+      borderSide: const BorderSide(
+        color: _verdeOscuro,
+        width: 1.2,
+      ),
+    ),
+  );
 }
 
 String? _limpiarTexto(String value) {
