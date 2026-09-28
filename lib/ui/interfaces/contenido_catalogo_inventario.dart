@@ -1701,13 +1701,9 @@ class _DialogoLoteInventario extends StatefulWidget {
 
 class _DialogoLoteInventarioState extends State<_DialogoLoteInventario> {
   late final TextEditingController _loteController;
-
   late final TextEditingController _fechaController;
-
   late final TextEditingController _precioController;
-
   late final TextEditingController _letraController;
-
   late final TextEditingController _numeroController;
 
   String? _error;
@@ -1721,7 +1717,7 @@ class _DialogoLoteInventarioState extends State<_DialogoLoteInventario> {
     );
 
     _fechaController = TextEditingController(
-      text: _formatoFechaApi(
+      text: _formatoFechaVisual(
         widget.producto.fechaCaducidad,
       ),
     );
@@ -1746,6 +1742,7 @@ class _DialogoLoteInventarioState extends State<_DialogoLoteInventario> {
     _precioController.dispose();
     _letraController.dispose();
     _numeroController.dispose();
+
     super.dispose();
   }
 
@@ -1754,35 +1751,47 @@ class _DialogoLoteInventarioState extends State<_DialogoLoteInventario> {
 
     if (lote.isEmpty) {
       setState(() {
-        _error = 'Ingresa el lote o deja SIN_LOTE.';
+        _error = 'Ingresa el código de lote.';
+      });
+
+      return;
+    }
+
+    final fechaTexto = _fechaController.text.trim();
+    final fechaApi = _fechaApiONulo(fechaTexto);
+
+    if (fechaTexto.isNotEmpty && fechaApi == null) {
+      setState(() {
+        _error = 'Ingresa una fecha válida en formato DD/MM/YYYY.';
       });
 
       return;
     }
 
     final precio = double.tryParse(
-      _precioController.text.trim().replaceAll(',', '.'),
+      _precioController.text
+          .trim()
+          .replaceAll('\$', '')
+          .replaceAll(' ', '')
+          .replaceAll(',', '.'),
     );
 
     if (precio == null || precio < 0) {
       setState(() {
-        _error = 'Ingresa un precio de venta valido.';
+        _error = 'Ingresa un precio de venta válido.';
       });
 
       return;
     }
 
     final letra = _letraController.text.trim().toUpperCase();
-
     final numeroTexto = _numeroController.text.trim();
 
     if (letra.isEmpty && numeroTexto.isEmpty) {
       Navigator.of(context).pop(
         _DatosLoteInventario(
           codigoLote: lote,
-          fechaCaducidad: _limpiarTextoFecha(
-            _fechaController.text,
-          ),
+          fechaCaducidad: fechaApi,
           precioVenta: precio,
           ubicacionLetra: null,
           ubicacionNumero: null,
@@ -1804,7 +1813,7 @@ class _DialogoLoteInventarioState extends State<_DialogoLoteInventario> {
 
     if (numero == null || numero <= 0 || numero > 999) {
       setState(() {
-        _error = 'El numero debe estar entre 1 y 999.';
+        _error = 'El número debe estar entre 1 y 999.';
       });
 
       return;
@@ -1813,9 +1822,7 @@ class _DialogoLoteInventarioState extends State<_DialogoLoteInventario> {
     Navigator.of(context).pop(
       _DatosLoteInventario(
         codigoLote: lote,
-        fechaCaducidad: _limpiarTextoFecha(
-          _fechaController.text,
-        ),
+        fechaCaducidad: fechaApi,
         precioVenta: precio,
         ubicacionLetra: letra,
         ubicacionNumero: numero,
@@ -1824,9 +1831,10 @@ class _DialogoLoteInventarioState extends State<_DialogoLoteInventario> {
   }
 
   Future<void> _seleccionarFecha() async {
-    final inicial = DateTime.tryParse(
+    final inicial = _fechaDesdeTexto(
           _fechaController.text,
         ) ??
+        widget.producto.fechaCaducidad ??
         DateTime.now();
 
     final seleccionada = await showDatePicker(
@@ -1844,146 +1852,822 @@ class _DialogoLoteInventarioState extends State<_DialogoLoteInventario> {
     }
 
     setState(() {
-      _fechaController.text = _formatoFechaApi(seleccionada);
+      _fechaController.text = _formatoFechaVisual(
+        seleccionada,
+      );
     });
+  }
+
+  void _limpiarFecha() {
+    setState(() {
+      _fechaController.clear();
+    });
+  }
+
+  DateTime? _fechaDesdeTexto(String value) {
+    final text = value.trim();
+
+    if (text.isEmpty) {
+      return null;
+    }
+
+    if (text.contains('/')) {
+      final parts = text.split('/');
+
+      if (parts.length != 3) {
+        return null;
+      }
+
+      final dia = int.tryParse(parts[0]);
+      final mes = int.tryParse(parts[1]);
+      final anio = int.tryParse(parts[2]);
+
+      if (dia == null || mes == null || anio == null) {
+        return null;
+      }
+
+      final fecha = DateTime(
+        anio,
+        mes,
+        dia,
+      );
+
+      if (fecha.year != anio || fecha.month != mes || fecha.day != dia) {
+        return null;
+      }
+
+      return fecha;
+    }
+
+    return DateTime.tryParse(text);
+  }
+
+  String? _fechaApiONulo(String value) {
+    final text = value.trim();
+
+    if (text.isEmpty) {
+      return null;
+    }
+
+    final fecha = _fechaDesdeTexto(text);
+
+    if (fecha == null) {
+      return null;
+    }
+
+    return _formatoFechaApi(fecha);
+  }
+
+  String _formatoFechaVisual(DateTime? fecha) {
+    if (fecha == null) {
+      return '';
+    }
+
+    return '${fecha.day.toString().padLeft(2, '0')}/'
+        '${fecha.month.toString().padLeft(2, '0')}/'
+        '${fecha.year.toString().padLeft(4, '0')}';
   }
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(
-        'Editar lote de '
-        '${widget.producto.nombre}',
-      ),
-      content: SizedBox(
-        width: 430,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: _loteController,
-              decoration: const InputDecoration(
-                labelText: 'Lote',
-                border: OutlineInputBorder(),
+    return Dialog(
+      insetPadding: const EdgeInsets.all(24),
+      backgroundColor: Colors.transparent,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 590,
+          maxHeight: MediaQuery.of(context).size.height * 0.92,
+        ),
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(
+                  alpha: 0.18,
+                ),
+                blurRadius: 26,
+                offset: const Offset(0, 14),
               ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _fechaController,
-                    readOnly: true,
-                    onTap: _seleccionarFecha,
-                    decoration: InputDecoration(
-                      labelText: 'Fecha de caducidad',
-                      hintText: 'YYYY-MM-DD',
-                      border: const OutlineInputBorder(),
-                      suffixIcon: _fechaController.text.isEmpty
-                          ? const Icon(
-                              Icons.calendar_month_outlined,
-                            )
-                          : IconButton(
-                              onPressed: () {
-                                setState(() {
-                                  _fechaController.clear();
-                                });
-                              },
-                              icon: const Icon(
-                                Icons.close,
-                              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _EncabezadoEditarLote(
+                nombreProducto: widget.producto.nombre,
+                onCerrar: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(
+                    24,
+                    22,
+                    24,
+                    20,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _CampoTextoLoteInventario(
+                        etiqueta: 'CÓDIGO DE LOTE',
+                        requerido: true,
+                        textoDerecha: 'IDENTIFICADOR ÚNICO',
+                        controller: _loteController,
+                        prefixIcon: Icons.barcode_reader,
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: _CampoFechaLoteInventario(
+                              controller: _fechaController,
+                              onTap: _seleccionarFecha,
+                              onClear: _limpiarFecha,
                             ),
-                    ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _CampoPrecioLoteInventario(
+                              controller: _precioController,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      _TarjetaUbicacionInventario(
+                        letraController: _letraController,
+                        numeroController: _numeroController,
+                      ),
+                      if (_error != null) ...[
+                        const SizedBox(height: 16),
+                        _MensajeErrorLoteInventario(
+                          mensaje: _error!,
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _precioController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Precio venta',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _letraController,
-                    textCapitalization: TextCapitalization.characters,
-                    maxLength: 1,
-                    decoration: const InputDecoration(
-                      labelText: 'Letra',
-                      hintText: 'A',
-                      counterText: '',
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _numeroController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Numero',
-                      hintText: '1',
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Ejemplo: A1, B2, C12. '
-              'Deja ambos campos vacios para '
-              'quitar la ubicacion. La caducidad '
-              'se guarda como YYYY-MM-DD.',
-              style: TextStyle(
-                color: _textoSecundario,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+              ),
+              _AccionesEditarLoteInventario(
+                onGuardar: _guardar,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EncabezadoEditarLote extends StatelessWidget {
+  final String nombreProducto;
+  final VoidCallback onCerrar;
+
+  const _EncabezadoEditarLote({
+    required this.nombreProducto,
+    required this.onCerrar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        24,
+        16,
+        16,
+        16,
+      ),
+      decoration: const BoxDecoration(
+        color: Color(0xFFFBFAF9),
+        border: Border(
+          bottom: BorderSide(
+            color: Color(0xFFE9EEF3),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEAF8DD),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFFD6EFC4),
               ),
             ),
-            if (_error != null) ...[
-              const SizedBox(height: 10),
+            child: const Icon(
+              Icons.medication_outlined,
+              color: Color(0xFF3A7704),
+              size: 27,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Editar lote de $nombreProducto',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _textoPrincipal,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Gestión de existencias, fecha de vencimiento y anaquel asignado',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: _textoSecundario,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: onCerrar,
+            icon: const Icon(
+              Icons.close,
+              color: Color(0xFF94A3B8),
+              size: 22,
+            ),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(
+              minWidth: 36,
+              minHeight: 36,
+            ),
+            tooltip: 'Cerrar',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CampoTextoLoteInventario extends StatelessWidget {
+  final String etiqueta;
+  final bool requerido;
+  final String? textoDerecha;
+  final TextEditingController controller;
+  final IconData? prefixIcon;
+
+  const _CampoTextoLoteInventario({
+    required this.etiqueta,
+    required this.controller,
+    this.requerido = false,
+    this.textoDerecha,
+    this.prefixIcon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _ContenedorCampoLoteInventario(
+      etiqueta: etiqueta,
+      requerido: requerido,
+      textoDerecha: textoDerecha,
+      child: TextField(
+        controller: controller,
+        cursorColor: const Color(0xFF3A7704),
+        style: const TextStyle(
+          color: _textoPrincipal,
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
+        ),
+        decoration: _decoracionCampoLoteInventario(
+          prefixIcon: prefixIcon,
+        ),
+      ),
+    );
+  }
+}
+
+class _CampoFechaLoteInventario extends StatelessWidget {
+  final TextEditingController controller;
+  final VoidCallback onTap;
+  final VoidCallback onClear;
+
+  const _CampoFechaLoteInventario({
+    required this.controller,
+    required this.onTap,
+    required this.onClear,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _ContenedorCampoLoteInventario(
+      etiqueta: 'FECHA DE CADUCIDAD',
+      requerido: true,
+      child: TextField(
+        controller: controller,
+        readOnly: true,
+        onTap: onTap,
+        cursorColor: const Color(0xFF3A7704),
+        style: const TextStyle(
+          color: _textoPrincipal,
+          fontSize: 16,
+          fontWeight: FontWeight.w900,
+        ),
+        decoration: _decoracionCampoLoteInventario(
+          prefixIcon: Icons.calendar_month_outlined,
+          suffixIcon: SizedBox(
+            width: 62,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                const Icon(
+                  Icons.calendar_today_outlined,
+                  color: _textoPrincipal,
+                  size: 15,
+                ),
+                if (controller.text.trim().isNotEmpty) ...[
+                  const SizedBox(width: 6),
+                  InkWell(
+                    onTap: onClear,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      width: 18,
+                      height: 18,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF9AA6B2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: 12,
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(width: 10),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CampoPrecioLoteInventario extends StatelessWidget {
+  final TextEditingController controller;
+
+  const _CampoPrecioLoteInventario({
+    required this.controller,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _ContenedorCampoLoteInventario(
+      etiqueta: 'PRECIO DE VENTA',
+      requerido: true,
+      textoDerecha: 'MXN',
+      child: TextField(
+        controller: controller,
+        keyboardType: const TextInputType.numberWithOptions(
+          decimal: true,
+        ),
+        cursorColor: const Color(0xFF3A7704),
+        style: const TextStyle(
+          color: _textoPrincipal,
+          fontSize: 14,
+          fontWeight: FontWeight.w800,
+        ),
+        decoration: _decoracionCampoLoteInventario(
+          prefixText: '\$',
+          suffixText: 'c/u',
+        ),
+      ),
+    );
+  }
+}
+
+class _TarjetaUbicacionInventario extends StatelessWidget {
+  final TextEditingController letraController;
+  final TextEditingController numeroController;
+
+  const _TarjetaUbicacionInventario({
+    required this.letraController,
+    required this.numeroController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(
+        18,
+        17,
+        18,
+        18,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEFCFA),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFE7E0DB),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons.layers_outlined,
+                color: Color(0xFF3A7704),
+                size: 17,
+              ),
+              SizedBox(width: 8),
               Text(
-                _error!,
-                style: const TextStyle(
-                  color: _rojo,
+                'UBICACIÓN EN FARMACIA',
+                style: TextStyle(
+                  color: _textoPrincipal,
                   fontSize: 12,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              SizedBox(width: 8),
+              Text(
+                '(Estantería física)',
+                style: TextStyle(
+                  color: Color(0xFF98A2B3),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
-          ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _CampoUbicacionLoteInventario(
+                  etiqueta: 'Letra / Pasillo',
+                  controller: letraController,
+                  maxLength: 1,
+                  textCapitalization: TextCapitalization.characters,
+                  keyboardType: TextInputType.text,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _CampoUbicacionLoteInventario(
+                  etiqueta: 'Número / Nivel',
+                  controller: numeroController,
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(
+              11,
+              10,
+              11,
+              10,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: const Color(0xFFE9EEF3),
+              ),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info,
+                  color: Color(0xFF4A90E2),
+                  size: 16,
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: 'Ejemplo: ',
+                        ),
+                        TextSpan(
+                          text: 'A1, B2, C12. ',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              'Deja ambos campos vacíos para desasignar la ubicación física. La caducidad se almacena en formato ISO.',
+                        ),
+                      ],
+                    ),
+                    style: TextStyle(
+                      color: _textoSecundario,
+                      fontSize: 11,
+                      height: 1.35,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CampoUbicacionLoteInventario extends StatelessWidget {
+  final String etiqueta;
+  final TextEditingController controller;
+  final int? maxLength;
+  final TextCapitalization textCapitalization;
+  final TextInputType keyboardType;
+
+  const _CampoUbicacionLoteInventario({
+    required this.etiqueta,
+    required this.controller,
+    this.maxLength,
+    this.textCapitalization = TextCapitalization.none,
+    this.keyboardType = TextInputType.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _ContenedorCampoLoteInventario(
+      etiqueta: etiqueta,
+      mostrarEstiloNormal: true,
+      child: TextField(
+        controller: controller,
+        maxLength: maxLength,
+        textCapitalization: textCapitalization,
+        keyboardType: keyboardType,
+        textAlign: TextAlign.center,
+        cursorColor: const Color(0xFF3A7704),
+        style: const TextStyle(
+          color: _textoPrincipal,
+          fontSize: 14,
+          fontWeight: FontWeight.w900,
+        ),
+        decoration: _decoracionCampoLoteInventario().copyWith(
+          counterText: '',
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          child: const Text(
-            'Cancelar',
+    );
+  }
+}
+
+class _ContenedorCampoLoteInventario extends StatelessWidget {
+  final String etiqueta;
+  final bool requerido;
+  final bool mostrarEstiloNormal;
+  final String? textoDerecha;
+  final Widget child;
+
+  const _ContenedorCampoLoteInventario({
+    required this.etiqueta,
+    required this.child,
+    this.requerido = false,
+    this.mostrarEstiloNormal = false,
+    this.textoDerecha,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final label = Row(
+      children: [
+        Text(
+          etiqueta,
+          style: TextStyle(
+            color: mostrarEstiloNormal ? _textoPrincipal : _textoPrincipal,
+            fontSize: mostrarEstiloNormal ? 11 : 12,
+            fontWeight: mostrarEstiloNormal ? FontWeight.w700 : FontWeight.w900,
           ),
         ),
-        ElevatedButton(
-          onPressed: _guardar,
-          child: const Text(
-            'Guardar',
+        if (requerido) ...[
+          const SizedBox(width: 3),
+          const Text(
+            '*',
+            style: TextStyle(
+              color: _rojo,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
           ),
-        ),
+        ],
+        const Spacer(),
+        if (textoDerecha != null)
+          Text(
+            textoDerecha!,
+            style: const TextStyle(
+              color: Color(0xFF98A2B3),
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+      ],
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        label,
+        const SizedBox(height: 7),
+        child,
       ],
     );
   }
+}
+
+class _MensajeErrorLoteInventario extends StatelessWidget {
+  final String mensaje;
+
+  const _MensajeErrorLoteInventario({
+    required this.mensaje,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 9,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFEAEA),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: const Color(0xFFFFC9C9),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.error_outline,
+            color: _rojo,
+            size: 16,
+          ),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              mensaje,
+              style: const TextStyle(
+                color: _rojo,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccionesEditarLoteInventario extends StatelessWidget {
+  final VoidCallback onGuardar;
+
+  const _AccionesEditarLoteInventario({
+    required this.onGuardar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 72,
+      padding: const EdgeInsets.fromLTRB(
+        24,
+        12,
+        24,
+        14,
+      ),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(
+            color: Color(0xFFE9EEF3),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Spacer(),
+          SizedBox(
+            width: 192,
+            height: 44,
+            child: ElevatedButton.icon(
+              onPressed: onGuardar,
+              icon: const Icon(
+                Icons.save_outlined,
+                color: Colors.white,
+                size: 16,
+              ),
+              label: const Text(
+                'Guardar Cambios',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF3A7704),
+                foregroundColor: Colors.white,
+                elevation: 6,
+                shadowColor: const Color(0xFF3A7704).withValues(
+                  alpha: 0.30,
+                ),
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+InputDecoration _decoracionCampoLoteInventario({
+  IconData? prefixIcon,
+  Widget? suffixIcon,
+  String? prefixText,
+  String? suffixText,
+}) {
+  return InputDecoration(
+    filled: true,
+    fillColor: Colors.white,
+    prefixIcon: prefixIcon == null
+        ? null
+        : Icon(
+            prefixIcon,
+            color: const Color(0xFF98A2B3),
+            size: 16,
+          ),
+    prefixIconConstraints: const BoxConstraints(
+      minWidth: 34,
+      minHeight: 0,
+    ),
+    prefixText: prefixText,
+    prefixStyle: const TextStyle(
+      color: _textoSecundario,
+      fontSize: 14,
+      fontWeight: FontWeight.w900,
+    ),
+    suffixIcon: suffixIcon,
+    suffixText: suffixText,
+    suffixStyle: const TextStyle(
+      color: _textoSecundario,
+      fontSize: 11,
+      fontWeight: FontWeight.w900,
+    ),
+    contentPadding: const EdgeInsets.symmetric(
+      horizontal: 12,
+      vertical: 12,
+    ),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(
+        color: Color(0xFFD8E0E8),
+        width: 1,
+      ),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(
+        color: Color(0xFFD8E0E8),
+        width: 1,
+      ),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(
+        color: Color(0xFF3A7704),
+        width: 1.2,
+      ),
+    ),
+  );
 }
 
 String _formatoFechaApi(

@@ -1769,13 +1769,9 @@ class _DialogoProductoState extends State<_DialogoProducto> {
   ];
 
   late final TextEditingController _codigoController;
-
   late final TextEditingController _nombreController;
-
   late final TextEditingController _descripcionController;
-
   late final TextEditingController _sustanciaController;
-
   late final TextEditingController _dosisCantidadController;
 
   late String _tipo;
@@ -1857,7 +1853,6 @@ class _DialogoProductoState extends State<_DialogoProducto> {
         : 'mg';
 
     _manejaCaducidad = producto?.manejaCaducidad ?? false;
-
     _requiereReceta = producto?.requiereReceta ?? false;
   }
 
@@ -1949,369 +1944,812 @@ class _DialogoProductoState extends State<_DialogoProducto> {
   @override
   Widget build(BuildContext context) {
     final esMedicamento = _tipo == 'MEDICAMENTO';
+    final esEdicion = widget.producto != null;
 
-    return AlertDialog(
-      title: Text(
-        widget.producto == null ? 'Nuevo producto' : 'Editar producto',
-      ),
-      content: SizedBox(
-        width: 520,
-        child: SingleChildScrollView(
+    return Dialog(
+      insetPadding: const EdgeInsets.all(24),
+      backgroundColor: Colors.transparent,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 500,
+          maxHeight: MediaQuery.of(context).size.height * 0.90,
+        ),
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(
+                  alpha: 0.18,
+                ),
+                blurRadius: 26,
+                offset: const Offset(0, 14),
+              ),
+            ],
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: _CampoTexto(
-                      label: 'Codigo de barras',
-                      controller: _codigoController,
-                    ),
+              _EncabezadoFormularioProducto(
+                titulo: esEdicion ? 'Editar producto' : 'Nuevo producto',
+                subtitulo: esEdicion
+                    ? 'Modificación de ficha técnica y parámetros de venta'
+                    : 'Registro de ficha técnica y parámetros de venta',
+                esMedicamento: esMedicamento,
+                onCerrar: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(
+                    18,
+                    18,
+                    18,
+                    18,
                   ),
-                  const SizedBox(
-                    width: 12,
-                  ),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _tipo,
-                      decoration: const InputDecoration(
-                        labelText: 'Tipo',
-                        border: OutlineInputBorder(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: _CampoTextoEdicionProducto(
+                              etiqueta: 'Código de barras',
+                              controller: _codigoController,
+                              prefixIcon: Icons.qr_code_2_outlined,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: _CampoDropdownEdicionProducto(
+                              etiqueta: 'Tipo',
+                              valor: _tipo,
+                              opciones: _tipos,
+                              textoOpcion: _etiqueta,
+                              onChanged: (value) {
+                                if (value == null) {
+                                  return;
+                                }
+
+                                setState(() {
+                                  _tipo = value;
+
+                                  if (value == 'PRODUCTO' &&
+                                      !_opcionesCategoria().contains(
+                                        _categoria,
+                                      )) {
+                                    _categoria = 'General';
+                                  }
+
+                                  _error = null;
+                                });
+                              },
+                            ),
+                          ),
+                        ],
                       ),
-                      items: _tipos.map(
-                        (tipo) {
-                          return DropdownMenuItem<String>(
-                            value: tipo,
-                            child: Text(
-                              _etiqueta(
-                                tipo,
+                      const SizedBox(height: 14),
+                      _CampoTextoEdicionProducto(
+                        etiqueta: 'Nombre del producto',
+                        controller: _nombreController,
+                      ),
+                      const SizedBox(height: 14),
+                      if (!esMedicamento) ...[
+                        _CampoDropdownEdicionProducto(
+                          etiqueta: 'Categoría',
+                          valor: _opcionesCategoria(
+                            _categoria,
+                          ).contains(
+                            _categoria,
+                          )
+                              ? _categoria
+                              : 'General',
+                          opciones: _opcionesCategoria(
+                            _categoria,
+                          ),
+                          onChanged: (value) {
+                            if (value == null) {
+                              return;
+                            }
+
+                            setState(() {
+                              _categoria = value;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+                      _CampoTextoEdicionProducto(
+                        etiqueta: 'Descripción',
+                        controller: _descripcionController,
+                        maxLines: 2,
+                      ),
+                      const SizedBox(height: 16),
+                      _CheckTarjetaEdicionProducto(
+                        titulo: 'Maneja caducidad',
+                        subtitulo:
+                            'Habilita registro de número de lote y fecha de expiración',
+                        value: _manejaCaducidad,
+                        onChanged: (value) {
+                          setState(() {
+                            _manejaCaducidad = value;
+                          });
+                        },
+                      ),
+                      if (esMedicamento) ...[
+                        const SizedBox(height: 16),
+                        _CampoDropdownEdicionProducto(
+                          etiqueta: 'Presentación',
+                          valor: _presentacion,
+                          opciones: _presentaciones,
+                          onChanged: (value) {
+                            if (value == null) {
+                              return;
+                            }
+
+                            setState(() {
+                              _presentacion = value;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: _CampoDropdownEdicionProducto(
+                                etiqueta: 'Vía de administración',
+                                valor: _via,
+                                opciones: viasAdministracion.keys.toList(),
+                                hintText: 'Seleccionar',
+                                textoOpcion: etiquetaViaAdministracion,
+                                onChanged: (value) {
+                                  if (value == null) {
+                                    return;
+                                  }
+
+                                  setState(() {
+                                    _via = value;
+                                  });
+                                },
                               ),
                             ),
-                          );
-                        },
-                      ).toList(),
-                      onChanged: (value) {
-                        if (value == null) {
-                          return;
-                        }
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _CampoDropdownEdicionProducto(
+                                etiqueta: 'Edad',
+                                valor: _edad,
+                                opciones: _edades,
+                                textoOpcion: _etiqueta,
+                                onChanged: (value) {
+                                  if (value == null) {
+                                    return;
+                                  }
 
-                        setState(() {
-                          _tipo = value;
-
-                          if (value == 'PRODUCTO' &&
-                              !_opcionesCategoria().contains(
-                                _categoria,
-                              )) {
-                            _categoria = 'General';
-                          }
-                        });
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(
-                height: 12,
-              ),
-              _CampoTexto(
-                label: 'Nombre',
-                controller: _nombreController,
-              ),
-              const SizedBox(
-                height: 12,
-              ),
-              if (!esMedicamento)
-                DropdownButtonFormField<String>(
-                  initialValue: _opcionesCategoria(
-                    _categoria,
-                  ).contains(
-                    _categoria,
-                  )
-                      ? _categoria
-                      : 'General',
-                  decoration: const InputDecoration(
-                    labelText: 'Categoria',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: _opcionesCategoria(
-                    _categoria,
-                  ).map(
-                    (categoria) {
-                      return DropdownMenuItem<String>(
-                        value: categoria,
-                        child: Text(
-                          categoria,
-                        ),
-                      );
-                    },
-                  ).toList(),
-                  onChanged: (value) {
-                    if (value == null) {
-                      return;
-                    }
-
-                    setState(() {
-                      _categoria = value;
-                    });
-                  },
-                ),
-              const SizedBox(
-                height: 12,
-              ),
-              _CampoTexto(
-                label: 'Descripcion',
-                controller: _descripcionController,
-                maxLines: 2,
-              ),
-              const SizedBox(
-                height: 8,
-              ),
-              CheckboxListTile(
-                value: _manejaCaducidad,
-                onChanged: (value) {
-                  setState(() {
-                    _manejaCaducidad = value ?? false;
-                  });
-                },
-                contentPadding: EdgeInsets.zero,
-                title: const Text(
-                  'Maneja caducidad',
-                ),
-                controlAffinity: ListTileControlAffinity.leading,
-              ),
-              if (esMedicamento) ...[
-                const Divider(
-                  height: 24,
-                ),
-                DropdownButtonFormField<String>(
-                  initialValue: _presentacion,
-                  decoration: const InputDecoration(
-                    labelText: 'Presentacion',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: _presentaciones.map(
-                    (presentacion) {
-                      return DropdownMenuItem<String>(
-                        value: presentacion,
-                        child: Text(
-                          presentacion,
-                        ),
-                      );
-                    },
-                  ).toList(),
-                  onChanged: (value) {
-                    if (value == null) {
-                      return;
-                    }
-
-                    setState(() {
-                      _presentacion = value;
-                    });
-                  },
-                ),
-                const SizedBox(
-                  height: 12,
-                ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: _via,
-                        isExpanded: true,
-                        hint: const Text('Seleccionar'),
-                        decoration: const InputDecoration(
-                          labelText: 'Via de administracion',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: viasAdministracion.keys.map(
-                          (via) {
-                            return DropdownMenuItem<String>(
-                              value: via,
-                              child: Text(
-                                etiquetaViaAdministracion(
-                                  via,
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                                  setState(() {
+                                    _edad = value;
+                                  });
+                                },
                               ),
-                            );
-                          },
-                        ).toList(),
-                        onChanged: (value) {
-                          if (value == null) {
-                            return;
-                          }
-
-                          setState(() {
-                            _via = value;
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(
-                      width: 12,
-                    ),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: _edad,
-                        decoration: const InputDecoration(
-                          labelText: 'Edad',
-                          border: OutlineInputBorder(),
+                            ),
+                          ],
                         ),
-                        items: _edades.map(
-                          (edad) {
-                            return DropdownMenuItem<String>(
-                              value: edad,
-                              child: Text(
-                                _etiqueta(
-                                  edad,
-                                ),
-                              ),
-                            );
-                          },
-                        ).toList(),
-                        onChanged: (value) {
-                          if (value == null) {
-                            return;
-                          }
-
-                          setState(() {
-                            _edad = value;
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(
-                  height: 12,
-                ),
-                _CampoTexto(
-                  label: 'Sustancia activa',
-                  controller: _sustanciaController,
-                ),
-                const SizedBox(
-                  height: 12,
-                ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _CampoTexto(
-                        label: 'Cantidad',
-                        controller: _dosisCantidadController,
-                      ),
-                    ),
-                    const SizedBox(
-                      width: 12,
-                    ),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: _dosisUnidad,
-                        decoration: const InputDecoration(
-                          labelText: 'Unidad',
-                          border: OutlineInputBorder(),
+                        const SizedBox(height: 14),
+                        _CampoTextoEdicionProducto(
+                          etiqueta: 'Sustancia activa',
+                          controller: _sustanciaController,
                         ),
-                        items: _unidadesDosis.map(
-                          (unidad) {
-                            return DropdownMenuItem<String>(
-                              value: unidad,
-                              child: Text(
-                                unidad,
+                        const SizedBox(height: 14),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: _CampoTextoEdicionProducto(
+                                etiqueta: 'Cantidad',
+                                controller: _dosisCantidadController,
                               ),
-                            );
-                          },
-                        ).toList(),
-                        onChanged: (value) {
-                          if (value == null) {
-                            return;
-                          }
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _CampoDropdownEdicionProducto(
+                                etiqueta: 'Unidad',
+                                valor: _dosisUnidad,
+                                opciones: _unidadesDosis,
+                                onChanged: (value) {
+                                  if (value == null) {
+                                    return;
+                                  }
 
-                          setState(() {
-                            _dosisUnidad = value;
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                CheckboxListTile(
-                  value: _requiereReceta,
-                  onChanged: (value) {
-                    setState(() {
-                      _requiereReceta = value ?? false;
-                    });
-                  },
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text(
-                    'Requiere receta',
-                  ),
-                  controlAffinity: ListTileControlAffinity.leading,
-                ),
-              ],
-              if (_error != null) ...[
-                const SizedBox(
-                  height: 8,
-                ),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    _error!,
-                    style: const TextStyle(
-                      color: _rojo,
-                      fontWeight: FontWeight.w800,
-                    ),
+                                  setState(() {
+                                    _dosisUnidad = value;
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        _CheckLineaEdicionProducto(
+                          texto: 'Requiere receta',
+                          value: _requiereReceta,
+                          onChanged: (value) {
+                            setState(() {
+                              _requiereReceta = value;
+                            });
+                          },
+                        ),
+                      ],
+                      if (_error != null) ...[
+                        const SizedBox(height: 14),
+                        _MensajeErrorProducto(
+                          mensaje: _error!,
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-              ],
+              ),
+              _AccionesFormularioProducto(
+                onGuardar: _confirmar,
+              ),
             ],
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          child: const Text(
-            'Cancelar',
-          ),
-        ),
-        ElevatedButton(
-          onPressed: _confirmar,
-          child: const Text(
-            'Guardar',
-          ),
-        ),
-      ],
     );
   }
 }
 
-// ============================================================================
-// CAMPO TEXTO DIÁLOGO
-// ============================================================================
+class _EncabezadoFormularioProducto extends StatelessWidget {
+  final String titulo;
+  final String subtitulo;
+  final bool esMedicamento;
+  final VoidCallback onCerrar;
 
-class _CampoTexto extends StatelessWidget {
-  final String label;
+  const _EncabezadoFormularioProducto({
+    required this.titulo,
+    required this.subtitulo,
+    required this.esMedicamento,
+    required this.onCerrar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        18,
+        15,
+        12,
+        15,
+      ),
+      decoration: const BoxDecoration(
+        color: Color(0xFFFBFAF9),
+        border: Border(
+          bottom: BorderSide(
+            color: Color(0xFFE9EEF3),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEAF8DD),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: const Color(0xFFD6EFC4),
+              ),
+            ),
+            child: Icon(
+              esMedicamento
+                  ? Icons.medication_outlined
+                  : Icons.inventory_2_outlined,
+              color: _verdeOscuro,
+              size: 19,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  titulo,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _textoPrincipal,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitulo,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _textoSecundario,
+                    fontSize: 10,
+                    height: 1.25,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: onCerrar,
+            icon: const Icon(
+              Icons.close,
+              color: Color(0xFF94A3B8),
+              size: 20,
+            ),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(
+              minWidth: 32,
+              minHeight: 32,
+            ),
+            tooltip: 'Cerrar',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CampoTextoEdicionProducto extends StatelessWidget {
+  final String etiqueta;
   final TextEditingController controller;
+  final IconData? prefixIcon;
   final int maxLines;
 
-  const _CampoTexto({
-    required this.label,
+  const _CampoTextoEdicionProducto({
+    required this.etiqueta,
     required this.controller,
+    this.prefixIcon,
     this.maxLines = 1,
   });
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      maxLines: maxLines,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
+    return _ContenedorCampoEdicionProducto(
+      etiqueta: etiqueta,
+      child: TextField(
+        controller: controller,
+        maxLines: maxLines,
+        cursorColor: _verdeOscuro,
+        style: const TextStyle(
+          color: _textoPrincipal,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+        decoration: _decoracionCampoEdicionProducto(
+          prefixIcon: prefixIcon,
+        ),
       ),
     );
   }
+}
+
+class _CampoDropdownEdicionProducto extends StatelessWidget {
+  final String etiqueta;
+  final String? valor;
+  final String? hintText;
+  final List<String> opciones;
+  final String Function(String)? textoOpcion;
+  final ValueChanged<String?> onChanged;
+
+  const _CampoDropdownEdicionProducto({
+    required this.etiqueta,
+    required this.valor,
+    required this.opciones,
+    required this.onChanged,
+    this.hintText,
+    this.textoOpcion,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _ContenedorCampoEdicionProducto(
+      etiqueta: etiqueta,
+      child: DropdownButtonFormField<String>(
+        initialValue: opciones.contains(valor) ? valor : null,
+        isExpanded: true,
+        hint: hintText == null
+            ? null
+            : Text(
+                hintText!,
+                style: const TextStyle(
+                  color: _textoSecundario,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+        icon: const Icon(
+          Icons.keyboard_arrow_down,
+          color: _textoSecundario,
+          size: 18,
+        ),
+        style: const TextStyle(
+          color: _textoPrincipal,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+        decoration: _decoracionCampoEdicionProducto(),
+        items: opciones.map(
+          (opcion) {
+            final texto = textoOpcion == null
+                ? opcion
+                : textoOpcion!(
+                    opcion,
+                  );
+
+            return DropdownMenuItem<String>(
+              value: opcion,
+              child: Text(
+                texto,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            );
+          },
+        ).toList(),
+        onChanged: onChanged,
+      ),
+    );
+  }
+}
+
+class _CheckTarjetaEdicionProducto extends StatelessWidget {
+  final String titulo;
+  final String subtitulo;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _CheckTarjetaEdicionProducto({
+    required this.titulo,
+    required this.subtitulo,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        onChanged(
+          !value,
+        );
+      },
+      borderRadius: BorderRadius.circular(9),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(
+          10,
+          10,
+          12,
+          10,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(
+            color: const Color(0xFFD8E0E8),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(
+                alpha: 0.025,
+              ),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 22,
+              height: 22,
+              child: Checkbox(
+                value: value,
+                activeColor: const Color(0xFF58D000),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+                onChanged: (checked) {
+                  onChanged(
+                    checked ?? false,
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    titulo,
+                    style: const TextStyle(
+                      color: _textoPrincipal,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitulo,
+                    style: const TextStyle(
+                      color: _textoSecundario,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CheckLineaEdicionProducto extends StatelessWidget {
+  final String texto;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _CheckLineaEdicionProducto({
+    required this.texto,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        onChanged(
+          !value,
+        );
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 22,
+            height: 22,
+            child: Checkbox(
+              value: value,
+              activeColor: const Color(0xFF58D000),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+              onChanged: (checked) {
+                onChanged(
+                  checked ?? false,
+                );
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            texto,
+            style: const TextStyle(
+              color: _textoPrincipal,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ContenedorCampoEdicionProducto extends StatelessWidget {
+  final String etiqueta;
+  final Widget child;
+
+  const _ContenedorCampoEdicionProducto({
+    required this.etiqueta,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          etiqueta,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: _textoSecundario,
+            fontSize: 9,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 6),
+        child,
+      ],
+    );
+  }
+}
+
+class _MensajeErrorProducto extends StatelessWidget {
+  final String mensaje;
+
+  const _MensajeErrorProducto({
+    required this.mensaje,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 9,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFEAEA),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: const Color(0xFFFFC9C9),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.error_outline,
+            color: _rojo,
+            size: 16,
+          ),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              mensaje,
+              style: const TextStyle(
+                color: _rojo,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccionesFormularioProducto extends StatelessWidget {
+  final VoidCallback onGuardar;
+
+  const _AccionesFormularioProducto({
+    required this.onGuardar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 66,
+      padding: const EdgeInsets.fromLTRB(
+        18,
+        11,
+        18,
+        12,
+      ),
+      decoration: const BoxDecoration(
+        color: Color(0xFFFBFAF9),
+        border: Border(
+          top: BorderSide(
+            color: Color(0xFFE9EEF3),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Spacer(),
+          SizedBox(
+            width: 112,
+            height: 40,
+            child: ElevatedButton.icon(
+              onPressed: onGuardar,
+              icon: const Icon(
+                Icons.check,
+                color: Colors.white,
+                size: 16,
+              ),
+              label: const Text(
+                'Guardar',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF3A7704),
+                foregroundColor: Colors.white,
+                elevation: 6,
+                shadowColor: const Color(0xFF3A7704).withValues(
+                  alpha: 0.28,
+                ),
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+InputDecoration _decoracionCampoEdicionProducto({
+  IconData? prefixIcon,
+}) {
+  return InputDecoration(
+    filled: true,
+    fillColor: Colors.white,
+    prefixIcon: prefixIcon == null
+        ? null
+        : Icon(
+            prefixIcon,
+            color: _textoSecundario,
+            size: 16,
+          ),
+    prefixIconConstraints: const BoxConstraints(
+      minWidth: 34,
+      minHeight: 0,
+    ),
+    contentPadding: const EdgeInsets.symmetric(
+      horizontal: 10,
+      vertical: 10,
+    ),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(
+        color: Color(0xFFD8E0E8),
+        width: 1,
+      ),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(
+        color: Color(0xFFD8E0E8),
+        width: 1,
+      ),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(
+        color: _verdeOscuro,
+        width: 1.2,
+      ),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(
+        color: _rojo,
+        width: 1,
+      ),
+    ),
+  );
 }
 
 // ============================================================================
