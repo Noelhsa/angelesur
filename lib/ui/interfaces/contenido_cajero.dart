@@ -2688,24 +2688,62 @@ class _DialogoAbrirCorte extends StatefulWidget {
 
 class _DialogoAbrirCorteState extends State<_DialogoAbrirCorte> {
   final TextEditingController _efectivoController =
-      TextEditingController(text: '0');
+      TextEditingController(text: '0.00');
   final TextEditingController _electronicoController =
-      TextEditingController(text: '0');
+      TextEditingController(text: '0.00');
   final TextEditingController _observacionesController =
       TextEditingController();
+
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+
+    _efectivoController.addListener(_actualizarTotal);
+    _electronicoController.addListener(_actualizarTotal);
+  }
+
+  @override
   void dispose() {
+    _efectivoController.removeListener(_actualizarTotal);
+    _electronicoController.removeListener(_actualizarTotal);
+
     _efectivoController.dispose();
     _electronicoController.dispose();
     _observacionesController.dispose();
+
     super.dispose();
   }
 
+  void _actualizarTotal() {
+    if (!mounted) return;
+
+    setState(() {});
+  }
+
+  double? _leerMonto(TextEditingController controller) {
+    final texto =
+        controller.text.trim().replaceAll('\$', '').replaceAll(',', '.');
+
+    return double.tryParse(texto);
+  }
+
+  double get _efectivoInicial {
+    return _leerMonto(_efectivoController) ?? 0;
+  }
+
+  double get _electronicoInicial {
+    return _leerMonto(_electronicoController) ?? 0;
+  }
+
+  double get _totalInicial {
+    return _efectivoInicial + _electronicoInicial;
+  }
+
   void _confirmar() {
-    final efectivo = double.tryParse(_efectivoController.text.trim());
-    final electronico = double.tryParse(_electronicoController.text.trim());
+    final efectivo = _leerMonto(_efectivoController);
+    final electronico = _leerMonto(_electronicoController);
 
     if (efectivo == null ||
         electronico == null ||
@@ -2714,6 +2752,7 @@ class _DialogoAbrirCorteState extends State<_DialogoAbrirCorte> {
       setState(() {
         _error = 'Ingresa montos validos';
       });
+
       return;
     }
 
@@ -2728,19 +2767,559 @@ class _DialogoAbrirCorteState extends State<_DialogoAbrirCorte> {
 
   @override
   Widget build(BuildContext context) {
-    return _DialogoCorteBase(
-      titulo: 'Abrir corte',
-      error: _error,
-      onConfirmar: _confirmar,
-      children: [
-        _CampoMonto(label: 'Efectivo inicial', controller: _efectivoController),
-        const SizedBox(height: 12),
-        _CampoMonto(
-          label: 'Electronico inicial',
-          controller: _electronicoController,
+    return Dialog(
+      insetPadding: const EdgeInsets.all(24),
+      backgroundColor: Colors.transparent,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: 430,
         ),
-        const SizedBox(height: 12),
-        _CampoObservaciones(controller: _observacionesController),
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: _blanco,
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(
+                  alpha: 0.18,
+                ),
+                blurRadius: 28,
+                offset: const Offset(0, 14),
+              ),
+            ],
+          ),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                22,
+                20,
+                22,
+                18,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _EncabezadoAbrirCorte(),
+                  const SizedBox(height: 20),
+                  const Divider(
+                    color: Color(0xFFE9EEF3),
+                    height: 1,
+                  ),
+                  const SizedBox(height: 20),
+                  _CampoMontoApertura(
+                    etiqueta: 'Efectivo Inicial en Cajón',
+                    icono: Icons.monetization_on_outlined,
+                    controller: _efectivoController,
+                    onChanged: (_) {
+                      setState(() {});
+                    },
+                    onSubmitted: (_) => _confirmar(),
+                  ),
+                  const SizedBox(height: 18),
+                  _CampoMontoApertura(
+                    etiqueta: 'Fondo Electrónico / Terminales',
+                    icono: Icons.credit_card,
+                    controller: _electronicoController,
+                    onSubmitted: (_) => _confirmar(),
+                  ),
+                  const SizedBox(height: 18),
+                  _CampoObservacionesApertura(
+                    controller: _observacionesController,
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 14),
+                    _MensajeErrorAperturaCaja(
+                      mensaje: _error!,
+                    ),
+                  ],
+                  const SizedBox(height: 18),
+                  _TarjetaTotalApertura(
+                    total: _totalInicial,
+                  ),
+                  const SizedBox(height: 22),
+                  _AccionesAbrirCorte(
+                    onCancelar: () {
+                      Navigator.of(context).pop();
+                    },
+                    onConfirmar: _confirmar,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EncabezadoAbrirCorte extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: const Color(0xFFEAF8DD),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: const Color(0xFFD6EFC4),
+            ),
+          ),
+          child: const Icon(
+            Icons.payments_outlined,
+            color: _verdeOscuro,
+            size: 22,
+          ),
+        ),
+        const SizedBox(width: 12),
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Abrir Corte de Caja',
+                style: TextStyle(
+                  color: _textoPrincipal,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Ingresa los fondos iniciales disponibles en caja y terminales bancarias para iniciar operaciones.',
+                style: TextStyle(
+                  color: _textoSecundario,
+                  fontSize: 11,
+                  height: 1.35,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CampoMontoApertura extends StatelessWidget {
+  final String etiqueta;
+  final IconData icono;
+  final TextEditingController controller;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+
+  const _CampoMontoApertura({
+    required this.etiqueta,
+    required this.icono,
+    required this.controller,
+    this.onChanged,
+    this.onSubmitted,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _ContenedorCampoApertura(
+      etiqueta: etiqueta,
+      icono: icono,
+      child: TextField(
+        controller: controller,
+        keyboardType: const TextInputType.numberWithOptions(
+          decimal: true,
+        ),
+        onChanged: onChanged,
+        onSubmitted: onSubmitted,
+        cursorColor: _verdeOscuro,
+        style: const TextStyle(
+          color: _textoPrincipal,
+          fontSize: 17,
+          fontWeight: FontWeight.w900,
+        ),
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: _blanco,
+          prefixIcon: const Padding(
+            padding: EdgeInsets.only(
+              left: 14,
+              right: 8,
+            ),
+            child: Text(
+              '\$',
+              style: TextStyle(
+                color: _textoSecundario,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 34,
+            minHeight: 0,
+          ),
+          suffixIcon: Padding(
+            padding: const EdgeInsets.only(
+              right: 10,
+            ),
+            child: Container(
+              width: 48,
+              height: 28,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F8F1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'MXN',
+                style: TextStyle(
+                  color: _textoSecundario,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ),
+          suffixIconConstraints: const BoxConstraints(
+            minWidth: 60,
+            minHeight: 34,
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 15,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(
+              color: Color(0xFFE1E8EF),
+              width: 1,
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(
+              color: Color(0xFFE1E8EF),
+              width: 1,
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(
+              color: _verdeOscuro,
+              width: 1.3,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CampoObservacionesApertura extends StatelessWidget {
+  final TextEditingController controller;
+
+  const _CampoObservacionesApertura({
+    required this.controller,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _ContenedorCampoApertura(
+      etiqueta: 'Observaciones de Turno',
+      icono: Icons.edit_note_outlined,
+      child: TextField(
+        controller: controller,
+        maxLines: 3,
+        cursorColor: _verdeOscuro,
+        style: const TextStyle(
+          color: _textoPrincipal,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: _blanco,
+          hintText:
+              'Anotaciones sobre entrega de turno, denominaciones especificas o condición de equipos...',
+          hintStyle: const TextStyle(
+            color: Color(0xFF9AA6B2),
+            fontSize: 11,
+            height: 1.35,
+            fontWeight: FontWeight.w600,
+          ),
+          contentPadding: const EdgeInsets.fromLTRB(
+            14,
+            13,
+            14,
+            13,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(
+              color: Color(0xFFE1E8EF),
+              width: 1,
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(
+              color: Color(0xFFE1E8EF),
+              width: 1,
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(
+              color: _verdeOscuro,
+              width: 1.3,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ContenedorCampoApertura extends StatelessWidget {
+  final String etiqueta;
+  final IconData icono;
+  final Widget child;
+
+  const _ContenedorCampoApertura({
+    required this.etiqueta,
+    required this.icono,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              icono,
+              color: _verdeOscuro,
+              size: 15,
+            ),
+            const SizedBox(width: 7),
+            Text(
+              etiqueta,
+              style: const TextStyle(
+                color: _textoSecundario,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        child,
+      ],
+    );
+  }
+}
+
+class _TarjetaTotalApertura extends StatelessWidget {
+  final double total;
+
+  const _TarjetaTotalApertura({
+    required this.total,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(
+        14,
+        12,
+        14,
+        12,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FFE8),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: const Color(0xFFD3F0C1),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'TOTAL DECLARADO EN APERTURA',
+                  style: TextStyle(
+                    color: _verdeOscuro,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Suma de efectivo y valores electrónicos',
+                  style: TextStyle(
+                    color: _verdeOscuro,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                ConfigMoneda.formato(total),
+                style: const TextStyle(
+                  color: _verdeOscuro,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const Text(
+                'MXN',
+                style: TextStyle(
+                  color: _verdeOscuro,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MensajeErrorAperturaCaja extends StatelessWidget {
+  final String mensaje;
+
+  const _MensajeErrorAperturaCaja({
+    required this.mensaje,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 10,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFEAEA),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: const Color(0xFFFFC9C9),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.error_outline,
+            color: _rojo,
+            size: 17,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              mensaje,
+              style: const TextStyle(
+                color: _rojo,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccionesAbrirCorte extends StatelessWidget {
+  final VoidCallback onCancelar;
+  final VoidCallback onConfirmar;
+
+  const _AccionesAbrirCorte({
+    required this.onCancelar,
+    required this.onConfirmar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            height: 44,
+            child: ElevatedButton(
+              onPressed: onCancelar,
+              style: ElevatedButton.styleFrom(
+                elevation: 0,
+                backgroundColor: const Color(0xFFF1F4F6),
+                foregroundColor: _textoSecundario,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'Cancelar',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          flex: 2,
+          child: SizedBox(
+            height: 44,
+            child: ElevatedButton.icon(
+              onPressed: onConfirmar,
+              icon: const Icon(
+                Icons.lock_open_outlined,
+                color: Colors.white,
+                size: 17,
+              ),
+              label: const Text(
+                'Confirmar y Abrir Turno',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                elevation: 8,
+                shadowColor: _verde.withValues(
+                  alpha: 0.35,
+                ),
+                backgroundColor: _verde,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -2919,30 +3498,80 @@ class _DialogoCerrarCorteState extends State<_DialogoCerrarCorte> {
   late final TextEditingController _electronicoController;
   final TextEditingController _observacionesController =
       TextEditingController();
+
   String? _error;
 
   @override
   void initState() {
     super.initState();
+
     _efectivoController = TextEditingController(
       text: widget.corte.efectivoEsperado.toStringAsFixed(2),
     );
+
     _electronicoController = TextEditingController(
       text: widget.corte.electronicoEsperado.toStringAsFixed(2),
     );
+
+    _efectivoController.addListener(_actualizarTotal);
+    _electronicoController.addListener(_actualizarTotal);
   }
 
   @override
   void dispose() {
+    _efectivoController.removeListener(_actualizarTotal);
+    _electronicoController.removeListener(_actualizarTotal);
+
     _efectivoController.dispose();
     _electronicoController.dispose();
     _observacionesController.dispose();
+
     super.dispose();
   }
 
+  void _actualizarTotal() {
+    if (!mounted) return;
+
+    setState(() {});
+  }
+
+  double? _leerMonto(TextEditingController controller) {
+    final texto = controller.text
+        .trim()
+        .replaceAll('\$', '')
+        .replaceAll(' ', '')
+        .replaceAll(',', '.');
+
+    if (texto.isEmpty) {
+      return 0;
+    }
+
+    return double.tryParse(texto);
+  }
+
+  double get _efectivoContado {
+    return _leerMonto(_efectivoController) ?? 0;
+  }
+
+  double get _electronicoContado {
+    return _leerMonto(_electronicoController) ?? 0;
+  }
+
+  double get _totalContado {
+    return _efectivoContado + _electronicoContado;
+  }
+
+  double get _totalEsperado {
+    return widget.corte.efectivoEsperado + widget.corte.electronicoEsperado;
+  }
+
+  double get _diferencia {
+    return _totalContado - _totalEsperado;
+  }
+
   void _confirmar() {
-    final efectivo = double.tryParse(_efectivoController.text.trim());
-    final electronico = double.tryParse(_electronicoController.text.trim());
+    final efectivo = _leerMonto(_efectivoController);
+    final electronico = _leerMonto(_electronicoController);
 
     if (efectivo == null ||
         electronico == null ||
@@ -2951,6 +3580,7 @@ class _DialogoCerrarCorteState extends State<_DialogoCerrarCorte> {
       setState(() {
         _error = 'Ingresa montos validos';
       });
+
       return;
     }
 
@@ -2965,24 +3595,410 @@ class _DialogoCerrarCorteState extends State<_DialogoCerrarCorte> {
 
   @override
   Widget build(BuildContext context) {
-    return _DialogoCorteBase(
-      titulo: 'Cerrar corte',
-      error: _error,
-      onConfirmar: _confirmar,
+    return Dialog(
+      insetPadding: const EdgeInsets.all(24),
+      backgroundColor: Colors.transparent,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: 430,
+        ),
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: _blanco,
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(
+                  alpha: 0.18,
+                ),
+                blurRadius: 28,
+                offset: const Offset(0, 14),
+              ),
+            ],
+          ),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                22,
+                20,
+                22,
+                18,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _EncabezadoCerrarCorte(
+                    corte: widget.corte,
+                  ),
+                  const SizedBox(height: 20),
+                  const Divider(
+                    color: Color(0xFFE9EEF3),
+                    height: 1,
+                  ),
+                  const SizedBox(height: 20),
+                  _CampoMontoApertura(
+                    etiqueta: 'Efectivo Contado en Cajón',
+                    icono: Icons.monetization_on_outlined,
+                    controller: _efectivoController,
+                    onChanged: (_) {
+                      setState(() {});
+                    },
+                    onSubmitted: (_) => _confirmar(),
+                  ),
+                  const SizedBox(height: 18),
+                  _CampoMontoApertura(
+                    etiqueta: 'Fondo Electrónico / Terminales',
+                    icono: Icons.credit_card,
+                    controller: _electronicoController,
+                    onChanged: (_) {
+                      setState(() {});
+                    },
+                    onSubmitted: (_) => _confirmar(),
+                  ),
+                  const SizedBox(height: 18),
+                  _CampoObservacionesApertura(
+                    controller: _observacionesController,
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 14),
+                    _MensajeErrorAperturaCaja(
+                      mensaje: _error!,
+                    ),
+                  ],
+                  const SizedBox(height: 18),
+                  _TarjetaTotalCierre(
+                    total: _totalContado,
+                    diferencia: _diferencia,
+                  ),
+                  const SizedBox(height: 22),
+                  _AccionesCerrarCorte(
+                    onCancelar: () {
+                      Navigator.of(context).pop();
+                    },
+                    onConfirmar: _confirmar,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EncabezadoCerrarCorte extends StatelessWidget {
+  final CorteResumen corte;
+
+  const _EncabezadoCerrarCorte({
+    required this.corte,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
       children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: const Color(0xFFEAF8DD),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: const Color(0xFFD6EFC4),
+            ),
+          ),
+          child: const Icon(
+            Icons.receipt_long_outlined,
+            color: _verdeOscuro,
+            size: 22,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Cerrar Corte de Caja',
+                style: TextStyle(
+                  color: _textoPrincipal,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Cuenta el efectivo y confirma los valores electrónicos para cerrar el corte #${corte.idCorte}.',
+                style: const TextStyle(
+                  color: _textoSecundario,
+                  fontSize: 11,
+                  height: 1.35,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TarjetaEsperadoCierre extends StatelessWidget {
+  final double efectivoEsperado;
+  final double electronicoEsperado;
+  final double totalEsperado;
+
+  const _TarjetaEsperadoCierre({
+    required this.efectivoEsperado,
+    required this.electronicoEsperado,
+    required this.totalEsperado,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(
+        14,
+        12,
+        14,
+        12,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F8F1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: const Color(0xFFE1E8EF),
+        ),
+      ),
+      child: Column(
+        children: [
+          _FilaResumenCierre(
+            etiqueta: 'Efectivo esperado',
+            valor: ConfigMoneda.formato(efectivoEsperado),
+          ),
+          const SizedBox(height: 7),
+          _FilaResumenCierre(
+            etiqueta: 'Electrónico esperado',
+            valor: ConfigMoneda.formato(electronicoEsperado),
+          ),
+          const SizedBox(height: 9),
+          const Divider(
+            height: 1,
+            color: Color(0xFFDDE6DC),
+          ),
+          const SizedBox(height: 9),
+          _FilaResumenCierre(
+            etiqueta: 'Total esperado',
+            valor: ConfigMoneda.formato(totalEsperado),
+            fuerte: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilaResumenCierre extends StatelessWidget {
+  final String etiqueta;
+  final String valor;
+  final bool fuerte;
+
+  const _FilaResumenCierre({
+    required this.etiqueta,
+    required this.valor,
+    this.fuerte = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            etiqueta,
+            style: TextStyle(
+              color: fuerte ? _verdeOscuro : _textoSecundario,
+              fontSize: fuerte ? 11 : 10,
+              fontWeight: fuerte ? FontWeight.w900 : FontWeight.w700,
+            ),
+          ),
+        ),
         Text(
-          'Esperado en efectivo: ${ConfigMoneda.formato(widget.corte.efectivoEsperado)}',
-          style: const TextStyle(fontWeight: FontWeight.w800),
+          valor,
+          style: TextStyle(
+            color: fuerte ? _verdeOscuro : _textoPrincipal,
+            fontSize: fuerte ? 13 : 12,
+            fontWeight: FontWeight.w900,
+          ),
         ),
-        const SizedBox(height: 12),
-        _CampoMonto(label: 'Efectivo contado', controller: _efectivoController),
-        const SizedBox(height: 12),
-        _CampoMonto(
-          label: 'Electronico contado',
-          controller: _electronicoController,
+      ],
+    );
+  }
+}
+
+class _TarjetaTotalCierre extends StatelessWidget {
+  final double total;
+  final double diferencia;
+
+  const _TarjetaTotalCierre({
+    required this.total,
+    required this.diferencia,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hayDiferencia = diferencia.abs() > 0.009;
+    final colorDiferencia = hayDiferencia ? _rojo : _verdeOscuro;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(
+        14,
+        12,
+        14,
+        12,
+      ),
+      decoration: BoxDecoration(
+        color:
+            hayDiferencia ? const Color(0xFFFFF1F1) : const Color(0xFFF0FFE8),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color:
+              hayDiferencia ? const Color(0xFFFFC9C9) : const Color(0xFFD3F0C1),
         ),
-        const SizedBox(height: 12),
-        _CampoObservaciones(controller: _observacionesController),
+      ),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'TOTAL DECLARADO EN CIERRE',
+                  style: TextStyle(
+                    color: _verdeOscuro,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Suma de efectivo contado y valores electrónicos',
+                  style: TextStyle(
+                    color: _verdeOscuro,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                ConfigMoneda.formato(total),
+                style: const TextStyle(
+                  color: _verdeOscuro,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              Text(
+                hayDiferencia
+                    ? 'Dif. ${ConfigMoneda.formato(diferencia)}'
+                    : 'Sin diferencia',
+                style: TextStyle(
+                  color: colorDiferencia,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccionesCerrarCorte extends StatelessWidget {
+  final VoidCallback onCancelar;
+  final VoidCallback onConfirmar;
+
+  const _AccionesCerrarCorte({
+    required this.onCancelar,
+    required this.onConfirmar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            height: 44,
+            child: ElevatedButton(
+              onPressed: onCancelar,
+              style: ElevatedButton.styleFrom(
+                elevation: 0,
+                backgroundColor: const Color(0xFFF1F4F6),
+                foregroundColor: _textoSecundario,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'Cancelar',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          flex: 2,
+          child: SizedBox(
+            height: 44,
+            child: ElevatedButton.icon(
+              onPressed: onConfirmar,
+              icon: const Icon(
+                Icons.receipt_long_outlined,
+                color: Colors.white,
+                size: 17,
+              ),
+              label: const Text(
+                'Confirmar y Cerrar Turno',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                elevation: 8,
+                shadowColor: _verdeOscuro.withValues(
+                  alpha: 0.35,
+                ),
+                backgroundColor: _verdeOscuro,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
