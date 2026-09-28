@@ -2327,138 +2327,504 @@ class _DialogoDetalleProducto extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(
-        producto.nombre,
-      ),
-      content: SizedBox(
-        width: 460,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Dialog(
+      insetPadding: const EdgeInsets.all(24),
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: 760,
+        height: 455,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(
+                alpha: 0.18,
+              ),
+              blurRadius: 24,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _DatoDetalle(
-              'ID',
-              '${producto.idProducto}',
-            ),
-            _DatoDetalle(
-              'Codigo',
-              producto.codigoBarras ?? 'Sin codigo',
-            ),
-            _DatoDetalle(
-              'Tipo',
-              _etiqueta(
-                producto.tipo,
+            SizedBox(
+              width: 250,
+              child: _ResumenProductoCatalogoDetalle(
+                producto: producto,
               ),
             ),
-            _DatoDetalle(
-              'Categoria',
-              producto.categoria ?? 'Sin categoria',
+            Container(
+              width: 1,
+              color: const Color(0xFFE7E8E3),
             ),
-            _DatoDetalle(
-              'Estado',
-              producto.activo ? 'Activo' : 'Inactivo',
+            Expanded(
+              child: _PanelDetallesProductoCatalogo(
+                producto: producto,
+                onCerrar: () {
+                  Navigator.of(context).pop();
+                },
+              ),
             ),
-            _DatoDetalle(
-              'Maneja caducidad',
-              producto.manejaCaducidad ? 'Si' : 'No',
-            ),
-            _DatoDetalle(
-              'Descripcion',
-              producto.descripcion ?? 'Sin descripcion',
-            ),
-            if (producto.esMedicamento) ...[
-              const Divider(
-                height: 22,
-              ),
-              _DatoDetalle(
-                'Presentacion',
-                producto.presentacion ?? 'Sin presentacion',
-              ),
-              _DatoDetalle(
-                'Via',
-                etiquetaViaAdministracion(producto.viaAdministracion),
-              ),
-              _DatoDetalle(
-                'Edad',
-                producto.edad == null
-                    ? 'Sin edad'
-                    : _etiqueta(
-                        producto.edad!,
-                      ),
-              ),
-              _DatoDetalle(
-                'Sustancia activa',
-                producto.sustanciaActiva ?? 'Sin sustancia',
-              ),
-              _DatoDetalle(
-                'Dosis',
-                producto.dosis ?? 'Sin dosis',
-              ),
-              _DatoDetalle(
-                'Requiere receta',
-                producto.requiereReceta ? 'Si' : 'No',
-              ),
-            ],
           ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          child: const Text(
-            'Cerrar',
+    );
+  }
+}
+
+class _ResumenProductoCatalogoDetalle extends StatelessWidget {
+  final ProductoCatalogoApi producto;
+
+  const _ResumenProductoCatalogoDetalle({
+    required this.producto,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final categoria = producto.categoria?.trim().isEmpty ?? true
+        ? 'Sin categoría'
+        : producto.categoria!.trim();
+
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(
+        28,
+        28,
+        28,
+        26,
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 92,
+            height: 92,
+            decoration: BoxDecoration(
+              color: producto.activo
+                  ? producto.esMedicamento
+                      ? const Color(0xFFE8F1FF)
+                      : const Color(0xFFEEF8E4)
+                  : const Color(0xFFFFE8E8),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              producto.esMedicamento
+                  ? Icons.medication_outlined
+                  : Icons.inventory_2_outlined,
+              color: producto.activo
+                  ? producto.esMedicamento
+                      ? _azul
+                      : _verdeOscuro
+                  : _rojo,
+              size: 44,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _BadgeActivoDetalleProducto(
+            activo: producto.activo,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            producto.nombre,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: _textoPrincipal,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              height: 1.15,
+            ),
+          ),
+          const SizedBox(height: 7),
+          Text(
+            'Categoría: $categoria',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: _textoSecundario,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const Spacer(),
+          _DatoResumenProductoCatalogo(
+            label: 'Tipo',
+            child: Text(
+              _etiqueta(producto.tipo),
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: _textoPrincipal,
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          _DatoResumenProductoCatalogo(
+            label: 'Estado',
+            child: Text(
+              producto.activo ? 'Activo' : 'Inactivo',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: producto.activo ? _verdeOscuro : _rojo,
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BadgeActivoDetalleProducto extends StatelessWidget {
+  final bool activo;
+
+  const _BadgeActivoDetalleProducto({
+    required this.activo,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 11,
+        vertical: 5,
+      ),
+      decoration: BoxDecoration(
+        color: activo ? const Color(0xFF6FD000) : const Color(0xFFFFE8E8),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(
+        activo ? 'Activo' : 'Inactivo',
+        style: TextStyle(
+          color: activo ? Colors.white : _rojo,
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _DatoResumenProductoCatalogo extends StatelessWidget {
+  final String label;
+  final Widget child;
+
+  const _DatoResumenProductoCatalogo({
+    required this.label,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: _textoPrincipal,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
+        child,
       ],
     );
   }
 }
 
-// ============================================================================
-// DATO DETALLE
-// ============================================================================
+class _PanelDetallesProductoCatalogo extends StatelessWidget {
+  final ProductoCatalogoApi producto;
+  final VoidCallback onCerrar;
 
-class _DatoDetalle extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _DatoDetalle(
-    this.label,
-    this.value,
-  );
+  const _PanelDetallesProductoCatalogo({
+    required this.producto,
+    required this.onCerrar,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(
-        bottom: 8,
+    final categoria = producto.categoria?.trim().isEmpty ?? true
+        ? 'Sin categoría'
+        : producto.categoria!.trim();
+
+    final codigo = producto.codigoBarras?.trim().isEmpty ?? true
+        ? 'Sin código'
+        : producto.codigoBarras!.trim();
+
+    final descripcion = producto.descripcion?.trim().isEmpty ?? true
+        ? 'Sin descripción'
+        : producto.descripcion!.trim();
+
+    return Container(
+      color: const Color(0xFFFAF9F7),
+      padding: const EdgeInsets.fromLTRB(
+        28,
+        24,
+        28,
+        24,
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 130,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: _textoSecundario,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'DETALLES TÉCNICOS',
+                  style: TextStyle(
+                    color: _textoPrincipal,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.4,
+                  ),
+                ),
               ),
+              IconButton(
+                onPressed: onCerrar,
+                tooltip: 'Cerrar',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(
+                  minWidth: 32,
+                  minHeight: 32,
+                ),
+                icon: const Icon(
+                  Icons.close,
+                  color: _textoSecundario,
+                  size: 20,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                const separacion = 14.0;
+
+                final anchoTarjeta =
+                    (constraints.maxWidth - (separacion * 2)) / 3;
+
+                return Align(
+                  alignment: Alignment.topLeft,
+                  child: Wrap(
+                    spacing: separacion,
+                    runSpacing: 16,
+                    children: [
+                      _TarjetaDetalleProductoCatalogo(
+                        width: anchoTarjeta,
+                        label: 'ID Producto',
+                        value: '${producto.idProducto}',
+                      ),
+                      _TarjetaDetalleProductoCatalogo(
+                        width: anchoTarjeta,
+                        label: 'Código',
+                        value: codigo,
+                        valueItalic: codigo == 'Sin código',
+                        valueColor: codigo == 'Sin código'
+                            ? _textoSecundario
+                            : _textoPrincipal,
+                      ),
+                      _TarjetaDetalleProductoCatalogo(
+                        width: anchoTarjeta,
+                        label: 'Categoría',
+                        value: categoria,
+                        valueItalic: categoria == 'Sin categoría',
+                        valueColor: categoria == 'Sin categoría'
+                            ? _textoSecundario
+                            : _textoPrincipal,
+                      ),
+                      _TarjetaDetalleProductoCatalogo(
+                        width: anchoTarjeta,
+                        label: 'Maneja caducidad',
+                        value: producto.manejaCaducidad ? 'Sí' : 'No',
+                      ),
+                      _TarjetaDetalleProductoCatalogo(
+                        width: anchoTarjeta,
+                        label: 'Descripción',
+                        value: descripcion,
+                        valueItalic: descripcion == 'Sin descripción',
+                        valueColor: descripcion == 'Sin descripción'
+                            ? _textoSecundario
+                            : _textoPrincipal,
+                      ),
+                      if (producto.esMedicamento) ...[
+                        _TarjetaDetalleProductoCatalogo(
+                          width: anchoTarjeta,
+                          label: 'Presentación',
+                          value: producto.presentacion?.trim().isEmpty ?? true
+                              ? 'Sin presentación'
+                              : _presentacionVisible(producto.presentacion),
+                          valueItalic:
+                              producto.presentacion?.trim().isEmpty ?? true,
+                          valueColor:
+                              producto.presentacion?.trim().isEmpty ?? true
+                                  ? _textoSecundario
+                                  : _textoPrincipal,
+                        ),
+                        _TarjetaDetalleProductoCatalogo(
+                          width: anchoTarjeta,
+                          label: 'Vía',
+                          value:
+                              producto.viaAdministracion?.trim().isEmpty ?? true
+                                  ? 'Sin vía'
+                                  : etiquetaViaAdministracion(
+                                      producto.viaAdministracion,
+                                    ),
+                          valueItalic:
+                              producto.viaAdministracion?.trim().isEmpty ??
+                                  true,
+                          valueColor:
+                              producto.viaAdministracion?.trim().isEmpty ?? true
+                                  ? _textoSecundario
+                                  : _textoPrincipal,
+                        ),
+                        _TarjetaDetalleProductoCatalogo(
+                          width: anchoTarjeta,
+                          label: 'Edad',
+                          value: producto.edad == null
+                              ? 'Sin edad'
+                              : _etiqueta(producto.edad!),
+                          valueItalic: producto.edad == null,
+                          valueColor: producto.edad == null
+                              ? _textoSecundario
+                              : _textoPrincipal,
+                        ),
+                        _TarjetaDetalleProductoCatalogo(
+                          width: anchoTarjeta,
+                          label: 'Sustancia activa',
+                          value:
+                              producto.sustanciaActiva?.trim().isEmpty ?? true
+                                  ? 'Sin sustancia'
+                                  : producto.sustanciaActiva!,
+                          valueItalic:
+                              producto.sustanciaActiva?.trim().isEmpty ?? true,
+                          valueColor:
+                              producto.sustanciaActiva?.trim().isEmpty ?? true
+                                  ? _textoSecundario
+                                  : _textoPrincipal,
+                        ),
+                        _TarjetaDetalleProductoCatalogo(
+                          width: anchoTarjeta,
+                          label: 'Dosis',
+                          value: producto.dosis?.trim().isEmpty ?? true
+                              ? 'Sin dosis'
+                              : producto.dosis!,
+                          valueItalic: producto.dosis?.trim().isEmpty ?? true,
+                          valueColor: producto.dosis?.trim().isEmpty ?? true
+                              ? _textoSecundario
+                              : _textoPrincipal,
+                        ),
+                        _TarjetaDetalleProductoCatalogo(
+                          width: anchoTarjeta,
+                          label: 'Requiere receta',
+                          value: producto.requiereReceta ? 'Sí' : 'No',
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              },
             ),
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                color: _textoPrincipal,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
+          Container(
+            width: double.infinity,
+            height: 1,
+            color: const Color(0xFFE7E8E3),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TarjetaDetalleProductoCatalogo extends StatelessWidget {
+  final double width;
+  final String label;
+  final String value;
+  final Widget? trailing;
+  final bool valueItalic;
+  final Color? valueColor;
+
+  const _TarjetaDetalleProductoCatalogo({
+    required this.width,
+    required this.label,
+    required this.value,
+    this.trailing,
+    this.valueItalic = false,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: 76,
+      padding: const EdgeInsets.fromLTRB(
+        12,
+        11,
+        10,
+        10,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(
+          color: const Color(0xFFE8E9E5),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(
+              alpha: 0.035,
             ),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _textoSecundario,
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const Spacer(),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  value.trim().isEmpty ? '-' : value,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: valueColor ?? _textoPrincipal,
+                    fontSize: valueItalic ? 10 : 12,
+                    fontWeight: valueItalic ? FontWeight.w600 : FontWeight.w900,
+                    fontStyle:
+                        valueItalic ? FontStyle.italic : FontStyle.normal,
+                  ),
+                ),
+              ),
+              if (trailing != null) ...[
+                const SizedBox(width: 6),
+                trailing!,
+              ],
+            ],
           ),
         ],
       ),
