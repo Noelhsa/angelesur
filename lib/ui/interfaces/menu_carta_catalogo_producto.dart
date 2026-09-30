@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../services/productos_api_service.dart';
 import '../../models/vias_administracion.dart';
+import '../../models/presentaciones_medicamento.dart';
 
 const Color _verdeOscuro = Color(0xFF397800);
 const Color _verde = Color(0xFF64D20A);
@@ -1014,17 +1015,7 @@ String? _limpiar(
 String _presentacionNormalizada(
   String value,
 ) {
-  if (value.toLowerCase().contains('psula')) {
-    return 'Capsula';
-  }
-
-  if (value.startsWith(
-    'Suspensi',
-  )) {
-    return 'Suspension';
-  }
-
-  return value;
+  return normalizarPresentacion(value);
 }
 
 String _categoriaNormalizada(
