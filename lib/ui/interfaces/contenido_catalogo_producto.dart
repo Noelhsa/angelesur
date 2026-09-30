@@ -1826,13 +1826,7 @@ class _DialogoProductoState extends State<_DialogoProducto> {
         ? producto!.tipo
         : 'PRODUCTO';
 
-    _categoria = _opcionesCategoria(
-      producto?.categoria,
-    ).contains(
-      producto?.categoria,
-    )
-        ? producto!.categoria!
-        : 'General';
+    _categoria = producto == null ? 'General' : (producto.categoria ?? '');
 
     _presentacion = _presentacionVisible(
       producto?.presentacion,
@@ -1844,11 +1838,7 @@ class _DialogoProductoState extends State<_DialogoProducto> {
         ? producto!.viaAdministracion!
         : null;
 
-    _edad = _edades.contains(
-      producto?.edad,
-    )
-        ? producto!.edad!
-        : 'GENERAL';
+    _edad = producto == null ? 'GENERAL' : (producto.edad ?? '');
 
     _dosisUnidad = dosis.unidad;
 
@@ -1886,7 +1876,7 @@ class _DialogoProductoState extends State<_DialogoProducto> {
           _presentacion,
         ),
         'viaAdministracion': _via,
-        'edad': _edad,
+        'edad': _limpiar(_edad),
         'requiereReceta': _requiereReceta,
         'sustanciaActiva': _limpiar(
           _sustanciaController.text,
@@ -1905,7 +1895,7 @@ class _DialogoProductoState extends State<_DialogoProducto> {
           _descripcionController.text,
         ),
         tipo: _tipo,
-        categoria: _tipo == 'PRODUCTO' ? _categoria : null,
+        categoria: _tipo == 'PRODUCTO' ? _limpiar(_categoria) : null,
         manejaCaducidad: _manejaCaducidad,
         infoMedicamento: infoMedicamento,
       ),
@@ -2004,13 +1994,6 @@ class _DialogoProductoState extends State<_DialogoProducto> {
                                 setState(() {
                                   _tipo = value;
 
-                                  if (value == 'PRODUCTO' &&
-                                      !_opcionesCategoria().contains(
-                                        _categoria,
-                                      )) {
-                                    _categoria = 'General';
-                                  }
-
                                   _error = null;
                                 });
                               },
@@ -2027,16 +2010,10 @@ class _DialogoProductoState extends State<_DialogoProducto> {
                       if (!esMedicamento) ...[
                         _CampoDropdownEdicionProducto(
                           etiqueta: 'Categoría',
-                          valor: _opcionesCategoria(
-                            _categoria,
-                          ).contains(
-                            _categoria,
-                          )
-                              ? _categoria
-                              : 'General',
-                          opciones: _opcionesCategoria(
-                            _categoria,
-                          ),
+                          valor: _categoria,
+                          opciones: ['', ..._opcionesCategoria(_categoria)],
+                          textoOpcion: (value) =>
+                              value.isEmpty ? 'Sin asignar' : value,
                           onChanged: (value) {
                             if (value == null) {
                               return;
@@ -2113,8 +2090,16 @@ class _DialogoProductoState extends State<_DialogoProducto> {
                               child: _CampoDropdownEdicionProducto(
                                 etiqueta: 'Edad',
                                 valor: _edad,
-                                opciones: _edades,
-                                textoOpcion: _etiqueta,
+                                opciones: [
+                                  '',
+                                  ..._edades,
+                                  if (_edad.isNotEmpty &&
+                                      !_edades.contains(_edad))
+                                    _edad,
+                                ],
+                                textoOpcion: (value) => value.isEmpty
+                                    ? 'Sin asignar'
+                                    : _etiqueta(value),
                                 onChanged: (value) {
                                   if (value == null) {
                                     return;
