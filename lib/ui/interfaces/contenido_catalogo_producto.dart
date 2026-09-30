@@ -4,6 +4,7 @@ import '../../services/api_client.dart';
 import '../../services/productos_api_service.dart';
 import '../../models/vias_administracion.dart';
 import '../../models/presentaciones_medicamento.dart';
+import '../../models/dosis_medicamento.dart';
 import 'menu_carta_catalogo_producto.dart';
 
 const Color _fondoPagina = Color(0xFFE2E2E2);
@@ -1781,6 +1782,7 @@ class _DialogoProductoState extends State<_DialogoProducto> {
   String? _via;
   late String _edad;
   late String _dosisUnidad;
+  late DosisMedicamento _dosisOriginal;
 
   late bool _manejaCaducidad;
   late bool _requiereReceta;
@@ -1809,9 +1811,10 @@ class _DialogoProductoState extends State<_DialogoProducto> {
       text: producto?.sustanciaActiva ?? '',
     );
 
-    final dosis = _separarDosis(
+    final dosis = DosisMedicamento.desdeTexto(
       producto?.dosis,
     );
+    _dosisOriginal = dosis;
 
     _dosisCantidadController = TextEditingController(
       text: dosis.cantidad,
@@ -1847,11 +1850,7 @@ class _DialogoProductoState extends State<_DialogoProducto> {
         ? producto!.edad!
         : 'GENERAL';
 
-    _dosisUnidad = _unidadesDosis.contains(
-      dosis.unidad,
-    )
-        ? dosis.unidad
-        : 'mg';
+    _dosisUnidad = dosis.unidad;
 
     _manejaCaducidad = producto?.manejaCaducidad ?? false;
     _requiereReceta = producto?.requiereReceta ?? false;
@@ -1914,13 +1913,10 @@ class _DialogoProductoState extends State<_DialogoProducto> {
   }
 
   String? _dosisTexto() {
-    final cantidad = _dosisCantidadController.text.trim();
-
-    if (cantidad.isEmpty) {
-      return null;
-    }
-
-    return '$cantidad $_dosisUnidad';
+    return _dosisOriginal.guardar(
+      _dosisCantidadController.text,
+      _dosisUnidad,
+    );
   }
 
   String _presentacionNormalizada(
@@ -2143,7 +2139,10 @@ class _DialogoProductoState extends State<_DialogoProducto> {
                           children: [
                             Expanded(
                               child: _CampoTextoEdicionProducto(
-                                etiqueta: 'Cantidad',
+                                etiqueta:
+                                    _dosisUnidad == DosisMedicamento.sinUnidad
+                                        ? 'Dosis'
+                                        : 'Cantidad',
                                 controller: _dosisCantidadController,
                               ),
                             ),
@@ -2152,7 +2151,10 @@ class _DialogoProductoState extends State<_DialogoProducto> {
                               child: _CampoDropdownEdicionProducto(
                                 etiqueta: 'Unidad',
                                 valor: _dosisUnidad,
-                                opciones: _unidadesDosis,
+                                opciones: {
+                                  ..._unidadesDosis,
+                                  _dosisOriginal.unidad,
+                                }.toList(),
                                 onChanged: (value) {
                                   if (value == null) {
                                     return;
@@ -3296,58 +3298,10 @@ List<String> _opcionesCategoria([
   return opciones;
 }
 
-_DosisEditada _separarDosis(
-  String? value,
-) {
-  final text = value?.trim() ?? '';
-
-  if (text.isEmpty) {
-    return const _DosisEditada(
-      cantidad: '',
-      unidad: 'mg',
-    );
-  }
-
-  final parts = text.split(
-    RegExp(
-      r'\s+',
-    ),
-  );
-
-  if (parts.length < 2) {
-    return _DosisEditada(
-      cantidad: text,
-      unidad: 'mg',
-    );
-  }
-
-  return _DosisEditada(
-    cantidad: parts
-        .sublist(
-          0,
-          parts.length - 1,
-        )
-        .join(
-          ' ',
-        ),
-    unidad: parts.last,
-  );
-}
-
 String _presentacionVisible(
   String? value,
 ) {
   return presentacionVisible(value);
-}
-
-class _DosisEditada {
-  final String cantidad;
-  final String unidad;
-
-  const _DosisEditada({
-    required this.cantidad,
-    required this.unidad,
-  });
 }
 
 String _etiqueta(
