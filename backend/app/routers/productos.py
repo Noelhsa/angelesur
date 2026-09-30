@@ -224,7 +224,9 @@ def actualizar_producto(id_producto: int, request: ActualizarProductoRequest):
                 )
 
             if request.infoMedicamento is not None:
-                _upsert_info_medicamento(cursor, id_producto, request.infoMedicamento)
+                _upsert_info_medicamento(
+                    cursor, id_producto, request.infoMedicamento, parcial=True
+                )
 
             if request.tipo == "PRODUCTO":
                 cursor.execute(
@@ -271,9 +273,24 @@ def _select_productos_sql() -> str:
     """
 
 
-def _upsert_info_medicamento(cursor, id_producto: int, info: InfoMedicamentoRequest):
+def _upsert_info_medicamento(
+    cursor, id_producto: int, info: InfoMedicamentoRequest, *, parcial: bool = False
+):
+    columnas = (
+        "presentacion", "viaAdministracion", "edad", "requiereReceta",
+        "sustanciaActiva", "dosis",
+    )
+    campos = [
+        campo for campo in columnas
+        if not parcial or campo in info.model_fields_set
+    ]
+    if not campos:
+        return
+    # El INSERT conserva los valores iniciales; un registro existente solo
+    # actualiza campos enviados, sin leer y reescribir datos concurrentes.
+    actualizaciones = ", ".join(f"{campo} = VALUES({campo})" for campo in campos)
     cursor.execute(
-        """
+        f"""
         INSERT INTO info_medicamento (
             idProducto,
             presentacion,
@@ -285,12 +302,7 @@ def _upsert_info_medicamento(cursor, id_producto: int, info: InfoMedicamentoRequ
         )
         VALUES (%s, %s, %s, %s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE
-            presentacion = VALUES(presentacion),
-            viaAdministracion = VALUES(viaAdministracion),
-            edad = VALUES(edad),
-            requiereReceta = VALUES(requiereReceta),
-            sustanciaActiva = VALUES(sustanciaActiva),
-            dosis = VALUES(dosis)
+            {actualizaciones}
         """,
         [
             id_producto,
