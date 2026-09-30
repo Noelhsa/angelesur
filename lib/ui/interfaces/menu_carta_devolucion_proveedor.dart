@@ -46,6 +46,8 @@ class _MenuCartaDevolucionProveedorState
 
   bool _cargando = true;
   bool _cargandoDetalle = false;
+  int _solicitudLista = 0;
+  int _solicitudDetalle = 0;
   int _pagina = 1;
   int _totalPaginas = 1;
   int _total = 0;
@@ -79,6 +81,7 @@ class _MenuCartaDevolucionProveedorState
   }
 
   Future<void> _cargarCompras({int pagina = 1}) async {
+    final solicitud = ++_solicitudLista;
     setState(() {
       _cargando = true;
       _error = null;
@@ -98,7 +101,7 @@ class _MenuCartaDevolucionProveedorState
 
       final compras = resultado.items;
 
-      if (!mounted) return;
+      if (!mounted || solicitud != _solicitudLista) return;
 
       setState(() {
         _compras = compras;
@@ -112,6 +115,8 @@ class _MenuCartaDevolucionProveedorState
           _idCompra = null;
           _idCompraDetalle = null;
           _compraDetalle = null;
+          ++_solicitudDetalle;
+          _cargandoDetalle = false;
         }
 
         if (compras.isEmpty) {
@@ -119,7 +124,7 @@ class _MenuCartaDevolucionProveedorState
         }
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || solicitud != _solicitudLista) return;
 
       setState(() {
         _error = 'No se pudieron cargar compras registradas';
@@ -156,6 +161,7 @@ class _MenuCartaDevolucionProveedorState
 
   Future<void> _seleccionarCompra(int? idCompra) async {
     if (idCompra == null) return;
+    final solicitud = ++_solicitudDetalle;
 
     setState(() {
       _idCompra = idCompra;
@@ -168,7 +174,9 @@ class _MenuCartaDevolucionProveedorState
     try {
       final detalle = await widget.comprasApiService.obtenerCompra(idCompra);
 
-      if (!mounted) return;
+      if (!mounted || solicitud != _solicitudDetalle || _idCompra != idCompra) {
+        return;
+      }
 
       setState(() {
         _compraDetalle = detalle;
@@ -178,7 +186,9 @@ class _MenuCartaDevolucionProveedorState
         _cargandoDetalle = false;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || solicitud != _solicitudDetalle || _idCompra != idCompra) {
+        return;
+      }
 
       setState(() {
         _error = 'No se pudo cargar el detalle de la compra';
@@ -203,11 +213,12 @@ class _MenuCartaDevolucionProveedorState
   }
 
   void _guardar() {
+    if (_cargando || _cargandoDetalle || widget.procesando) return;
     final compra = _compraDetalle;
     final detalle = _detalleSeleccionado();
     final cantidad = int.tryParse(_cantidadController.text.trim()) ?? 0;
 
-    if (compra == null || detalle == null) {
+    if (compra == null || detalle == null || compra.idCompra != _idCompra) {
       setState(() {
         _error = 'Selecciona una compra y un producto';
       });

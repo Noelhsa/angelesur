@@ -47,6 +47,8 @@ class _MenuCartaDevolucionClienteState
 
   bool _cargando = true;
   bool _cargandoDetalle = false;
+  int _solicitudLista = 0;
+  int _solicitudDetalle = 0;
   bool _regresaAInventario = true;
 
   String? _error;
@@ -78,6 +80,7 @@ class _MenuCartaDevolucionClienteState
   }
 
   Future<void> _cargarVentas() async {
+    final solicitud = ++_solicitudLista;
     setState(() {
       _cargando = true;
       _error = null;
@@ -94,7 +97,7 @@ class _MenuCartaDevolucionClienteState
         limite: 50,
       );
 
-      if (!mounted) return;
+      if (!mounted || solicitud != _solicitudLista) return;
 
       setState(() {
         _ventas = ventas;
@@ -104,13 +107,15 @@ class _MenuCartaDevolucionClienteState
           _idVenta = null;
           _idVentaDetalle = null;
           _ventaDetalle = null;
+          ++_solicitudDetalle;
+          _cargandoDetalle = false;
         }
         if (ventas.isEmpty) {
           _error = 'No se pudieron cargar ventas registradas';
         }
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || solicitud != _solicitudLista) return;
 
       setState(() {
         _error = 'No se pudieron cargar ventas registradas';
@@ -146,6 +151,7 @@ class _MenuCartaDevolucionClienteState
 
   Future<void> _seleccionarVenta(int? idVenta) async {
     if (idVenta == null) return;
+    final solicitud = ++_solicitudDetalle;
 
     setState(() {
       _idVenta = idVenta;
@@ -158,7 +164,9 @@ class _MenuCartaDevolucionClienteState
     try {
       final detalle = await widget.ventasApiService.obtenerVenta(idVenta);
 
-      if (!mounted) return;
+      if (!mounted || solicitud != _solicitudDetalle || _idVenta != idVenta) {
+        return;
+      }
 
       setState(() {
         _ventaDetalle = detalle;
@@ -168,7 +176,9 @@ class _MenuCartaDevolucionClienteState
         _cargandoDetalle = false;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || solicitud != _solicitudDetalle || _idVenta != idVenta) {
+        return;
+      }
 
       setState(() {
         _error = 'No se pudo cargar el detalle de la venta';
@@ -193,11 +203,12 @@ class _MenuCartaDevolucionClienteState
   }
 
   void _guardar() {
+    if (_cargando || _cargandoDetalle || widget.procesando) return;
     final venta = _ventaDetalle;
     final detalle = _detalleSeleccionado();
     final cantidad = int.tryParse(_cantidadController.text.trim()) ?? 0;
 
-    if (venta == null || detalle == null) {
+    if (venta == null || detalle == null || venta.idVenta != _idVenta) {
       setState(() {
         _error = 'Selecciona una venta y un producto';
       });
