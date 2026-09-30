@@ -211,14 +211,18 @@ def _validar_reparto_tarifa(
     regalia_yastas: Decimal,
     ganancia_farmacia: Decimal,
 ):
+    importes = (comision_cliente, comision_yastas, regalia_yastas, ganancia_farmacia)
+    if any(valor is None or not valor.is_finite() or valor < 0
+           or valor != valor.quantize(Decimal("0.01")) for valor in importes):
+        raise HTTPException(status_code=400, detail="Los importes deben ser no negativos y tener hasta dos decimales")
     reparto = comision_yastas + regalia_yastas + ganancia_farmacia
 
-    if reparto > comision_cliente:
+    if reparto != comision_cliente:
         raise HTTPException(
             status_code=400,
             detail=(
                 "La suma de comision Yastas, regalia Yastas y ganancia farmacia "
-                "no puede superar la comision cobrada al cliente"
+                "debe ser igual a la comision cobrada al cliente"
             ),
         )
 

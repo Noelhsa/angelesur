@@ -808,7 +808,10 @@ class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
   }
 
   double get _gananciaFarmacia {
-    final ganancia = _comisionCliente - _comisionYastas - _regaliaYastas;
+    final ganancia = ((_comisionCliente * 100).round() -
+            (_comisionYastas * 100).round() -
+            (_regaliaYastas * 100).round()) /
+        100;
 
     return ganancia < 0 ? 0 : ganancia;
   }
@@ -829,6 +832,18 @@ class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
     );
 
     final ganancia = _gananciaFarmacia;
+
+    final original = widget.tarifa;
+    if (comisionCliente == original.comisionCliente &&
+        comisionYastas == original.comisionYastas &&
+        regalia == original.regaliaYastas &&
+        (ganancia - original.gananciaFarmacia).abs() > 0.005) {
+      setState(() {
+        _error = 'La tarifa guardada tiene un reparto inconsistente. '
+            'Ajusta las comisiones antes de guardar; la ganancia no se corregira automaticamente.';
+      });
+      return;
+    }
 
     if (nombre.isEmpty) {
       setState(() {
@@ -1165,6 +1180,7 @@ class _CampoDineroEditarTarifa extends StatelessWidget {
         keyboardType: const TextInputType.numberWithOptions(
           decimal: true,
         ),
+        inputFormatters: const [ImporteInputFormatter()],
         cursorColor: _verdeOscuro,
         style: const TextStyle(
           color: _texto,
@@ -1180,7 +1196,6 @@ class _CampoDineroEditarTarifa extends StatelessWidget {
             child: Text(
               '\$',
               style: TextStyle(
-        inputFormatters: const [ImporteInputFormatter()],
                 color: _textoSuave,
                 fontSize: 13,
                 fontWeight: FontWeight.w900,

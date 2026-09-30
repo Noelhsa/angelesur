@@ -62,6 +62,27 @@ class _MenuCartaYastasState extends State<MenuCartaYastas> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    for (final controller in [
+      _comisionClienteController,
+      _comisionYastasController,
+      _regaliaController
+    ]) {
+      controller.addListener(_actualizarGanancia);
+    }
+  }
+
+  void _actualizarGanancia() {
+    final centavos =
+        ((_leerMonto(_comisionClienteController) ?? 0) * 100).round() -
+            ((_leerMonto(_comisionYastasController) ?? 0) * 100).round() -
+            ((_leerMonto(_regaliaController) ?? 0) * 100).round();
+    _gananciaController.text =
+        (centavos.clamp(0, double.infinity) / 100).toStringAsFixed(2);
+  }
+
+  @override
   void dispose() {
     _nombreController.dispose();
     _comisionClienteController.dispose();
@@ -229,6 +250,7 @@ class _MenuCartaYastasState extends State<MenuCartaYastas> {
                   _CampoDineroYastas(
                     etiqueta: 'Ganancia farmacia',
                     controller: _gananciaController,
+                    readOnly: true,
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 12),
@@ -349,10 +371,12 @@ class _CampoTextoYastas extends StatelessWidget {
 class _CampoDineroYastas extends StatelessWidget {
   final String etiqueta;
   final TextEditingController controller;
+  final bool readOnly;
 
   const _CampoDineroYastas({
     required this.etiqueta,
     required this.controller,
+    this.readOnly = false,
   });
 
   @override
@@ -362,6 +386,8 @@ class _CampoDineroYastas extends StatelessWidget {
       child: TextField(
         controller: controller,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        readOnly: readOnly,
+        inputFormatters: const [ImporteInputFormatter()],
         cursorColor: _verdeOscuro,
         style: const TextStyle(
           color: _textoPrincipal,
@@ -386,7 +412,6 @@ class _CampoDineroYastas extends StatelessWidget {
   }
 }
 
-        inputFormatters: const [ImporteInputFormatter()],
 class _CampoDropdownYastas extends StatelessWidget {
   final String etiqueta;
   final String valor;
