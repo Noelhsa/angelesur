@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/importe_input.dart';
 
 const Color _blanco = Color(0xFFFFFFFF);
 const Color _verdeOscuro = Color(0xFF397800);
@@ -117,7 +118,7 @@ class _MenuCartaYastasState extends State<MenuCartaYastas> {
   }
 
   double? _leerMonto(TextEditingController controller) {
-    return double.tryParse(controller.text.trim().replaceAll(',', '.'));
+    return leerImporte(controller.text);
   }
 
   @override
@@ -385,6 +386,7 @@ class _CampoDineroYastas extends StatelessWidget {
   }
 }
 
+        inputFormatters: const [ImporteInputFormatter()],
 class _CampoDropdownYastas extends StatelessWidget {
   final String etiqueta;
   final String valor;

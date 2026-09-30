@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/importe_input.dart';
 
 import '../../services/api_client.dart';
 import '../../services/servicios_yastas_api_service.dart';
@@ -785,17 +786,13 @@ class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
   }
 
   double? _leerMonto(TextEditingController controller) {
-    final texto = controller.text
-        .trim()
-        .replaceAll('\$', '')
-        .replaceAll(' ', '')
-        .replaceAll(',', '.');
+    final texto = controller.text;
 
     if (texto.isEmpty) {
       return 0;
     }
 
-    return double.tryParse(texto);
+    return leerImporte(texto);
   }
 
   double get _comisionCliente {
@@ -1183,6 +1180,7 @@ class _CampoDineroEditarTarifa extends StatelessWidget {
             child: Text(
               '\$',
               style: TextStyle(
+        inputFormatters: const [ImporteInputFormatter()],
                 color: _textoSuave,
                 fontSize: 13,
                 fontWeight: FontWeight.w900,

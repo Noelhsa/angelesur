@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/importe_input.dart';
 
 import '../../services/api_client.dart';
 import '../../services/compras_api_service.dart';
@@ -75,7 +76,7 @@ class _MenuCartaPedidosState extends State<MenuCartaPedidos> {
       );
 
   double get _descuento {
-    final value = double.tryParse(_descuentoController.text.trim()) ?? 0;
+    final value = leerImporte(_descuentoController.text) ?? 0;
     if (value < 0) return 0;
     return value;
   }
@@ -189,8 +190,8 @@ class _MenuCartaPedidosState extends State<MenuCartaPedidos> {
     for (final linea in _lineas) {
       final idProducto = linea.idProducto;
       final cantidad = int.tryParse(linea.cantidadController.text.trim()) ?? 0;
-      final costo = double.tryParse(linea.costoController.text.trim()) ?? -1;
-      final precio = double.tryParse(linea.precioController.text.trim()) ?? -1;
+      final costo = leerImporte(linea.costoController.text) ?? -1;
+      final precio = leerImporte(linea.precioController.text) ?? -1;
       final lote = linea.loteController.text.trim();
       final caducidad = linea.caducidadController.text.trim();
       final producto =
@@ -406,7 +407,7 @@ class _LineaCompraForm {
 
   double get subtotal {
     final cantidad = int.tryParse(cantidadController.text.trim()) ?? 0;
-    final costo = double.tryParse(costoController.text.trim()) ?? 0;
+    final costo = leerImporte(costoController.text) ?? 0;
     return cantidad * costo;
   }
 
@@ -629,6 +630,8 @@ class _CampoTextoPedido extends StatelessWidget {
         controller: controller,
         keyboardType: keyboardType,
         maxLines: maxLines,
+        inputFormatters:
+            prefixText?.trim() == '\$' ? const [ImporteInputFormatter()] : null,
         style: const TextStyle(
           color: _textoPrincipal,
           fontSize: 12,
@@ -1012,6 +1015,8 @@ class _MiniCampo extends StatelessWidget {
         controller: controller,
         keyboardType: keyboardType,
         onChanged: (_) => onChanged(),
+        inputFormatters:
+            prefixText?.trim() == '\$' ? const [ImporteInputFormatter()] : null,
         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
         decoration: _decoracionCampo(
           prefixText: prefixText,

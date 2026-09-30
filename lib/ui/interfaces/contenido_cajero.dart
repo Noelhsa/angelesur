@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/importe_input.dart';
 
 import '../../models/usuario.dart';
 import '../../services/api_client.dart';
@@ -2723,10 +2724,7 @@ class _DialogoAbrirCorteState extends State<_DialogoAbrirCorte> {
   }
 
   double? _leerMonto(TextEditingController controller) {
-    final texto =
-        controller.text.trim().replaceAll('\$', '').replaceAll(',', '.');
-
-    return double.tryParse(texto);
+    return leerImporte(controller.text);
   }
 
   double get _efectivoInicial {
@@ -2932,6 +2930,7 @@ class _CampoMontoApertura extends StatelessWidget {
         keyboardType: const TextInputType.numberWithOptions(
           decimal: true,
         ),
+        inputFormatters: const [ImporteInputFormatter()],
         onChanged: onChanged,
         onSubmitted: onSubmitted,
         cursorColor: _verdeOscuro,
@@ -3387,7 +3386,7 @@ class _DialogoMovimientoCajaState extends State<_DialogoMovimientoCaja> {
   }
 
   void _confirmar() {
-    final monto = double.tryParse(_montoController.text.trim());
+    final monto = leerImporte(_montoController.text);
 
     if (monto == null || monto <= 0) {
       setState(() {
@@ -3536,17 +3535,13 @@ class _DialogoCerrarCorteState extends State<_DialogoCerrarCorte> {
   }
 
   double? _leerMonto(TextEditingController controller) {
-    final texto = controller.text
-        .trim()
-        .replaceAll('\$', '')
-        .replaceAll(' ', '')
-        .replaceAll(',', '.');
+    final texto = controller.text;
 
     if (texto.isEmpty) {
       return 0;
     }
 
-    return double.tryParse(texto);
+    return leerImporte(texto);
   }
 
   double get _efectivoContado {
@@ -4067,6 +4062,7 @@ class _CampoMonto extends StatelessWidget {
     return TextField(
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: const [ImporteInputFormatter()],
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),

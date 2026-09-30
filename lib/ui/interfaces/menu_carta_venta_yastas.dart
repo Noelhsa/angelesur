@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/importe_input.dart';
 
 import '../../models/medicamento.dart';
 import '../../services/servicios_yastas_api_service.dart';
@@ -70,7 +71,7 @@ class _DialogoServicioYastasState extends State<DialogoServicioYastas> {
   String? _error;
 
   double get _montoServicio {
-    return double.tryParse(_montoController.text.trim()) ?? 0;
+    return leerImporte(_montoController.text) ?? 0;
   }
 
   double get _totalCobrado {
@@ -94,7 +95,7 @@ class _DialogoServicioYastasState extends State<DialogoServicioYastas> {
   }
 
   void _confirmar() {
-    final montoServicio = double.tryParse(_montoController.text.trim());
+    final montoServicio = leerImporte(_montoController.text);
 
     if (montoServicio == null || montoServicio <= 0) {
       setState(() {
@@ -140,6 +141,7 @@ class _DialogoServicioYastasState extends State<DialogoServicioYastas> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
+              inputFormatters: const [ImporteInputFormatter()],
               decoration: const InputDecoration(
                 labelText: 'Monto del servicio',
                 border: OutlineInputBorder(),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/importe_input.dart';
 
 import '../../models/medicamento.dart';
 import '../../utils/config_moneda.dart';
@@ -67,10 +68,7 @@ class _DialogoPagoVentaState extends State<_DialogoPagoVenta> {
   bool get _esEfectivo => _medio == 'EFECTIVO';
 
   double? get _montoRecibido {
-    final texto =
-        _montoController.text.trim().replaceAll(',', '').replaceAll('\$', '');
-
-    return double.tryParse(texto);
+    return leerImporte(_montoController.text);
   }
 
   double get _cambio {
@@ -551,6 +549,7 @@ class _CampoCantidadRecibida extends StatelessWidget {
     return TextField(
       controller: controller,
       onChanged: onChanged,
+      inputFormatters: const [ImporteInputFormatter()],
       keyboardType: const TextInputType.numberWithOptions(
         decimal: true,
       ),
@@ -1393,10 +1392,7 @@ class _CampoDescuentoCarritoState extends State<_CampoDescuentoCarrito> {
   ) {
     super.didUpdateWidget(oldWidget);
 
-    final actual = double.tryParse(
-          _controller.text.trim(),
-        ) ??
-        0;
+    final actual = leerImporte(_controller.text) ?? 0;
 
     if ((actual - widget.descuento).abs() > 0.009) {
       _controller.text =
@@ -1433,6 +1429,7 @@ class _CampoDescuentoCarritoState extends State<_CampoDescuentoCarrito> {
           height: 28,
           child: TextField(
             controller: _controller,
+            inputFormatters: const [ImporteInputFormatter()],
             keyboardType: const TextInputType.numberWithOptions(
               decimal: true,
             ),
@@ -1452,10 +1449,8 @@ class _CampoDescuentoCarritoState extends State<_CampoDescuentoCarrito> {
               border: OutlineInputBorder(),
             ),
             onChanged: (value) {
-              final limpio = value.trim().replaceAll(',', '');
-
               widget.onChanged(
-                double.tryParse(limpio) ?? 0,
+                leerImporte(value) ?? 0,
               );
             },
           ),

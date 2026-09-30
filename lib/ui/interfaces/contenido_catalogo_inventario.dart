@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/importe_input.dart';
 
 import '../../services/api_client.dart';
 import '../../services/inventario_api_service.dart';
@@ -1768,13 +1769,7 @@ class _DialogoLoteInventarioState extends State<_DialogoLoteInventario> {
       return;
     }
 
-    final precio = double.tryParse(
-      _precioController.text
-          .trim()
-          .replaceAll('\$', '')
-          .replaceAll(' ', '')
-          .replaceAll(',', '.'),
-    );
+    final precio = leerImporte(_precioController.text);
 
     if (precio == null || precio < 0) {
       setState(() {
@@ -2241,6 +2236,7 @@ class _CampoPrecioLoteInventario extends StatelessWidget {
         keyboardType: const TextInputType.numberWithOptions(
           decimal: true,
         ),
+        inputFormatters: const [ImporteInputFormatter()],
         cursorColor: const Color(0xFF3A7704),
         style: const TextStyle(
           color: _textoPrincipal,
