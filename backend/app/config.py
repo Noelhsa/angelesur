@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     db_password: str = "1234"
     db_name: str = "farmacia_angeles_v2"
     api_host: str = "127.0.0.1"
-    api_port: int = 8000
+    api_port: int = 8001
     mariadb_bin: str = ""
     backup_dir: str = ""
 
