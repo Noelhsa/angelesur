@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/api_client.dart';
 import '../../services/productos_api_service.dart';
 import '../../models/vias_administracion.dart';
+import '../../models/presentaciones_medicamento.dart';
 import 'menu_carta_catalogo_producto.dart';
 
 const Color _fondoPagina = Color(0xFFE2E2E2);
@@ -1925,20 +1926,7 @@ class _DialogoProductoState extends State<_DialogoProducto> {
   String _presentacionNormalizada(
     String value,
   ) {
-    return switch (value) {
-      'Capsula' => 'CAPSULA',
-      'Tableta' => 'TABLETA',
-      'Pastilla' => 'PASTILLA',
-      'Suspension' => 'SUSPENSION',
-      'Gotas' => 'GOTAS',
-      'Inyectable' => 'INYECCION',
-      'Jarabe' => 'JARABE',
-      'Crema' => 'CREMA',
-      'Pomada' => 'POMADA',
-      'Spray' => 'AEROSOL',
-      'Solucion' => 'SOLUCION',
-      _ => 'OTRO',
-    };
+    return normalizarPresentacion(value);
   }
 
   @override
@@ -2087,7 +2075,11 @@ class _DialogoProductoState extends State<_DialogoProducto> {
                         _CampoDropdownEdicionProducto(
                           etiqueta: 'Presentación',
                           valor: _presentacion,
-                          opciones: _presentaciones,
+                          opciones: [
+                            ..._presentaciones,
+                            if (!_presentaciones.contains(_presentacion))
+                              _presentacion,
+                          ],
                           onChanged: (value) {
                             if (value == null) {
                               return;
@@ -3345,20 +3337,7 @@ _DosisEditada _separarDosis(
 String _presentacionVisible(
   String? value,
 ) {
-  return switch (value) {
-    'CAPSULA' => 'Capsula',
-    'TABLETA' => 'Tableta',
-    'PASTILLA' => 'Pastilla',
-    'SUSPENSION' => 'Suspension',
-    'GOTAS' => 'Gotas',
-    'INYECCION' => 'Inyectable',
-    'JARABE' => 'Jarabe',
-    'CREMA' => 'Crema',
-    'POMADA' => 'Pomada',
-    'AEROSOL' => 'Spray',
-    'SOLUCION' => 'Solucion',
-    _ => 'Otro',
-  };
+  return presentacionVisible(value);
 }
 
 class _DosisEditada {
