@@ -3180,7 +3180,6 @@ class _TarjetaDetalleProductoCatalogo extends StatelessWidget {
   final double width;
   final String label;
   final String value;
-  final Widget? trailing;
   final bool valueItalic;
   final Color? valueColor;
 
@@ -3188,7 +3187,6 @@ class _TarjetaDetalleProductoCatalogo extends StatelessWidget {
     required this.width,
     required this.label,
     required this.value,
-    this.trailing,
     this.valueItalic = false,
     this.valueColor,
   });
@@ -3250,10 +3248,6 @@ class _TarjetaDetalleProductoCatalogo extends StatelessWidget {
                   ),
                 ),
               ),
-              if (trailing != null) ...[
-                const SizedBox(width: 6),
-                trailing!,
-              ],
             ],
           ),
         ],

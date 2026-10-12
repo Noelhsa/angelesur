@@ -14,7 +14,6 @@ const Color _azulPrincipal = Color(0xFF0067D9);
 const Color _textoPrincipal = Color(0xFF101828);
 const Color _textoSecundario = Color(0xFF667085);
 const Color _bordeSuave = Color(0xFFD9E6D3);
-const Color _grisCampo = Color(0xFFF6F4F1);
 const Color _rojoError = Color(0xFFE02020);
 
 class ContenidoRespaldos extends StatefulWidget {

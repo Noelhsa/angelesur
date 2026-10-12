@@ -5,7 +5,6 @@ import '../../models/vias_administracion.dart';
 import '../../models/presentaciones_medicamento.dart';
 
 const Color _verdeOscuro = Color(0xFF397800);
-const Color _verde = Color(0xFF64D20A);
 const Color _textoPrincipal = Color(0xFF101828);
 const Color _textoSecundario = Color(0xFF667085);
 const Color _bordeSuave = Color(0xFFD9E6D3);

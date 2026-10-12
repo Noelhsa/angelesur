@@ -2681,8 +2681,3 @@ String _formatoFechaApi(
       '${fecha.month.toString().padLeft(2, '0')}-'
       '${fecha.day.toString().padLeft(2, '0')}';
 }
-
-String? _limpiarTextoFecha(String value) {
-  final text = value.trim();
-  return text.isEmpty ? null : text;
-}
