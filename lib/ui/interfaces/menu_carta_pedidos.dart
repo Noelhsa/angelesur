@@ -336,8 +336,13 @@ class _MenuCartaPedidosState extends State<MenuCartaPedidos> {
                               },
                             ),
                             const SizedBox(height: 16),
-                            _EncabezadoProductos(onAgregar: _agregarLinea),
+
+                            // ENCABEZADO DE PRODUCTOS
+                            const _EncabezadoProductos(),
+
                             const SizedBox(height: 10),
+
+                            // LISTA DE MEDICAMENTOS AGREGADOS
                             for (var i = 0; i < _lineas.length; i++) ...[
                               _LineaCompraWidget(
                                 key: ValueKey(_lineas[i]),
@@ -350,7 +355,30 @@ class _MenuCartaPedidosState extends State<MenuCartaPedidos> {
                               ),
                               const SizedBox(height: 10),
                             ],
-                            const SizedBox(height: 6),
+
+                            // BOTÓN AGREGAR AHORA DEBAJO DE LOS PRODUCTOS
+                            Align(
+                              alignment: Alignment.center,
+                              child: TextButton.icon(
+                                onPressed: _agregarLinea,
+                                icon: const Icon(
+                                  Icons.add,
+                                  size: 15,
+                                ),
+                                label: const Text('Agregar'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: _verdeOscuro,
+                                  textStyle: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // DESCUENTO
                             _CampoTextoPedido(
                               etiqueta: 'Descuento',
                               controller: _descuentoController,
@@ -644,37 +672,17 @@ class _CampoTextoPedido extends StatelessWidget {
 }
 
 class _EncabezadoProductos extends StatelessWidget {
-  final VoidCallback onAgregar;
-
-  const _EncabezadoProductos({required this.onAgregar});
+  const _EncabezadoProductos();
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Expanded(
-          child: Text(
-            'Productos',
-            style: TextStyle(
-              color: _textoPrincipal,
-              fontSize: 13,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ),
-        TextButton.icon(
-          onPressed: onAgregar,
-          icon: const Icon(Icons.add, size: 15),
-          label: const Text('Agregar'),
-          style: TextButton.styleFrom(
-            foregroundColor: _verdeOscuro,
-            textStyle: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ),
-      ],
+    return const Text(
+      'Productos',
+      style: TextStyle(
+        color: _textoPrincipal,
+        fontSize: 13,
+        fontWeight: FontWeight.w900,
+      ),
     );
   }
 }
