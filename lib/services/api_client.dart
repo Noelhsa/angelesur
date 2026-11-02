@@ -30,7 +30,8 @@ class ApiClient {
   Future<dynamic> post(String path, Map<String, dynamic> body) async {
     final response = await _client.post(
       _uri(path),
-      headers: {'Content-Type': 'application/json'},
+      headers: {'Content-Type': 'application/json; charset=utf-8'},
+      encoding: utf8,
       body: jsonEncode(body),
     );
     return _decode(response);
@@ -39,7 +40,8 @@ class ApiClient {
   Future<dynamic> patch(String path, Map<String, dynamic> body) async {
     final response = await _client.patch(
       _uri(path),
-      headers: {'Content-Type': 'application/json'},
+      headers: {'Content-Type': 'application/json; charset=utf-8'},
+      encoding: utf8,
       body: jsonEncode(body),
     );
     return _decode(response);
@@ -48,7 +50,10 @@ class ApiClient {
   Uri _uri(String path) => Uri.parse('$baseUrl$path');
 
   dynamic _decode(http.Response response) {
-    final body = response.body.isEmpty ? null : jsonDecode(response.body);
+    // JSON de la API usa UTF-8 incluso cuando no declara charset.
+    final body = response.bodyBytes.isEmpty
+        ? null
+        : jsonDecode(utf8.decode(response.bodyBytes));
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return body;

@@ -141,6 +141,7 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
         comisionYastas: datos.comisionYastas,
         regaliaYastas: datos.regaliaYastas,
         gananciaFarmacia: datos.gananciaFarmacia,
+        porcentajeDescuentoElectronico: datos.porcentajeDescuentoElectronico,
       );
 
       await _cargarTarifas();
@@ -210,6 +211,7 @@ class _ContenidoYastasState extends State<ContenidoYastas> {
         comisionYastas: datos.comisionYastas,
         regaliaYastas: datos.regaliaYastas,
         gananciaFarmacia: datos.gananciaFarmacia,
+        porcentajeDescuentoElectronico: datos.porcentajeDescuentoElectronico,
       );
 
       await _cargarTarifas();
@@ -618,9 +620,7 @@ class _TarjetaTarifaYastas extends StatelessWidget {
           ),
           _MetricaTarifa(
             titulo: 'Ganancia',
-            valor: ConfigMoneda.formato(
-              tarifa.gananciaFarmacia,
-            ),
+            valor: ConfigMoneda.formato(tarifa.gananciaFarmacia),
           ),
           const SizedBox(width: 8),
           IconButton(
@@ -714,6 +714,7 @@ class _DatosTarifaYastas {
   final double comisionCliente;
   final double comisionYastas;
   final double regaliaYastas;
+  final double porcentajeDescuentoElectronico;
   final double gananciaFarmacia;
 
   const _DatosTarifaYastas({
@@ -722,6 +723,7 @@ class _DatosTarifaYastas {
     required this.comisionCliente,
     required this.comisionYastas,
     required this.regaliaYastas,
+    this.porcentajeDescuentoElectronico = 0,
     required this.gananciaFarmacia,
   });
 }
@@ -738,6 +740,8 @@ class _DialogoTarifaYastas extends StatefulWidget {
 }
 
 class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
+  final TextEditingController _descuentoController =
+      TextEditingController(text: '0');
   final TextEditingController _nombreController = TextEditingController();
   final TextEditingController _comisionClienteController =
       TextEditingController();
@@ -755,6 +759,8 @@ class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
     final tarifa = widget.tarifa;
 
     _tipoServicio = tarifa.tipoServicio;
+    _descuentoController.text =
+        tarifa.porcentajeDescuentoElectronico.toStringAsFixed(2);
     _nombreController.text = tarifa.nombreServicio;
     _comisionClienteController.text = tarifa.comisionCliente.toStringAsFixed(2);
     _comisionYastasController.text = tarifa.comisionYastas.toStringAsFixed(2);
@@ -771,6 +777,7 @@ class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
     _comisionYastasController.removeListener(_actualizarVista);
     _regaliaController.removeListener(_actualizarVista);
 
+    _descuentoController.dispose();
     _nombreController.dispose();
     _comisionClienteController.dispose();
     _comisionYastasController.dispose();
@@ -817,6 +824,16 @@ class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
   }
 
   void _guardar() {
+    final descuento = _leerMonto(_descuentoController);
+    if (descuento == null ||
+        descuento < 0 ||
+        descuento >= 100 ||
+        (_tipoServicio == 'RETIRO' && descuento != 0)) {
+      setState(() {
+        _error = 'Descuento: de 0 a menos de 100%. No aplica a retiros.';
+      });
+      return;
+    }
     final nombre = _nombreController.text.trim();
 
     final comisionCliente = _leerMonto(
@@ -886,6 +903,7 @@ class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
         comisionYastas: comisionYastas,
         regaliaYastas: regalia,
         gananciaFarmacia: ganancia,
+        porcentajeDescuentoElectronico: descuento,
       ),
     );
   }
@@ -988,6 +1006,16 @@ class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
                         controller: _nombreController,
                         hintText: 'Ej: Recarga Telcel',
                       ),
+                      const SizedBox(height: 14),
+                      TextField(
+                          controller: _descuentoController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                          inputFormatters: const [ImporteInputFormatter()],
+                          decoration: const InputDecoration(
+                              labelText: 'Descuento electrónico (%)',
+                              helperText:
+                                  r'Ej. 5: cobra $50 y descuenta $47.50.')),
                       const SizedBox(height: 14),
                       _CampoDineroEditarTarifa(
                         etiqueta: 'COMISIÓN COBRADA AL CLIENTE',

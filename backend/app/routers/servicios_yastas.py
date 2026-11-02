@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.database import call_procedure, db_connection, fetch_all, fetch_one
+from app.yastas_fondo import cotizar
 
 router = APIRouter(prefix="/servicios-yastas", tags=["servicios-yastas"])
 
@@ -29,6 +30,7 @@ class TarifaServicioBase(BaseModel):
     comisionCliente: Decimal = Field(default=Decimal("0.00"), ge=0)
     comisionYastas: Decimal = Field(default=Decimal("0.00"), ge=0)
     regaliaYastas: Decimal = Field(default=Decimal("0.00"), ge=0)
+    porcentajeDescuentoElectronico: Decimal = Field(default=Decimal("0.00"), ge=0, lt=100, decimal_places=2)
     gananciaFarmacia: Decimal = Field(default=Decimal("0.00"), ge=0)
 
 
@@ -43,6 +45,7 @@ class ActualizarTarifaServicioRequest(BaseModel):
     comisionCliente: Decimal | None = Field(default=None, ge=0)
     comisionYastas: Decimal | None = Field(default=None, ge=0)
     regaliaYastas: Decimal | None = Field(default=None, ge=0)
+    porcentajeDescuentoElectronico: Decimal | None = Field(default=None, ge=0, lt=100, decimal_places=2)
     gananciaFarmacia: Decimal | None = Field(default=None, ge=0)
 
 
@@ -56,6 +59,50 @@ class RegistrarServicioYastasRequest(BaseModel):
     montoServicio: Decimal = Field(ge=0)
     referenciaOperacion: str | None = Field(default=None, max_length=120)
     observaciones: str | None = Field(default=None, max_length=255)
+    porcentajeElegido: Decimal | None = Field(default=None, ge=0, lt=100, decimal_places=2)
+    idCorteConfirmado: int | None = None
+    saldoPropioConfirmado: Decimal | None = Field(default=None, ge=0, decimal_places=2)
+    fondoConfirmado: Decimal | None = Field(default=None, ge=0, decimal_places=2)
+    salidaConfirmada: Decimal | None = Field(default=None, ge=0, decimal_places=2)
+
+
+class CotizarItem(BaseModel):
+    idTarifa: int
+    montoServicio: Decimal = Field(gt=0, decimal_places=2)
+    porcentajeElegido: Decimal | None = Field(default=None, ge=0, lt=100, decimal_places=2)
+
+
+class CotizarServiciosRequest(BaseModel):
+    servicios: list[CotizarItem] = Field(min_length=1, max_length=100)
+
+
+@router.post('/cotizar')
+def cotizar_servicios(request: CotizarServiciosRequest):
+    with db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT idCorte, porcentajeDescuentoFondo, fn_saldo_corte(idCorte, 'ELECTRONICO') AS propio, fn_fondo_yastas_disponible(idCorte) AS fondo FROM corte_caja WHERE estado='ABIERTO' LIMIT 1")
+            corte = cursor.fetchone()
+            if not corte:
+                raise HTTPException(400, 'No hay corte abierto')
+            propio, fondo = corte['propio'], corte['fondo']
+            resultado = []
+            for item in request.servicios:
+                cursor.execute('SELECT * FROM tarifa_servicio WHERE idTarifa=%s AND activo=1', [item.idTarifa])
+                tarifa = cursor.fetchone()
+                if not tarifa:
+                    raise HTTPException(404, 'Tarifa inexistente o inactiva')
+                calculo = cotizar(tarifa, item.montoServicio, propio, fondo, corte['porcentajeDescuentoFondo'], item.porcentajeElegido)
+                calculo.update(idCorte=corte['idCorte'], nombreServicio=tarifa['nombreServicio'], montoServicio=item.montoServicio)
+                resultado.append(calculo)
+                # Detenerse para no simular operaciones posteriores con una tasa aun no elegida.
+                if calculo['requiereSeleccion']:
+                    break
+                if tarifa['tipoServicio'] == 'RETIRO':
+                    propio += item.montoServicio + tarifa['regaliaYastas']
+                else:
+                    propio += tarifa['regaliaYastas'] - calculo['montoPropio']
+                    fondo -= calculo['montoFondo']
+    return resultado
 
 
 class CancelarServicioYastasRequest(BaseModel):
@@ -78,6 +125,7 @@ def listar_tarifas_servicio(
             comisionCliente,
             comisionYastas,
             regaliaYastas,
+            porcentajeDescuentoElectronico,
             gananciaFarmacia,
             activo,
             created_at,
@@ -115,6 +163,7 @@ def obtener_tarifa_servicio(id_tarifa: int):
 
 @router.post("/tarifas", status_code=201)
 def crear_tarifa_servicio(request: CrearTarifaServicioRequest):
+    _validar_descuento(request.tipoServicio, request.porcentajeDescuentoElectronico)
     _validar_reparto_tarifa(
         request.comisionCliente,
         request.comisionYastas,
@@ -133,9 +182,9 @@ def crear_tarifa_servicio(request: CrearTarifaServicioRequest):
                     comisionCliente,
                     comisionYastas,
                     regaliaYastas,
-                    gananciaFarmacia
+                    gananciaFarmacia, porcentajeDescuentoElectronico
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 [
                     request.tipoServicio,
@@ -145,6 +194,7 @@ def crear_tarifa_servicio(request: CrearTarifaServicioRequest):
                     request.comisionYastas,
                     request.regaliaYastas,
                     request.gananciaFarmacia,
+                    request.porcentajeDescuentoElectronico,
                 ],
             )
             id_tarifa = cursor.lastrowid
@@ -155,6 +205,8 @@ def crear_tarifa_servicio(request: CrearTarifaServicioRequest):
 @router.patch("/tarifas/{id_tarifa}")
 def actualizar_tarifa_servicio(id_tarifa: int, request: ActualizarTarifaServicioRequest):
     tarifa_actual = obtener_tarifa_servicio(id_tarifa)
+    datos = {**tarifa_actual, **request.model_dump(exclude_unset=True)}
+    _validar_descuento(datos["tipoServicio"], datos["porcentajeDescuentoElectronico"])
     _validar_reparto_tarifa(
         request.comisionCliente
         if "comisionCliente" in request.model_fields_set
@@ -177,6 +229,7 @@ def actualizar_tarifa_servicio(id_tarifa: int, request: ActualizarTarifaServicio
         "comisionYastas",
         "regaliaYastas",
         "gananciaFarmacia",
+        "porcentajeDescuentoElectronico",
     ]
     updates: list[str] = []
     params: list[object] = []
@@ -301,13 +354,18 @@ def registrar_servicio_yastas(request: RegistrarServicioYastasRequest):
     )
 
     result = call_procedure(
-        "sp_registrar_servicio_yastas",
+        "sp_registrar_servicio_yastas_fondo",
         [
             request.idUsuario,
             request.idTarifa,
             request.montoServicio,
             request.referenciaOperacion,
             request.observaciones,
+            request.porcentajeElegido,
+            request.idCorteConfirmado,
+            request.saldoPropioConfirmado,
+            request.fondoConfirmado,
+            request.salidaConfirmada,
         ],
         out_count=1,
     )
@@ -344,6 +402,7 @@ def _obtener_tarifa(id_tarifa: int):
             comisionCliente,
             comisionYastas,
             regaliaYastas,
+            porcentajeDescuentoElectronico,
             gananciaFarmacia,
             activo,
             created_at,
@@ -378,6 +437,10 @@ def _select_servicios_sql() -> str:
             s.comisionYastas,
             s.regaliaYastas,
             s.gananciaFarmacia,
+            s.porcentajeDescuentoElectronico,
+            s.descuentoElectronico,
+            s.montoElectronicoPropio,
+            s.montoFondoYastas,
             s.totalCobradoCliente,
             s.estatus,
             s.fecha,
@@ -385,3 +448,8 @@ def _select_servicios_sql() -> str:
         FROM servicio_operacion s
         INNER JOIN usuario u ON u.idUsuario = s.idUsuario
     """
+
+
+def _validar_descuento(tipo, porcentaje):
+    if porcentaje is None or (tipo == "RETIRO" and porcentaje != 0):
+        raise HTTPException(status_code=400, detail="El descuento electronico debe ser un porcentaje y no aplica a retiros")

@@ -13,6 +13,8 @@ class AbrirCorteRequest(BaseModel):
     id_usuario: int = Field(alias="idUsuario")
     efectivo_inicial: Decimal = Field(default=Decimal("0.00"), alias="efectivoInicial")
     electronico_inicial: Decimal = Field(default=Decimal("0.00"), alias="electronicoInicial")
+    fondo_yastas: Decimal = Field(default=Decimal('0'), ge=0, decimal_places=2, alias='fondoYastasInicial')
+    porcentaje_fondo: Decimal = Field(default=Decimal('3.50'), ge=0, lt=100, decimal_places=2, alias='porcentajeDescuentoFondo')
     observaciones: str | None = None
 
 
@@ -119,11 +121,13 @@ def obtener_detalle_corte(
 @router.post("/abrir")
 def abrir_corte(request: AbrirCorteRequest):
     result = call_procedure(
-        "sp_abrir_corte",
+        "sp_abrir_corte_fondo",
         [
             request.id_usuario,
             request.efectivo_inicial,
             request.electronico_inicial,
+            request.fondo_yastas,
+            request.porcentaje_fondo,
             request.observaciones,
         ],
         out_count=1,
@@ -211,6 +215,9 @@ def _select_cortes_resumen_sql() -> str:
     return """
         SELECT
             r.*,
+            c.fondoYastasInicial,
+            c.porcentajeDescuentoFondo,
+            fn_fondo_yastas_disponible(c.idCorte) AS fondoYastasDisponible,
             c.observaciones AS observacionesCorte,
             ua.nombre AS usuarioAbreNombre,
             uc.nombre AS usuarioCierraNombre,

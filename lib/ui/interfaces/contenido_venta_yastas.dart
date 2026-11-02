@@ -216,7 +216,8 @@ class _TarjetaServicioYastas extends StatelessWidget {
           ),
           _DatoTarifa(
             etiqueta: 'Ganancia',
-            valor: ConfigMoneda.formato(tarifa.gananciaFarmacia),
+            valor:
+                ConfigMoneda.formato(tarifa.gananciaFarmacia),
           ),
           const Spacer(),
           Row(

@@ -166,12 +166,17 @@ class _DialogoServicioYastasState extends State<DialogoServicioYastas> {
               ),
             ),
             const SizedBox(height: 14),
+            if (widget.tarifa.porcentajeDescuentoElectronico > 0)
+              const Text('El descuento se confirmará al cobrar según el saldo propio y el fondo Yastas disponible.'),
+            if (widget.tarifa.porcentajeDescuentoElectronico > 0)
+              Text(
+                  'Descuento electrónico: ${ConfigMoneda.formato(widget.tarifa.descuentoPara(_montoServicio))} · Salida electrónica: ${ConfigMoneda.formato(widget.tarifa.salidaElectronica(_montoServicio))}'),
             _ResumenYastas(
               montoServicio: _montoServicio,
               comisionCliente: widget.tarifa.comisionCliente,
               comisionYastas: widget.tarifa.comisionYastas,
               regaliaYastas: widget.tarifa.regaliaYastas,
-              gananciaFarmacia: widget.tarifa.gananciaFarmacia,
+              gananciaFarmacia: widget.tarifa.gananciaPara(_montoServicio),
               totalCobrado: _totalCobrado,
             ),
             if (_error != null) ...[

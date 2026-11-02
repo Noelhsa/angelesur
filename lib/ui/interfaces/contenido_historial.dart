@@ -2385,6 +2385,11 @@ class _DetalleOperacionYastas
                   servicio.gananciaFarmacia,
                 ),
               ),
+              if (servicio.descuentoElectronico > 0)
+                _DatoDetalle(
+                  label: 'Descuento electrónico (${servicio.porcentajeDescuentoElectronico}%)',
+                  value: ConfigMoneda.formato(servicio.descuentoElectronico),
+                ),
               if (diferencia.abs() > 0.005)
                 _DatoDetalle(
                   label: 'No clasificado',

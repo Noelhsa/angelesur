@@ -22,6 +22,7 @@ import 'ui/interfaces/contenido_venta.dart';
 import 'ui/interfaces/contenido_yastas.dart';
 import 'ui/interfaces/menu_carta_carrito.dart';
 import 'ui/interfaces/menu_carta_venta_yastas.dart';
+import 'ui/interfaces/confirmacion_fondo_yastas.dart';
 import 'ui/interfaces/menu_superior_catalogo.dart';
 import 'ui/login/login_screen.dart';
 import 'ui/interfaces/contenido_devolucion.dart';
@@ -99,7 +100,7 @@ class _AngelesurAppState extends State<AngelesurApp> {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        fontFamily: 'Arial',
+        fontFamily: 'Roboto',
         colorScheme: ColorScheme.fromSeed(
           seedColor: _verde,
           brightness: Brightness.light,
@@ -590,7 +591,7 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
       total: _total,
     );
 
-    if (datosPago == null) {
+    if (datosPago == null || !mounted) {
       return;
     }
 
@@ -625,6 +626,14 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
 
     try {
       VentaRegistrada? venta;
+      final cotizaciones = await confirmarFondoYastas(
+        context, _serviciosYastasApiService, _serviciosYastasCarrito.values.toList(),
+      );
+      if (!mounted) return;
+      if (cotizaciones == null) {
+        setState(() => _procesandoVenta = false);
+        return;
+      }
 
       if (_itemsProductosCarrito.isNotEmpty) {
         final totalYastas = _subtotalYastas;
@@ -647,10 +656,17 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
           referencia: datosPago.referencia,
           observaciones: _observacionesVentaProductos(),
         );
+        // Una falla posterior en Yastas no debe volver a cobrar productos ya registrados.
+        if (!mounted) return;
+        setState(() {
+          _carrito.removeWhere((id, _) => !_serviciosYastasCarrito.containsKey(id));
+          _descuentoVenta = 0;
+        });
       }
 
       final serviciosRegistrados = await _registrarServiciosYastasEnCarrito(
         folioVenta: venta?.folio,
+        cotizaciones: cotizaciones,
       );
 
       String? errorImpresion;
@@ -764,14 +780,19 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
 
   Future<List<ServicioYastasRegistrado>> _registrarServiciosYastasEnCarrito({
     String? folioVenta,
+    required List<Map<String, dynamic>> cotizaciones,
   }) async {
     final registrados = <ServicioYastasRegistrado>[];
 
-    for (final servicio in _serviciosYastasCarrito.values) {
+    final servicios = _serviciosYastasCarrito.values.toList();
+    for (var i = 0; i < servicios.length; i++) {
+      final servicio = servicios[i];
       final registrado = await _serviciosYastasApiService.registrarServicio(
         idUsuario: widget.usuario.id,
         idTarifa: servicio.tarifa.idTarifa,
         montoServicio: servicio.montoServicio,
+        cotizacion: cotizaciones[i],
+        porcentajeElegido: cotizaciones[i]['porcentajeElegido'] as double?,
         referenciaOperacion: servicio.referenciaOperacion,
         observaciones: _observacionesYastas(
           servicio.observaciones,
@@ -780,6 +801,12 @@ class _VentaPrincipalScreenState extends State<VentaPrincipalScreen> {
       );
 
       registrados.add(registrado);
+      if (mounted) {
+        setState(() {
+          _carrito.remove(servicio.idCarrito);
+          _serviciosYastasCarrito.remove(servicio.idCarrito);
+        });
+      }
     }
 
     return registrados;

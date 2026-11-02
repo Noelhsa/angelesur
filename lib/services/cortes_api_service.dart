@@ -11,6 +11,9 @@ class CorteResumen {
   final String usuarioAbreNombre;
   final String usuarioCierraNombre;
   final double efectivoInicial;
+  final double fondoYastasInicial;
+  final double fondoYastasDisponible;
+  final double porcentajeDescuentoFondo;
   final double electronicoInicial;
   final double efectivoContado;
   final double electronicoContado;
@@ -39,6 +42,9 @@ class CorteResumen {
     required this.usuarioAbreNombre,
     required this.usuarioCierraNombre,
     required this.efectivoInicial,
+    this.fondoYastasInicial = 0,
+    this.fondoYastasDisponible = 0,
+    this.porcentajeDescuentoFondo = 3.5,
     required this.electronicoInicial,
     required this.efectivoContado,
     required this.electronicoContado,
@@ -155,6 +161,9 @@ class CorteResumen {
       usuarioAbreNombre: _asStringAny(map, ['usuarioAbreNombre']),
       usuarioCierraNombre: _asStringAny(map, ['usuarioCierraNombre']),
       efectivoInicial: efectivoInicial,
+      fondoYastasInicial: _asDoubleAny(map, ['fondoYastasInicial']),
+      fondoYastasDisponible: _asDoubleAny(map, ['fondoYastasDisponible']),
+      porcentajeDescuentoFondo: _asDoubleAny(map, ['porcentajeDescuentoFondo']),
       electronicoInicial: electronicoInicial,
       efectivoContado: efectivoContado,
       electronicoContado: electronicoContado,
@@ -172,7 +181,7 @@ class CorteResumen {
               otrosIngresos -
               salidasEfectivoFinal
           : efectivoEsperado,
-      electronicoEsperado: electronicoEsperado == 0
+      electronicoEsperado: !map.containsKey('electronicoEsperado') && electronicoEsperado == 0
           ? electronicoInicial + ventasElectronico - salidasElectronico
           : electronicoEsperado,
       totalEsperado: totalEsperado == 0
@@ -254,6 +263,9 @@ class CorteDetalle extends CorteResumen {
     required super.usuarioAbreNombre,
     required super.usuarioCierraNombre,
     required super.efectivoInicial,
+    super.fondoYastasInicial,
+    super.fondoYastasDisponible,
+    super.porcentajeDescuentoFondo,
     required super.electronicoInicial,
     required super.efectivoContado,
     required super.electronicoContado,
@@ -291,6 +303,9 @@ class CorteDetalle extends CorteResumen {
       usuarioAbreNombre: base.usuarioAbreNombre,
       usuarioCierraNombre: base.usuarioCierraNombre,
       efectivoInicial: base.efectivoInicial,
+      fondoYastasInicial: base.fondoYastasInicial,
+      fondoYastasDisponible: base.fondoYastasDisponible,
+      porcentajeDescuentoFondo: base.porcentajeDescuentoFondo,
       electronicoInicial: base.electronicoInicial,
       efectivoContado: base.efectivoContado,
       electronicoContado: base.electronicoContado,
@@ -456,6 +471,8 @@ class CortesApiService {
   Future<void> abrirCorte({
     required int idUsuario,
     required double efectivoInicial,
+    double fondoYastasInicial = 0,
+    double porcentajeDescuentoFondo = 3.5,
     required double electronicoInicial,
     String? observaciones,
   }) async {
@@ -463,6 +480,8 @@ class CortesApiService {
       'idUsuario': idUsuario,
       'efectivoInicial': efectivoInicial,
       'electronicoInicial': electronicoInicial,
+      'fondoYastasInicial': fondoYastasInicial,
+      'porcentajeDescuentoFondo': porcentajeDescuentoFondo,
       'observaciones': observaciones,
     });
   }

@@ -258,6 +258,8 @@ class _ContenidoCajeroState extends State<ContenidoCajero> {
         idUsuario: widget.usuario.id,
         efectivoInicial: datos.efectivoInicial,
         electronicoInicial: datos.electronicoInicial,
+        fondoYastasInicial: datos.fondoYastasInicial,
+        porcentajeDescuentoFondo: datos.porcentajeDescuentoFondo,
         observaciones: datos.observaciones,
       );
       await _cargarCorte();
@@ -1868,6 +1870,10 @@ class _DetalleRegistroCorte extends StatelessWidget {
                 label: 'Electronico inicial',
                 value: ConfigMoneda.formato(corte.electronicoInicial),
               ),
+              _DatoCorte(label: 'Fondo Yastas inicial', value: ConfigMoneda.formato(corte.fondoYastasInicial)),
+              _DatoCorte(label: 'Fondo Yastas disponible', value: ConfigMoneda.formato(corte.fondoYastasDisponible)),
+              _DatoCorte(label: 'Fondo utilizado', value: ConfigMoneda.formato(corte.fondoYastasInicial - corte.fondoYastasDisponible)),
+
               _DatoCorte(
                 label: 'Electronico final',
                 value: ConfigMoneda.formato(
@@ -2379,6 +2385,10 @@ class _DetalleCorteCard extends StatelessWidget {
                       label: 'Electronico inicial',
                       value: ConfigMoneda.formato(actual.electronicoInicial),
                     ),
+              _DatoCorte(label: 'Fondo Yastas inicial', value: ConfigMoneda.formato(actual.fondoYastasInicial)),
+              _DatoCorte(label: 'Fondo Yastas disponible', value: ConfigMoneda.formato(actual.fondoYastasDisponible)),
+              _DatoCorte(label: 'Fondo utilizado', value: ConfigMoneda.formato(actual.fondoYastasInicial - actual.fondoYastasDisponible)),
+
                     _DatoCorte(
                       label: 'Electronico final',
                       value: ConfigMoneda.formato(actual.electronicoEsperado),
@@ -2670,11 +2680,15 @@ class _EstadoCaja extends StatelessWidget {
 
 class _DatosAbrirCorte {
   final double efectivoInicial;
+  final double fondoYastasInicial;
+  final double porcentajeDescuentoFondo;
   final double electronicoInicial;
   final String? observaciones;
 
   const _DatosAbrirCorte({
     required this.efectivoInicial,
+    required this.fondoYastasInicial,
+    required this.porcentajeDescuentoFondo,
     required this.electronicoInicial,
     required this.observaciones,
   });
@@ -2695,6 +2709,8 @@ class _DialogoAbrirCorteState extends State<_DialogoAbrirCorte> {
   final TextEditingController _observacionesController =
       TextEditingController();
 
+  final _fondoController = TextEditingController(text: '0.00');
+  final _porcentajeFondoController = TextEditingController(text: '3.50');
   String? _error;
 
   @override
@@ -2710,6 +2726,8 @@ class _DialogoAbrirCorteState extends State<_DialogoAbrirCorte> {
     _efectivoController.removeListener(_actualizarTotal);
     _electronicoController.removeListener(_actualizarTotal);
 
+    _fondoController.dispose();
+    _porcentajeFondoController.dispose();
     _efectivoController.dispose();
     _electronicoController.dispose();
     _observacionesController.dispose();
@@ -2740,6 +2758,12 @@ class _DialogoAbrirCorteState extends State<_DialogoAbrirCorte> {
   }
 
   void _confirmar() {
+    final fondo = _leerMonto(_fondoController);
+    final tasa = _leerMonto(_porcentajeFondoController);
+    if (fondo == null || fondo < 0 || tasa == null || tasa < 0 || tasa >= 100) {
+      setState(() => _error = 'Ingresa un fondo válido y un porcentaje de 0 a menos de 100.');
+      return;
+    }
     final efectivo = _leerMonto(_efectivoController);
     final electronico = _leerMonto(_electronicoController);
 
@@ -2758,6 +2782,8 @@ class _DialogoAbrirCorteState extends State<_DialogoAbrirCorte> {
       _DatosAbrirCorte(
         efectivoInicial: efectivo,
         electronicoInicial: electronico,
+        fondoYastasInicial: fondo,
+        porcentajeDescuentoFondo: tasa,
         observaciones: _observacionesController.text.trim(),
       ),
     );
@@ -2817,11 +2843,27 @@ class _DialogoAbrirCorteState extends State<_DialogoAbrirCorte> {
                   ),
                   const SizedBox(height: 18),
                   _CampoMontoApertura(
-                    etiqueta: 'Fondo Electrónico / Terminales',
+                    etiqueta: 'Dinero electrónico propio',
                     icono: Icons.credit_card,
                     controller: _electronicoController,
                     onSubmitted: (_) => _confirmar(),
                   ),
+                  const SizedBox(height: 18),
+                  _CampoMontoApertura(
+                    etiqueta: 'Fondo Yastas disponible hoy',
+                    icono: Icons.account_balance_wallet_outlined,
+                    controller: _fondoController,
+                    onSubmitted: (_) => _confirmar(),
+                  ),
+                  const SizedBox(height: 18),
+                  TextField(
+                    controller: _porcentajeFondoController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: const [ImporteInputFormatter()],
+                    decoration: const InputDecoration(labelText: 'Descuento al usar fondo (%)'),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text('El fondo se controla por separado del dinero propio. Si se usan ambos saldos, se elegirá el porcentaje antes de guardar.'),
                   const SizedBox(height: 18),
                   _CampoObservacionesApertura(
                     controller: _observacionesController,
@@ -3644,7 +3686,7 @@ class _DialogoCerrarCorteState extends State<_DialogoCerrarCorte> {
                   ),
                   const SizedBox(height: 18),
                   _CampoMontoApertura(
-                    etiqueta: 'Fondo Electrónico / Terminales',
+                    etiqueta: 'Dinero electrónico propio (sin fondo Yastas)',
                     icono: Icons.credit_card,
                     controller: _electronicoController,
                     onChanged: (_) {

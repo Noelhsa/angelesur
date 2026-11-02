@@ -8,6 +8,8 @@ class TarifaServicioYastas {
   final double comisionCliente;
   final double comisionYastas;
   final double regaliaYastas;
+  final double porcentajeDescuentoElectronico;
+  final double descuentoElectronico;
   final double gananciaFarmacia;
   final bool activo;
 
@@ -19,6 +21,8 @@ class TarifaServicioYastas {
     required this.comisionCliente,
     required this.comisionYastas,
     required this.regaliaYastas,
+    this.porcentajeDescuentoElectronico = 0,
+    this.descuentoElectronico = 0,
     required this.gananciaFarmacia,
     required this.activo,
   });
@@ -32,10 +36,20 @@ class TarifaServicioYastas {
       comisionCliente: _asDouble(map['comisionCliente']),
       comisionYastas: _asDouble(map['comisionYastas']),
       regaliaYastas: _asDouble(map['regaliaYastas']),
+      porcentajeDescuentoElectronico:
+          TarifaServicioYastas._asDouble(map['porcentajeDescuentoElectronico']),
+      descuentoElectronico:
+          TarifaServicioYastas._asDouble(map['descuentoElectronico']),
       gananciaFarmacia: _asDouble(map['gananciaFarmacia']),
       activo: _asBool(map['activo']),
     );
   }
+
+  double descuentoPara(double monto) =>
+      (monto * porcentajeDescuentoElectronico).round() / 100;
+  double gananciaPara(double monto) => gananciaFarmacia;
+  double salidaElectronica(double monto) =>
+      monto + comisionYastas - descuentoPara(monto);
 
   double totalCobrado(double montoServicio) {
     return montoServicio + comisionCliente;
@@ -93,6 +107,8 @@ class ServicioYastasRegistrado {
   final double comisionCliente;
   final double comisionYastas;
   final double regaliaYastas;
+  final double porcentajeDescuentoElectronico;
+  final double descuentoElectronico;
   final double gananciaFarmacia;
   final double totalCobradoCliente;
   final String estatus;
@@ -111,6 +127,8 @@ class ServicioYastasRegistrado {
     required this.comisionCliente,
     required this.comisionYastas,
     required this.regaliaYastas,
+    this.porcentajeDescuentoElectronico = 0,
+    this.descuentoElectronico = 0,
     required this.gananciaFarmacia,
     required this.totalCobradoCliente,
     required this.estatus,
@@ -133,6 +151,10 @@ class ServicioYastasRegistrado {
       comisionCliente: TarifaServicioYastas._asDouble(map['comisionCliente']),
       comisionYastas: TarifaServicioYastas._asDouble(map['comisionYastas']),
       regaliaYastas: TarifaServicioYastas._asDouble(map['regaliaYastas']),
+      porcentajeDescuentoElectronico:
+          TarifaServicioYastas._asDouble(map['porcentajeDescuentoElectronico']),
+      descuentoElectronico:
+          TarifaServicioYastas._asDouble(map['descuentoElectronico']),
       gananciaFarmacia: TarifaServicioYastas._asDouble(
         map['gananciaFarmacia'],
       ),
@@ -187,6 +209,8 @@ class ServiciosYastasApiService {
     required double montoServicio,
     String? referenciaOperacion,
     String? observaciones,
+    Map<String, dynamic>? cotizacion,
+    double? porcentajeElegido,
   }) async {
     final response = await _apiClient.post('/servicios-yastas', {
       'idUsuario': idUsuario,
@@ -194,9 +218,22 @@ class ServiciosYastasApiService {
       'montoServicio': montoServicio,
       'referenciaOperacion': referenciaOperacion,
       'observaciones': observaciones,
+      'porcentajeElegido': porcentajeElegido,
+      if (cotizacion != null) ...{
+        'idCorteConfirmado': cotizacion['idCorte'],
+        'saldoPropioConfirmado': cotizacion['saldoPropio'],
+        'fondoConfirmado': cotizacion['fondoDisponible'],
+        'salidaConfirmada': cotizacion['salidaElectronica'],
+      },
     });
 
     return ServicioYastasRegistrado.fromJson(response as Map<String, dynamic>);
+  }
+
+  Future<List<Map<String, dynamic>>> cotizarServicios(
+      List<Map<String, dynamic>> servicios) async {
+    final response = await _apiClient.post('/servicios-yastas/cotizar', {'servicios': servicios});
+    return (response as List).map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
   Future<List<ServicioYastasRegistrado>> listarServicios({
@@ -233,6 +270,7 @@ class ServiciosYastasApiService {
     required double comisionCliente,
     required double comisionYastas,
     required double regaliaYastas,
+    double porcentajeDescuentoElectronico = 0,
     required double gananciaFarmacia,
   }) async {
     final response = await _apiClient.post('/servicios-yastas/tarifas', {
@@ -243,6 +281,7 @@ class ServiciosYastasApiService {
       'comisionYastas': comisionYastas,
       'regaliaYastas': regaliaYastas,
       'gananciaFarmacia': gananciaFarmacia,
+      'porcentajeDescuentoElectronico': porcentajeDescuentoElectronico,
     });
 
     return TarifaServicioYastas.fromJson(response as Map<String, dynamic>);
@@ -256,6 +295,7 @@ class ServiciosYastasApiService {
     required double comisionCliente,
     required double comisionYastas,
     required double regaliaYastas,
+    double porcentajeDescuentoElectronico = 0,
     required double gananciaFarmacia,
   }) async {
     final response = await _apiClient.patch(
@@ -268,6 +308,7 @@ class ServiciosYastasApiService {
         'comisionYastas': comisionYastas,
         'regaliaYastas': regaliaYastas,
         'gananciaFarmacia': gananciaFarmacia,
+        'porcentajeDescuentoElectronico': porcentajeDescuentoElectronico,
       },
     );
 

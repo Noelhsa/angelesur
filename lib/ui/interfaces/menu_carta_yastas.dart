@@ -14,6 +14,7 @@ class DatosMenuTarifaYastas {
   final double comisionCliente;
   final double comisionYastas;
   final double regaliaYastas;
+  final double porcentajeDescuentoElectronico;
   final double gananciaFarmacia;
 
   const DatosMenuTarifaYastas({
@@ -22,6 +23,7 @@ class DatosMenuTarifaYastas {
     required this.comisionCliente,
     required this.comisionYastas,
     required this.regaliaYastas,
+    this.porcentajeDescuentoElectronico = 0,
     required this.gananciaFarmacia,
   });
 }
@@ -43,6 +45,8 @@ class MenuCartaYastas extends StatefulWidget {
 }
 
 class _MenuCartaYastasState extends State<MenuCartaYastas> {
+  final TextEditingController _descuentoController =
+      TextEditingController(text: '5');
   final TextEditingController _nombreController = TextEditingController();
   final TextEditingController _comisionClienteController =
       TextEditingController(
@@ -59,6 +63,7 @@ class _MenuCartaYastasState extends State<MenuCartaYastas> {
   );
 
   String _tipoServicio = 'RECARGA';
+  bool _conDescuento = false;
   String? _error;
 
   @override
@@ -84,6 +89,7 @@ class _MenuCartaYastasState extends State<MenuCartaYastas> {
 
   @override
   void dispose() {
+    _descuentoController.dispose();
     _nombreController.dispose();
     _comisionClienteController.dispose();
     _comisionYastasController.dispose();
@@ -93,11 +99,23 @@ class _MenuCartaYastasState extends State<MenuCartaYastas> {
   }
 
   void _guardar() {
+    final descuento = _conDescuento ? _leerMonto(_descuentoController) : 0.0;
+    if (descuento == null ||
+        (_conDescuento && descuento <= 0) ||
+        descuento >= 100 ||
+        (_tipoServicio == 'RETIRO' && descuento != 0)) {
+      setState(() {
+        _error = 'El descuento debe ser mayor que 0 y menor que 100%.';
+      });
+      return;
+    }
     final nombre = _nombreController.text.trim();
-    final comisionCliente = _leerMonto(_comisionClienteController);
-    final comisionYastas = _leerMonto(_comisionYastasController);
-    final regalia = _leerMonto(_regaliaController);
-    final ganancia = _leerMonto(_gananciaController);
+    final comisionCliente =
+        _conDescuento ? 0.0 : _leerMonto(_comisionClienteController);
+    final comisionYastas =
+        _conDescuento ? 0.0 : _leerMonto(_comisionYastasController);
+    final regalia = _conDescuento ? 0.0 : _leerMonto(_regaliaController);
+    final ganancia = _conDescuento ? 0.0 : _leerMonto(_gananciaController);
 
     if (nombre.isEmpty) {
       setState(() {
@@ -134,6 +152,7 @@ class _MenuCartaYastasState extends State<MenuCartaYastas> {
         comisionYastas: comisionYastas,
         regaliaYastas: regalia,
         gananciaFarmacia: ganancia,
+        porcentajeDescuentoElectronico: descuento,
       ),
     );
   }
@@ -220,6 +239,8 @@ class _MenuCartaYastasState extends State<MenuCartaYastas> {
 
                       setState(() {
                         _tipoServicio = value;
+                        if (value == 'RETIRO') _conDescuento = false;
+                        _error = null;
                       });
                     },
                   ),
@@ -230,28 +251,75 @@ class _MenuCartaYastasState extends State<MenuCartaYastas> {
                     hintText: 'Ej. Recarga Telcel',
                   ),
                   const SizedBox(height: 18),
-                  _CampoDineroYastas(
-                    etiqueta: 'Comisión cliente',
-                    controller: _comisionClienteController,
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Normal'),
+                        selected: !_conDescuento,
+                        onSelected: (_) => setState(() {
+                          _conDescuento = false;
+                          _error = null;
+                        }),
+                      ),
+                      ChoiceChip(
+                        label: const Text('Con descuento'),
+                        selected: _conDescuento,
+                        onSelected: _tipoServicio == 'RETIRO'
+                            ? null
+                            : (_) => setState(() {
+                                  _conDescuento = true;
+                                  _error = null;
+                                }),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _conDescuento
+                        ? 'El cliente paga solo el monto del servicio. Las comisiones, regalía y ganancia se guardan en cero.'
+                        : _tipoServicio == 'RETIRO'
+                            ? 'Los retiros usan tarifa normal, sin descuento electrónico.'
+                            : 'Configura las comisiones y regalía habituales, sin descuento electrónico.',
+                    style:
+                        const TextStyle(color: _textoSecundario, fontSize: 12),
                   ),
                   const SizedBox(height: 18),
-                  _CampoDineroYastas(
-                    etiqueta: 'Comisión Yastas',
-                    controller: _comisionYastasController,
-                  ),
-                  const SizedBox(height: 18),
-                  _CampoDineroYastas(
-                    etiqueta: 'Regalía Yastas',
-                    controller: _regaliaController,
-                  ),
-                  const SizedBox(height: 18),
-                  const Divider(color: _bordeSuave),
-                  const SizedBox(height: 10),
-                  _CampoDineroYastas(
-                    etiqueta: 'Ganancia farmacia',
-                    controller: _gananciaController,
-                    readOnly: true,
-                  ),
+                  if (!_conDescuento) ...[
+                    _CampoDineroYastas(
+                      etiqueta: 'Comisión cliente',
+                      controller: _comisionClienteController,
+                    ),
+                    const SizedBox(height: 18),
+                    _CampoDineroYastas(
+                      etiqueta: 'Comisión Yastas',
+                      controller: _comisionYastasController,
+                    ),
+                    const SizedBox(height: 18),
+                    _CampoDineroYastas(
+                      etiqueta: 'Regalía Yastas',
+                      controller: _regaliaController,
+                    ),
+                    const SizedBox(height: 18),
+                    const Divider(color: _bordeSuave),
+                    const SizedBox(height: 10),
+                    _CampoDineroYastas(
+                      etiqueta: 'Ganancia farmacia',
+                      controller: _gananciaController,
+                      readOnly: true,
+                    ),
+                  ],
+                  if (_conDescuento)
+                    TextField(
+                        key: const ValueKey('porcentajeDescuento'),
+                        controller: _descuentoController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        inputFormatters: const [ImporteInputFormatter()],
+                        decoration: const InputDecoration(
+                            labelText: 'Descuento electrónico (%)',
+                            helperText:
+                                r'Ej. 5: cobra $50 y descuenta $47.50.')),
                   if (_error != null) ...[
                     const SizedBox(height: 12),
                     Text(

@@ -111,6 +111,30 @@ MariaDB no es una base embebida como SQLite. Para que la app "lleve todo adentro
 
 Los cambios incrementales de estructura de base se guardan en `backend/migrations`.
 
+- `20261102_fondo_yastas.sql`: requiere la migracion de descuento. Agrega fondo
+  inicial separado del electronico propio y porcentaje del fondo por corte
+  (predeterminado 3.5%). No altera saldos ni operaciones anteriores. El fondo
+  disponible es el inicial menos lo consumido por operaciones realizadas;
+  cancelar restituye ese consumo. Los movimientos ELECTRONICO y los importes
+  contados al cierre siguen representando solo dinero propio; el fondo inicial,
+  utilizado y disponible aparecen separados en el corte y PDF.
+  `POST /servicios-yastas/cotizar` simula el carrito en orden. Si un servicio con
+  descuento necesita ambos saldos, exige elegir entre su tasa normal y la del
+  fondo. Si usa solo fondo aplica la tasa del corte. Los servicios sin descuento
+  conservan su tasa y comisiones. La rutina guarda el desglose en campos y en
+  una observacion automatica, sin agregar ganancia. El registro verifica el
+  corte, los saldos y el debito confirmado dentro de la transaccion; si cambiaron,
+  se debe cotizar otra vez. No se editan porcentajes de operaciones anteriores.
+
+- `20261102_descuento_electronico_yastas.sql`: agrega descuento porcentual del
+  monto del servicio al debito electronico. Aplicar con respaldo previo antes
+  de actualizar la API. Conserva las tarifas anteriores con 0%. En Nueva tarifa
+  o Editar tarifa, usar descuento 5 y comisiones/regalia 0 para cobrar $50,
+  descontar $47.50 sin registrar ganancia adicional ni abonos. Aplica a servicios con salida
+  electronica, no a retiros. Cada operacion conserva porcentaje e importe;
+  cancelar revierte los movimientos originales. No programa cambios de tasa.
+  Prueba aislada MariaDB: `python -m tests.verificar_descuento_db`.
+
 - `20260916_vias_administracion.sql`: reemplaza las presentaciones que figuraban
   como vias por las 13 vias de administracion. Aplicar con respaldo previo y la
   aplicacion cerrada. Valores antiguos quedan en NULL para revision manual;

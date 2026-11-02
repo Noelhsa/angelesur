@@ -54,7 +54,10 @@ class MovimientoCaja {
       idCompra: _asNullableInt(map['idCompra']),
       idDevolucionCliente: _asNullableInt(map['idDevolucionCliente']),
       idDevolucionProveedor: _asNullableInt(map['idDevolucionProveedor']),
-      observaciones: map['observaciones']?.toString() ?? '',
+      // Los procedimientos antiguos guardaban esta palabra mal codificada.
+      // Normalizar al leer permite reexportar tambien los cortes historicos.
+      observaciones: (map['observaciones']?.toString() ?? '')
+          .replaceAll('electr\u00c3\u00b3nica', 'electr\u00f3nica'),
     );
   }
 

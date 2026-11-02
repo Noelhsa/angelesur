@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/services.dart' show rootBundle;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:pdf/pdf.dart';
@@ -34,6 +35,15 @@ class CortePdfService {
   }
 
   Future<Uint8List> generarPdf(CorteDetalle corte) async {
+    final tema = pw.ThemeData.withFont(
+      base:
+          pw.Font.ttf(await rootBundle.load('assets/fonts/roboto-regular.ttf')),
+      bold: pw.Font.ttf(await rootBundle.load('assets/fonts/roboto-bold.ttf')),
+      italic:
+          pw.Font.ttf(await rootBundle.load('assets/fonts/roboto-italic.ttf')),
+      boldItalic: pw.Font.ttf(
+          await rootBundle.load('assets/fonts/roboto-bolditalic.ttf')),
+    );
     final document = pw.Document(
       title: 'Corte #${corte.idCorte}',
       author: 'Angelesur',
@@ -42,9 +52,10 @@ class CortePdfService {
 
     document.addPage(
       pw.MultiPage(
-        pageTheme: const pw.PageTheme(
+        pageTheme: pw.PageTheme(
+          theme: tema,
           pageFormat: PdfPageFormat.letter,
-          margin: pw.EdgeInsets.all(28),
+          margin: const pw.EdgeInsets.all(28),
         ),
         header: (context) => _encabezado(corte),
         footer: (context) => _piePagina(context),
@@ -199,6 +210,9 @@ class CortePdfService {
             ),
           ),
           _dato('Electronico inicial', _moneda(corte.electronicoInicial)),
+          _dato('Fondo Yastas inicial', _moneda(corte.fondoYastasInicial)),
+          _dato('Fondo Yastas disponible', _moneda(corte.fondoYastasDisponible)),
+          _dato('Fondo Yastas utilizado', _moneda(corte.fondoYastasInicial - corte.fondoYastasDisponible)),
           _dato(
             'Electronico final',
             _moneda(
