@@ -1380,6 +1380,36 @@ class _FilaProductoCatalogo extends StatelessWidget {
               ),
             ),
           ),
+          // =====================================================
+          // COLUMNA: PRINCIPIO ACTIVO
+          // =====================================================
+          Expanded(
+            flex: 18,
+            child: _MetricaProductoCatalogo(
+              titulo: 'Principio Activo',
+              child: Text(
+                producto.esMedicamento
+                    ? (producto.sustanciaActiva?.trim().isNotEmpty ?? false)
+                        ? producto.sustanciaActiva!.trim()
+                        : 'Sin registrar'
+                    : 'No aplica',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: producto.esMedicamento &&
+                          (producto.sustanciaActiva?.trim().isNotEmpty ?? false)
+                      ? _textoPrincipal
+                      : _textoSecundario,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+
+          // =====================================================
+          // COLUMNA: TIPO
+          // =====================================================
           Expanded(
             flex: 14,
             child: _MetricaProductoCatalogo(
@@ -1387,22 +1417,6 @@ class _FilaProductoCatalogo extends StatelessWidget {
               child: _Badge(
                 texto: _etiqueta(
                   producto.tipo,
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 18,
-            child: _MetricaProductoCatalogo(
-              titulo: 'Categoría',
-              child: Text(
-                producto.categoria ?? 'Sin categoría',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: _textoPrincipal,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
                 ),
               ),
             ),
@@ -3167,7 +3181,6 @@ class _TarjetaDetalleProductoCatalogo extends StatelessWidget {
   final double width;
   final String label;
   final String value;
-  final Widget? trailing;
   final bool valueItalic;
   final Color? valueColor;
 
@@ -3175,7 +3188,6 @@ class _TarjetaDetalleProductoCatalogo extends StatelessWidget {
     required this.width,
     required this.label,
     required this.value,
-    this.trailing,
     this.valueItalic = false,
     this.valueColor,
   });
@@ -3237,10 +3249,6 @@ class _TarjetaDetalleProductoCatalogo extends StatelessWidget {
                   ),
                 ),
               ),
-              if (trailing != null) ...[
-                const SizedBox(width: 6),
-                trailing!,
-              ],
             ],
           ),
         ],

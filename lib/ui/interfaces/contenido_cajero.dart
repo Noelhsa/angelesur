@@ -3742,6 +3742,7 @@ class _EncabezadoCerrarCorte extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _TarjetaEsperadoCierre extends StatelessWidget {
   final double efectivoEsperado;
   final double electronicoEsperado;

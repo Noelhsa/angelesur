@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+
 import '../../models/medicamento.dart';
+import '../../services/inventario_api_service.dart';
+import '../../services/productos_api_service.dart';
 import '../../services/servicios_yastas_api_service.dart';
 import '../../utils/config_moneda.dart';
 import 'contenido_venta_yastas.dart';
@@ -9,15 +12,17 @@ const Color _verde = Color(0xFF6FD000);
 const Color _verdeOscuro = Color(0xFF417A00);
 const Color _texto = Color(0xFF101010);
 
+// ============================================================
+// CONTENIDO PRINCIPAL DE VENTA
+// ============================================================
+
 class ContenidoVenta extends StatefulWidget {
   final TextEditingController busquedaController;
   final List<Medicamento> medicamentos;
   final ValueChanged<Medicamento> onAgregar;
   final ValueChanged<TarifaServicioYastas> onAgregarYastas;
 
-  final Future<void> Function(
-    String codigoBarras,
-  ) onEscanearCodigoBarras;
+  final Future<void> Function(String codigoBarras) onEscanearCodigoBarras;
 
   final Future<void> Function() onActualizar;
   final Future<void> Function() onNuevoMovimiento;
@@ -40,13 +45,151 @@ class ContenidoVenta extends StatefulWidget {
 class _ContenidoVentaState extends State<ContenidoVenta> {
   String _seccionSeleccionada = 'Medicamentos';
 
+  final ProductosApiService _productosApiService = ProductosApiService();
+
+  final InventarioApiService _inventarioApiService = InventarioApiService();
+
+  Map<int, ProductoCatalogoApi> _fichasPorProducto = {};
+  Map<int, String> _ubicacionesPorInventario = {};
+
+  bool _consultandoFichas = false;
+  bool _consultandoUbicaciones = false;
   bool _actualizando = false;
   bool _registrandoMovimiento = false;
 
-  Future<void> _actualizarContenido() async {
-    if (_actualizando) {
-      return;
+  @override
+  void initState() {
+    super.initState();
+
+    _cargarFichasMedicamentos();
+    _cargarUbicacionesMedicamentos();
+  }
+
+  // ==========================================================
+  // CARGAR FICHAS TÉCNICAS DE PRODUCTOS
+  // ==========================================================
+
+  Future<void> _cargarFichasMedicamentos() async {
+    if (_consultandoFichas) return;
+
+    _consultandoFichas = true;
+
+    try {
+      final fichas = <int, ProductoCatalogoApi>{};
+
+      final idsVisibles = widget.medicamentos
+          .map((medicamento) => medicamento.idProducto)
+          .whereType<int>()
+          .toSet();
+
+      var pagina = 1;
+
+      while (true) {
+        final resultado = await _productosApiService.listarProductosPaginados(
+          tipo: 'MEDICAMENTO',
+          activo: true,
+          pagina: pagina,
+          limite: 100,
+        );
+
+        for (final producto in resultado.items) {
+          fichas[producto.idProducto] = producto;
+        }
+
+        final todasEncontradas =
+            idsVisibles.isNotEmpty && idsVisibles.every(fichas.containsKey);
+
+        if (todasEncontradas ||
+            !resultado.haySiguiente ||
+            pagina >= resultado.totalPaginas) {
+          break;
+        }
+
+        pagina++;
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _fichasPorProducto = fichas;
+      });
+    } catch (_) {
+      // Si falla la consulta de fichas técnicas,
+      // la venta continúa con información disponible.
+    } finally {
+      _consultandoFichas = false;
     }
+  }
+
+  // ==========================================================
+  // CARGAR UBICACIONES REALES DESDE INVENTARIO
+  // ==========================================================
+
+  Future<void> _cargarUbicacionesMedicamentos() async {
+    if (_consultandoUbicaciones) return;
+
+    _consultandoUbicaciones = true;
+
+    try {
+      final ubicaciones = <int, String>{};
+
+      // Utilizamos el ID del registro de inventario
+      // para identificar la ubicación exacta del lote.
+      final idsVisibles =
+          widget.medicamentos.map((medicamento) => medicamento.id).toSet();
+
+      var pagina = 1;
+
+      while (true) {
+        final resultado = await _inventarioApiService.listarActualPaginado(
+          busqueda: '',
+          pagina: pagina,
+          limite: 100,
+        );
+
+        for (final item in resultado.items) {
+          final letra = item.ubicacionLetra.trim().toUpperCase();
+
+          final numero = item.ubicacionNumero;
+
+          final ubicacion = letra.isNotEmpty && numero != null
+              ? '$letra$numero'
+              : 'Sin asignar';
+
+          ubicaciones[item.idInventario] = ubicacion;
+        }
+
+        final todasEncontradas = idsVisibles.isNotEmpty &&
+            idsVisibles.every(ubicaciones.containsKey);
+
+        if (todasEncontradas ||
+            !resultado.haySiguiente ||
+            pagina >= resultado.totalPaginas) {
+          break;
+        }
+
+        pagina++;
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _ubicacionesPorInventario = ubicaciones;
+      });
+    } catch (_) {
+      // Si falla la consulta, no se bloquean
+      // las operaciones de venta.
+    } finally {
+      _consultandoUbicaciones = false;
+    }
+  }
+
+  // ==========================================================
+  // ACTUALIZAR CONTENIDO
+  // ==========================================================
+
+  Future<void> _actualizarContenido() async {
+    if (_actualizando) return;
 
     setState(() {
       _actualizando = true;
@@ -54,6 +197,9 @@ class _ContenidoVentaState extends State<ContenidoVenta> {
 
     try {
       await widget.onActualizar();
+
+      await _cargarFichasMedicamentos();
+      await _cargarUbicacionesMedicamentos();
     } finally {
       if (mounted) {
         setState(() {
@@ -63,10 +209,12 @@ class _ContenidoVentaState extends State<ContenidoVenta> {
     }
   }
 
+  // ==========================================================
+  // NUEVO MOVIMIENTO
+  // ==========================================================
+
   Future<void> _abrirNuevoMovimiento() async {
-    if (_registrandoMovimiento) {
-      return;
-    }
+    if (_registrandoMovimiento) return;
 
     setState(() {
       _registrandoMovimiento = true;
@@ -82,6 +230,10 @@ class _ContenidoVentaState extends State<ContenidoVenta> {
       }
     }
   }
+
+  // ==========================================================
+  // INTERFAZ PRINCIPAL
+  // ==========================================================
 
   @override
   Widget build(BuildContext context) {
@@ -109,6 +261,8 @@ class _ContenidoVentaState extends State<ContenidoVenta> {
                 )
               : _CatalogoMedicamentos(
                   medicamentos: widget.medicamentos,
+                  fichasPorProducto: _fichasPorProducto,
+                  ubicacionesPorInventario: _ubicacionesPorInventario,
                   onAgregar: widget.onAgregar,
                 ),
         ),
@@ -117,6 +271,10 @@ class _ContenidoVentaState extends State<ContenidoVenta> {
   }
 }
 
+// ============================================================
+// BARRA SUPERIOR DE VENTA
+// ============================================================
+
 class _BarraSuperiorVenta extends StatelessWidget {
   final TextEditingController busquedaController;
   final String seccionSeleccionada;
@@ -124,9 +282,7 @@ class _BarraSuperiorVenta extends StatelessWidget {
   final bool actualizando;
   final bool registrandoMovimiento;
 
-  final Future<void> Function(
-    String codigoBarras,
-  ) onEscanearCodigoBarras;
+  final Future<void> Function(String codigoBarras) onEscanearCodigoBarras;
 
   final ValueChanged<String> onSeleccionarSeccion;
   final VoidCallback onActualizar;
@@ -246,10 +402,15 @@ class _BarraSuperiorVenta extends StatelessWidget {
   }
 }
 
+// ============================================================
+// BUSCADOR DE MEDICAMENTOS
+// ============================================================
+
 class _BuscadorVenta extends StatelessWidget {
   final double ancho;
   final TextEditingController busquedaController;
   final bool esYastas;
+
   final Future<void> Function(String codigoBarras) onEscanearCodigoBarras;
 
   const _BuscadorVenta({
@@ -328,6 +489,10 @@ class _BuscadorVenta extends StatelessWidget {
   }
 }
 
+// ============================================================
+// BOTÓN NUEVO MOVIMIENTO
+// ============================================================
+
 class _BotonNuevoMovimientoVenta extends StatelessWidget {
   final bool registrandoMovimiento;
   final VoidCallback onNuevoMovimiento;
@@ -371,16 +536,12 @@ class _BotonNuevoMovimientoVenta extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           elevation: 2,
           backgroundColor: _verdeOscuro,
-          disabledBackgroundColor: _verdeOscuro.withValues(
-            alpha: 0.65,
-          ),
+          disabledBackgroundColor: _verdeOscuro.withValues(alpha: 0.65),
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(
             horizontal: 10,
           ),
-          shadowColor: _verdeOscuro.withValues(
-            alpha: 0.25,
-          ),
+          shadowColor: _verdeOscuro.withValues(alpha: 0.25),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(6),
           ),
@@ -389,6 +550,10 @@ class _BotonNuevoMovimientoVenta extends StatelessWidget {
     );
   }
 }
+
+// ============================================================
+// BOTÓN ACTUALIZAR
+// ============================================================
 
 class _BotonActualizarVenta extends StatelessWidget {
   final bool actualizando;
@@ -433,16 +598,12 @@ class _BotonActualizarVenta extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           elevation: 2,
           backgroundColor: _verdeOscuro,
-          disabledBackgroundColor: _verdeOscuro.withValues(
-            alpha: 0.65,
-          ),
+          disabledBackgroundColor: _verdeOscuro.withValues(alpha: 0.65),
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(
             horizontal: 10,
           ),
-          shadowColor: _verdeOscuro.withValues(
-            alpha: 0.25,
-          ),
+          shadowColor: _verdeOscuro.withValues(alpha: 0.25),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(6),
           ),
@@ -451,6 +612,10 @@ class _BotonActualizarVenta extends StatelessWidget {
     );
   }
 }
+
+// ============================================================
+// SELECTOR MEDICAMENTOS / YASTAS
+// ============================================================
 
 class _ChipCategoria extends StatelessWidget {
   final String texto;
@@ -494,12 +659,23 @@ class _ChipCategoria extends StatelessWidget {
   }
 }
 
+// ============================================================
+// CATÁLOGO DE MEDICAMENTOS
+// ============================================================
+
 class _CatalogoMedicamentos extends StatelessWidget {
   final List<Medicamento> medicamentos;
+
+  final Map<int, ProductoCatalogoApi> fichasPorProducto;
+
+  final Map<int, String> ubicacionesPorInventario;
+
   final ValueChanged<Medicamento> onAgregar;
 
   const _CatalogoMedicamentos({
     required this.medicamentos,
+    required this.fichasPorProducto,
+    required this.ubicacionesPorInventario,
     required this.onAgregar,
   });
 
@@ -540,10 +716,17 @@ class _CatalogoMedicamentos extends StatelessWidget {
                       (medicamento) {
                         return _TarjetaMedicamento(
                           medicamento: medicamento,
+
+                          // Ficha técnica.
+                          ficha: medicamento.idProducto == null
+                              ? null
+                              : fichasPorProducto[medicamento.idProducto],
+
+                          // Ubicación exacta del lote.
+                          ubicacion: ubicacionesPorInventario[medicamento.id],
+
                           onAgregar: () {
-                            onAgregar(
-                              medicamento,
-                            );
+                            onAgregar(medicamento);
                           },
                         );
                       },
@@ -556,23 +739,42 @@ class _CatalogoMedicamentos extends StatelessWidget {
   }
 }
 
+// ============================================================
+// TARJETA DEL MEDICAMENTO
+// ============================================================
+
 class _TarjetaMedicamento extends StatelessWidget {
   final Medicamento medicamento;
+  final ProductoCatalogoApi? ficha;
+  final String? ubicacion;
   final VoidCallback onAgregar;
 
   const _TarjetaMedicamento({
     required this.medicamento,
+    required this.ficha,
+    required this.ubicacion,
     required this.onAgregar,
   });
 
   @override
   Widget build(BuildContext context) {
+    final sustancia = ficha?.sustanciaActiva?.trim();
+
+    final sustanciaVisible =
+        sustancia == null || sustancia.isEmpty ? 'Sin registrar' : sustancia;
+
     return Container(
-      width: 136,
-      height: 225,
+      width: 170,
+      height: 292,
+      padding: const EdgeInsets.fromLTRB(
+        12,
+        12,
+        12,
+        12,
+      ),
       decoration: BoxDecoration(
         color: _blanco,
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(9),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(
@@ -583,45 +785,102 @@ class _TarjetaMedicamento extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.fromLTRB(
-        15,
-        16,
-        15,
-        12,
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _ImagenProducto(
-            medicamentoId: medicamento.id,
-            imagenAsset: medicamento.imagenAsset,
+          // ==================================================
+          // ÍCONO SEGÚN PRESENTACIÓN
+          // ==================================================
+
+          _IconoPresentacionMedicamento(
+            presentacion: ficha?.presentacion,
           ),
-          const SizedBox(height: 20),
-          Text(
-            medicamento.nombre,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: _texto,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
+
+          const SizedBox(height: 10),
+
+          // ==================================================
+          // NOMBRE DEL MEDICAMENTO
+          // ==================================================
+
+          SizedBox(
+            height: 44,
+            child: Text(
+              medicamento.nombre,
+              maxLines: 3,
+              softWrap: true,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: _texto,
+                fontSize: 12,
+                height: 1.20,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            medicamento.detalle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Color(0xFF333A42),
-              fontSize: 6.8,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.2,
+
+          const SizedBox(height: 5),
+
+          // ==================================================
+          // PRINCIPIO ACTIVO
+          // ==================================================
+
+          SizedBox(
+            height: 30,
+            child: Text(
+              sustanciaVisible,
+              maxLines: 2,
+              softWrap: true,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: sustancia == null || sustancia.isEmpty
+                    ? const Color(0xFF89939D)
+                    : const Color(0xFF57636D),
+                fontSize: 10,
+                height: 1.25,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-          const Spacer(),
+
+          const SizedBox(height: 7),
+
+          // ==================================================
+          // UBICACIÓN DEL MEDICAMENTO
+          // ==================================================
+
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              const Icon(
+                Icons.location_on_outlined,
+                color: _verdeOscuro,
+                size: 13,
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  ubicacion == null
+                      ? 'Ubicación: No disponible'
+                      : 'Ubicación: $ubicacion',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF57636D),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const Spacer(),
+
+          // ==================================================
+          // PRECIO Y BOTÓN AGREGAR
+          // ==================================================
+
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
                 child: Text(
@@ -633,7 +892,7 @@ class _TarjetaMedicamento extends StatelessWidget {
                   style: const TextStyle(
                     color: _verdeOscuro,
                     fontSize: 17,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -642,25 +901,192 @@ class _TarjetaMedicamento extends StatelessWidget {
               ),
             ],
           ),
+
+          const SizedBox(height: 8),
+
+          // ==================================================
+          // STOCK
+          // ==================================================
+
+          _IndicadorStock(
+            stock: medicamento.stock,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================
+// ÍCONOS SEGÚN PRESENTACIÓN REGISTRADA
+// ============================================================
+
+class _IconoPresentacionMedicamento extends StatelessWidget {
+  final String? presentacion;
+
+  const _IconoPresentacionMedicamento({
+    required this.presentacion,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tipo = (presentacion ?? '').trim().toUpperCase();
+
+    final icono = _iconoSegunPresentacion(tipo);
+    final etiqueta = _nombrePresentacion(tipo);
+
+    return Container(
+      width: double.infinity,
+      height: 82,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F6EB),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icono,
+            color: _verdeOscuro,
+            size: 38,
+          ),
           const SizedBox(height: 4),
-          RichText(
-            text: TextSpan(
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 5,
+            ),
+            child: Text(
+              etiqueta,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                color: _texto,
-                fontSize: 6.6,
-                fontWeight: FontWeight.w500,
+                color: _verdeOscuro,
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
               ),
-              children: [
-                const TextSpan(
-                  text: 'Stock: ',
-                ),
-                TextSpan(
-                  text: '${medicamento.stock} unidades',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==========================================================
+  // SELECCIONAR ÍCONO
+  // ==========================================================
+
+  IconData _iconoSegunPresentacion(
+    String tipo,
+  ) {
+    // Tabletas y cápsulas.
+    if (tipo.contains('TABLETA') ||
+        tipo.contains('CAPSULA') ||
+        tipo.contains('CÁPSULA') ||
+        tipo.contains('PASTILLA') ||
+        tipo.contains('COMPRIMIDO')) {
+      return Icons.medication_outlined;
+    }
+
+    // Medicamentos líquidos.
+    if (tipo.contains('JARABE') ||
+        tipo.contains('SUSPENSION') ||
+        tipo.contains('SUSPENSIÓN') ||
+        tipo.contains('SOLUCION') ||
+        tipo.contains('SOLUCIÓN') ||
+        tipo.contains('GOTAS')) {
+      return Icons.medication_liquid_outlined;
+    }
+
+    // Medicamentos inyectables.
+    if (tipo.contains('INYECT') ||
+        tipo.contains('INYECC') ||
+        tipo.contains('AMPOLLA')) {
+      return Icons.vaccines_outlined;
+    }
+
+    // Cremas y pomadas.
+    if (tipo.contains('CREMA') ||
+        tipo.contains('POMADA') ||
+        tipo.contains('GEL') ||
+        tipo.contains('UNGUENTO')) {
+      return Icons.sanitizer_outlined;
+    }
+
+    // Aerosoles y sprays.
+    if (tipo.contains('SPRAY') || tipo.contains('AEROSOL')) {
+      return Icons.air_outlined;
+    }
+
+    // Presentación no identificada.
+    return Icons.medication_outlined;
+  }
+
+  // ==========================================================
+  // NOMBRE DE LA PRESENTACIÓN
+  // ==========================================================
+
+  String _nombrePresentacion(String tipo) {
+    if (tipo.isEmpty) {
+      return 'Sin presentación';
+    }
+
+    final nombre = tipo.replaceAll('_', ' ').toLowerCase();
+
+    return '${nombre[0].toUpperCase()}${nombre.substring(1)}';
+  }
+}
+
+// ============================================================
+// INDICADOR DE STOCK
+// ============================================================
+
+class _IndicadorStock extends StatelessWidget {
+  final int stock;
+
+  const _IndicadorStock({
+    required this.stock,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Stock de 1 a 5 = naranja.
+    // Stock mayor a 5 = verde.
+    final pocoStock = stock <= 5;
+
+    final color = pocoStock ? const Color(0xFFA56600) : const Color(0xFF3A7704);
+
+    final fondo = pocoStock ? const Color(0xFFFFF2DA) : const Color(0xFFEAF7DF);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 7,
+        vertical: 4,
+      ),
+      decoration: BoxDecoration(
+        color: fondo,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            'Stock: $stock ${stock == 1 ? 'unidad' : 'unidades'}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: color,
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ],
@@ -668,6 +1094,10 @@ class _TarjetaMedicamento extends StatelessWidget {
     );
   }
 }
+
+// ============================================================
+// BOTÓN AGREGAR AL CARRITO
+// ============================================================
 
 class _BotonAgregar extends StatelessWidget {
   final VoidCallback onTap;
@@ -679,15 +1109,13 @@ class _BotonAgregar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 24,
-      height: 24,
+      width: 26,
+      height: 26,
       child: ElevatedButton(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
           elevation: 4,
-          shadowColor: _verde.withValues(
-            alpha: 0.45,
-          ),
+          shadowColor: _verde.withValues(alpha: 0.45),
           backgroundColor: _verde,
           foregroundColor: _texto,
           padding: EdgeInsets.zero,
@@ -699,239 +1127,6 @@ class _BotonAgregar extends StatelessWidget {
           color: _texto,
         ),
       ),
-    );
-  }
-}
-
-class _ImagenProducto extends StatelessWidget {
-  final int medicamentoId;
-  final String? imagenAsset;
-
-  const _ImagenProducto({
-    required this.medicamentoId,
-    required this.imagenAsset,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    const double size = 95;
-
-    if (imagenAsset != null) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(3),
-        child: Image.asset(
-          imagenAsset!,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-        ),
-      );
-    }
-
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: _colorImagenBase(
-          medicamentoId,
-        ),
-        borderRadius: BorderRadius.circular(3),
-      ),
-      child: Center(
-        child: _IlustracionProducto(
-          medicamentoId: medicamentoId,
-        ),
-      ),
-    );
-  }
-
-  Color _colorImagenBase(int id) {
-    switch (id) {
-      case 1:
-        return const Color(0xFFF3F5F5);
-
-      case 2:
-        return const Color(0xFFEFEFEA);
-
-      case 3:
-        return const Color(0xFFF4F4F0);
-
-      case 4:
-        return const Color(0xFF0B4B43);
-
-      case 5:
-        return const Color(0xFFB9D9D4);
-
-      default:
-        return const Color(0xFFF3F5F5);
-    }
-  }
-}
-
-class _IlustracionProducto extends StatelessWidget {
-  final int medicamentoId;
-
-  const _IlustracionProducto({
-    required this.medicamentoId,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    switch (medicamentoId) {
-      case 1:
-        return _CajaMedicamento(
-          texto: 'Paracetamol',
-          colorPrincipal: const Color(0xFF55BFD2),
-          colorSecundario: const Color(0xFFE9F6FA),
-        );
-
-      case 2:
-        return const _FrascoMedicamento();
-
-      case 3:
-        return _CajaMedicamento(
-          texto: 'Ibuprofeno',
-          colorPrincipal: const Color(0xFFFF8500),
-          colorSecundario: const Color(0xFFFFF0DE),
-        );
-
-      case 4:
-        return _CajaMedicamento(
-          texto: 'Ome',
-          colorPrincipal: const Color(0xFF0F8B70),
-          colorSecundario: const Color(0xFFE7FFF8),
-        );
-
-      case 5:
-        return Transform.rotate(
-          angle: -0.2,
-          child: const Icon(
-            Icons.thermostat,
-            size: 55,
-            color: Color(0xFF4E7B78),
-          ),
-        );
-
-      default:
-        return const Icon(
-          Icons.medication_outlined,
-          size: 48,
-          color: Color(0xFF6A7B84),
-        );
-    }
-  }
-}
-
-class _CajaMedicamento extends StatelessWidget {
-  final String texto;
-  final Color colorPrincipal;
-  final Color colorSecundario;
-
-  const _CajaMedicamento({
-    required this.texto,
-    required this.colorPrincipal,
-    required this.colorSecundario,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 62,
-      height: 46,
-      decoration: BoxDecoration(
-        color: _blanco,
-        borderRadius: BorderRadius.circular(2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(
-              alpha: 0.14,
-            ),
-            blurRadius: 6,
-            offset: const Offset(2, 3),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              height: 14,
-              color: colorSecundario,
-            ),
-          ),
-          Positioned(
-            left: 7,
-            top: 13,
-            child: Text(
-              texto,
-              style: TextStyle(
-                color: colorPrincipal,
-                fontSize: 7,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 7,
-            child: Container(
-              height: 4,
-              color: colorPrincipal,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FrascoMedicamento extends StatelessWidget {
-  const _FrascoMedicamento();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 18,
-          height: 8,
-          decoration: const BoxDecoration(
-            color: Color(0xFFD9D9D9),
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(2),
-            ),
-          ),
-        ),
-        Container(
-          width: 34,
-          height: 50,
-          decoration: BoxDecoration(
-            color: const Color(0xFF965D28),
-            borderRadius: BorderRadius.circular(5),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(
-                  alpha: 0.14,
-                ),
-                blurRadius: 6,
-                offset: const Offset(2, 3),
-              ),
-            ],
-          ),
-          child: Center(
-            child: Container(
-              width: 28,
-              height: 15,
-              color: _blanco,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
