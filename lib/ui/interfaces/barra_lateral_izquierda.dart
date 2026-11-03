@@ -26,7 +26,7 @@ class BarraLateralIzquierda extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 76,
+      width: 104,
       color: _colorFondoBarra,
       child: Column(
         children: [
@@ -178,8 +178,8 @@ class _BotonMenuLateral extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         onTap: () => onTap(indice),
         child: Container(
-          width: 54,
-          height: 58,
+          width: 92,
+          height: 62,
           decoration: BoxDecoration(
             color: _colorAzulActivo,
             borderRadius: BorderRadius.circular(16),
@@ -212,7 +212,7 @@ class _BotonMenuLateral extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 9,
+                      fontSize: 12,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -228,8 +228,8 @@ class _BotonMenuLateral extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       onTap: () => onTap(indice),
       child: SizedBox(
-        width: 54,
-        height: 58,
+        width: 92,
+        height: 62,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -251,7 +251,7 @@ class _BotonMenuLateral extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Color(0xFF4B4F45),
-                    fontSize: 8,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

@@ -171,103 +171,157 @@ class CortePdfService {
     );
   }
 
+  pw.Widget _tablaResumen(List<String> encabezados, List<List<String>> filas,
+      {bool numerica = true, bool todoNumerico = false}) {
+    return pw.Table(
+      border: pw.TableBorder.all(
+          color: const PdfColor.fromInt(0xFFD9E6D3), width: 0.5),
+      children: [
+        pw.TableRow(
+          decoration:
+              const pw.BoxDecoration(color: PdfColor.fromInt(0xFFEDF3E8)),
+          children: [
+            for (var i = 0; i < encabezados.length; i++)
+              _celdaHeader(encabezados[i],
+                  alignRight: numerica && (i > 0 || todoNumerico))
+          ],
+        ),
+        for (var row = 0; row < filas.length; row++)
+          pw.TableRow(
+            decoration: pw.BoxDecoration(
+                color: row.isEven
+                    ? PdfColors.white
+                    : const PdfColor.fromInt(0xFFF7F9F5)),
+            children: [
+              for (var i = 0; i < filas[row].length; i++)
+                _celda(filas[row][i],
+                    alignRight: numerica && (i > 0 || todoNumerico),
+                    color: filas[row][0] == 'Diferencia' &&
+                            i > 0 &&
+                            filas[row][i] != _moneda(0)
+                        ? const PdfColor.fromInt(0xFFE02020)
+                        : null)
+            ],
+          ),
+      ],
+    );
+  }
+
   pw.Widget _seccionDatosGenerales(CorteDetalle corte) {
     return _panel(
-      titulo: 'Datos generales',
-      child: pw.Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          _dato('Apertura', _formatoFechaHora(corte.fechaApertura)),
-          _dato('Cierre', _formatoFechaHora(corte.fechaCierre)),
-          _dato(
-            'Abre',
+        titulo: 'Datos generales',
+        child: _tablaResumen([
+          'Dato',
+          'Apertura',
+          'Cierre'
+        ], [
+          [
+            'Fecha',
+            _formatoFechaHora(corte.fechaApertura),
+            _formatoFechaHora(corte.fechaCierre)
+          ],
+          [
+            'Usuario',
             _nombreUsuarioCorte(corte.usuarioAbreNombre, corte.usuarioAbre),
-          ),
-          _dato(
-            'Cierra',
-            _nombreUsuarioCorte(corte.usuarioCierraNombre, corte.usuarioCierra),
-          ),
-        ],
-      ),
-    );
+            _nombreUsuarioCorte(corte.usuarioCierraNombre, corte.usuarioCierra)
+          ],
+        ], numerica: false));
   }
 
   pw.Widget _seccionSaldos(CorteDetalle corte) {
     return _panel(
-      titulo: 'Resumen del corte',
-      child: pw.Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          _dato('Efectivo inicial', _moneda(corte.efectivoInicial)),
-          _dato(
-            'Efectivo final',
-            _moneda(
-              corte.estado == 'CERRADO'
-                  ? corte.efectivoContado
-                  : corte.efectivoEsperado,
-            ),
-          ),
-          _dato('Electronico inicial', _moneda(corte.electronicoInicial)),
-          _dato('Fondo Yastas inicial', _moneda(corte.fondoYastasInicial)),
-          _dato('Fondo Yastas disponible', _moneda(corte.fondoYastasDisponible)),
-          _dato('Fondo Yastas utilizado', _moneda(corte.fondoYastasInicial - corte.fondoYastasDisponible)),
-          _dato(
-            'Electronico final',
-            _moneda(
-              corte.estado == 'CERRADO'
-                  ? corte.electronicoContado
-                  : corte.electronicoEsperado,
-            ),
-          ),
-          _dato('Esperado efectivo', _moneda(corte.efectivoEsperado)),
-          _dato('Esperado electronico', _moneda(corte.electronicoEsperado)),
-          _dato(
-            'Diferencia efectivo',
-            _moneda(corte.diferenciaEfectivo),
-            destacado: corte.diferenciaEfectivo != 0,
-          ),
-          _dato(
-            'Diferencia electronico',
-            _moneda(corte.diferenciaElectronico),
-            destacado: corte.diferenciaElectronico != 0,
-          ),
-        ],
-      ),
-    );
+        titulo: 'Resumen del corte',
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+          children: [
+            _tablaResumen([
+              'Concepto',
+              'Efectivo',
+              'Electrónico'
+            ], [
+              [
+                'Saldo inicial',
+                _moneda(corte.efectivoInicial),
+                _moneda(corte.electronicoInicial)
+              ],
+              [
+                'Entradas',
+                _moneda(corte.totalesMovimientos.entradasEfectivo),
+                _moneda(corte.totalesMovimientos.entradasElectronico)
+              ],
+              [
+                'Salidas',
+                _moneda(corte.totalesMovimientos.salidasEfectivo),
+                _moneda(corte.totalesMovimientos.salidasElectronico)
+              ],
+              [
+                'Saldo esperado',
+                _moneda(corte.efectivoEsperado),
+                _moneda(corte.electronicoEsperado)
+              ],
+              [
+                'Saldo final',
+                _moneda(corte.estado == 'CERRADO'
+                    ? corte.efectivoContado
+                    : corte.efectivoEsperado),
+                _moneda(corte.estado == 'CERRADO'
+                    ? corte.electronicoContado
+                    : corte.electronicoEsperado)
+              ],
+              [
+                'Diferencia',
+                _moneda(corte.diferenciaEfectivo),
+                _moneda(corte.diferenciaElectronico)
+              ],
+            ]),
+            pw.SizedBox(height: 10),
+            pw.Text('Fondo Yastas',
+                style:
+                    pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 6),
+            _tablaResumen([
+              'Inicial',
+              'Utilizado',
+              'Disponible'
+            ], [
+              [
+                _moneda(corte.fondoYastasInicial),
+                _moneda(corte.fondoYastasInicial - corte.fondoYastasDisponible),
+                _moneda(corte.fondoYastasDisponible)
+              ],
+            ], todoNumerico: true),
+          ],
+        ));
   }
 
   pw.Widget _seccionMovimientos(CorteDetalle corte) {
     return _panel(
-      titulo: 'Movimientos',
-      child: pw.Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          _dato(
-            'Entradas efectivo',
-            _moneda(corte.totalesMovimientos.entradasEfectivo),
-          ),
-          _dato(
-            'Salidas efectivo',
-            _moneda(corte.totalesMovimientos.salidasEfectivo),
-          ),
-          _dato(
-            'Entradas electronico',
-            _moneda(corte.totalesMovimientos.entradasElectronico),
-          ),
-          _dato(
-            'Salidas electronico',
-            _moneda(corte.totalesMovimientos.salidasElectronico),
-          ),
-          _dato(
-            'Total transacciones',
-            corte.totalesMovimientos.totalMovimientos.toString(),
-          ),
-        ],
-      ),
-    );
+        titulo: 'Movimientos',
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+          children: [
+            _tablaResumen([
+              'Concepto',
+              'Efectivo',
+              'Electrónico'
+            ], [
+              [
+                'Entradas',
+                _moneda(corte.totalesMovimientos.entradasEfectivo),
+                _moneda(corte.totalesMovimientos.entradasElectronico)
+              ],
+              [
+                'Salidas',
+                _moneda(corte.totalesMovimientos.salidasEfectivo),
+                _moneda(corte.totalesMovimientos.salidasElectronico)
+              ],
+            ]),
+            pw.SizedBox(height: 8),
+            pw.Text(
+                'Total transacciones: ${corte.totalesMovimientos.totalMovimientos}',
+                style: const pw.TextStyle(fontSize: 9)),
+          ],
+        ));
   }
 
   pw.Widget _seccionObservaciones(CorteDetalle corte) {
@@ -426,44 +480,6 @@ class CortePdfService {
           ),
           pw.SizedBox(height: 8),
           child,
-        ],
-      ),
-    );
-  }
-
-  pw.Widget _dato(
-    String label,
-    String value, {
-    bool destacado = false,
-  }) {
-    return pw.Container(
-      width: 150,
-      padding: const pw.EdgeInsets.symmetric(horizontal: 9, vertical: 8),
-      decoration: pw.BoxDecoration(
-        color: const PdfColor.fromInt(0xFFF7F9F5),
-        borderRadius: pw.BorderRadius.circular(6),
-      ),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          pw.Text(
-            label,
-            style: const pw.TextStyle(
-              color: _colorTextoSecundario,
-              fontSize: 8,
-            ),
-          ),
-          pw.SizedBox(height: 3),
-          pw.Text(
-            value,
-            maxLines: 2,
-            style: pw.TextStyle(
-              color:
-                  destacado ? const PdfColor.fromInt(0xFFE02020) : _colorTexto,
-              fontSize: 10,
-              fontWeight: pw.FontWeight.bold,
-            ),
-          ),
         ],
       ),
     );

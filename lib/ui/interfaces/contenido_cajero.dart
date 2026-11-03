@@ -1828,78 +1828,11 @@ class _DetalleRegistroCorte extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _DatoCorte(
-                label: 'Apertura',
-                value: _formatoFechaHora(corte.fechaApertura),
-              ),
-              _DatoCorte(
-                label: 'Cierre',
-                value: _formatoFechaHora(corte.fechaCierre),
-              ),
-              _DatoCorte(
-                label: 'Abrio',
-                value: _nombreUsuarioCorte(
-                  corte.usuarioAbreNombre,
-                  corte.usuarioAbre,
-                ),
-              ),
-              _DatoCorte(
-                label: 'Cerro',
-                value: _nombreUsuarioCorte(
-                  corte.usuarioCierraNombre,
-                  corte.usuarioCierra,
-                ),
-              ),
-              _DatoCorte(
-                label: 'Efectivo inicial',
-                value: ConfigMoneda.formato(corte.efectivoInicial),
-              ),
-              _DatoCorte(
-                label: 'Efectivo final',
-                value: ConfigMoneda.formato(
-                  corte.estado == 'CERRADO'
-                      ? corte.efectivoContado
-                      : corte.efectivoEsperado,
-                ),
-              ),
-              _DatoCorte(
-                label: 'Electronico inicial',
-                value: ConfigMoneda.formato(corte.electronicoInicial),
-              ),
-              _DatoCorte(label: 'Fondo Yastas inicial', value: ConfigMoneda.formato(corte.fondoYastasInicial)),
-              _DatoCorte(label: 'Fondo Yastas disponible', value: ConfigMoneda.formato(corte.fondoYastasDisponible)),
-              _DatoCorte(label: 'Fondo utilizado', value: ConfigMoneda.formato(corte.fondoYastasInicial - corte.fondoYastasDisponible)),
-
-              _DatoCorte(
-                label: 'Electronico final',
-                value: ConfigMoneda.formato(
-                  corte.estado == 'CERRADO'
-                      ? corte.electronicoContado
-                      : corte.electronicoEsperado,
-                ),
-              ),
-              _DatoCorte(
-                label: 'Diferencia efectivo',
-                value: ConfigMoneda.formato(corte.diferenciaEfectivo),
-                valueColor:
-                    corte.diferenciaEfectivo == 0 ? _textoPrincipal : _rojo,
-              ),
-              _DatoCorte(
-                label: 'Diferencia electronico',
-                value: ConfigMoneda.formato(corte.diferenciaElectronico),
-                valueColor:
-                    corte.diferenciaElectronico == 0 ? _textoPrincipal : _rojo,
-              ),
-            ],
-          ),
-          if (corte.observacionesCorte.isNotEmpty) ...[
+          _ResumenCorteOrdenado(corte: corte, mostrarDatos: true),
+          if (corte.observacionesCorte.trim().isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
-              corte.observacionesCorte,
+              'Observaciones: ${corte.observacionesCorte.trim()}',
               style: const TextStyle(
                 color: _textoSecundario,
                 fontSize: 12,
@@ -1907,37 +1840,6 @@ class _DetalleRegistroCorte extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 18),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _MiniDatoRegistro(
-                label: 'Entradas efectivo',
-                value: ConfigMoneda.formato(
-                  corte.totalesMovimientos.entradasEfectivo,
-                ),
-              ),
-              _MiniDatoRegistro(
-                label: 'Salidas efectivo',
-                value: ConfigMoneda.formato(
-                  corte.totalesMovimientos.salidasEfectivo,
-                ),
-              ),
-              _MiniDatoRegistro(
-                label: 'Entradas electronico',
-                value: ConfigMoneda.formato(
-                  corte.totalesMovimientos.entradasElectronico,
-                ),
-              ),
-              _MiniDatoRegistro(
-                label: 'Salidas electronico',
-                value: ConfigMoneda.formato(
-                  corte.totalesMovimientos.salidasElectronico,
-                ),
-              ),
-            ],
-          ),
           const SizedBox(height: 18),
           Text(
             'Transacciones (${corte.totalesMovimientos.totalMovimientos})',
@@ -2364,67 +2266,189 @@ class _DetalleCorteCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 18),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    _DatoCorte(
-                      label: 'Apertura',
-                      value: _formatoFechaHora(actual.fechaApertura),
-                    ),
-                    _DatoCorte(
-                      label: 'Efectivo inicial',
-                      value: ConfigMoneda.formato(actual.efectivoInicial),
-                    ),
-                    _DatoCorte(
-                      label: 'Efectivo final',
-                      value: ConfigMoneda.formato(actual.efectivoEsperado),
-                      valueColor: _verdeOscuro,
-                    ),
-                    _DatoCorte(
-                      label: 'Electronico inicial',
-                      value: ConfigMoneda.formato(actual.electronicoInicial),
-                    ),
-              _DatoCorte(label: 'Fondo Yastas inicial', value: ConfigMoneda.formato(actual.fondoYastasInicial)),
-              _DatoCorte(label: 'Fondo Yastas disponible', value: ConfigMoneda.formato(actual.fondoYastasDisponible)),
-              _DatoCorte(label: 'Fondo utilizado', value: ConfigMoneda.formato(actual.fondoYastasInicial - actual.fondoYastasDisponible)),
-
-                    _DatoCorte(
-                      label: 'Electronico final',
-                      value: ConfigMoneda.formato(actual.electronicoEsperado),
-                      valueColor: _verdeOscuro,
-                    ),
-                    _DatoCorte(
-                      label: 'Ventas efectivo',
-                      value: ConfigMoneda.formato(actual.ventasEfectivo),
-                    ),
-                    _DatoCorte(
-                      label: 'Ventas electronico',
-                      value: ConfigMoneda.formato(actual.ventasElectronico),
-                    ),
-                    _DatoCorte(
-                      label: 'Otros ingresos',
-                      value: ConfigMoneda.formato(actual.otrosIngresos),
-                    ),
-                    _DatoCorte(
-                      label: 'Salidas efectivo',
-                      value: ConfigMoneda.formato(actual.salidasEfectivo),
-                      valueColor: _rojo,
-                    ),
-                    _DatoCorte(
-                      label: 'Salidas electronico',
-                      value: ConfigMoneda.formato(actual.salidasElectronico),
-                      valueColor: _rojo,
-                    ),
-                    _DatoCorte(
-                      label: 'Total esperado',
-                      value: ConfigMoneda.formato(actual.totalEsperado),
-                      valueColor: _verdeOscuro,
-                    ),
-                  ],
-                ),
+                _ResumenCorteOrdenado(corte: actual),
               ],
             ),
+    );
+  }
+}
+
+class _ResumenCorteOrdenado extends StatelessWidget {
+  final CorteResumen corte;
+  final bool mostrarDatos;
+
+  const _ResumenCorteOrdenado({required this.corte, this.mostrarDatos = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final cerrado = corte.estado == 'CERRADO';
+    String moneda(double valor) => ConfigMoneda.formato(valor);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (mostrarDatos)
+          _tabla(
+              'Datos generales',
+              ['Dato', 'Apertura', 'Cierre'],
+              [
+                [
+                  'Fecha',
+                  _formatoFechaHora(corte.fechaApertura),
+                  _formatoFechaHora(corte.fechaCierre)
+                ],
+                [
+                  'Usuario',
+                  _nombreUsuarioCorte(
+                      corte.usuarioAbreNombre, corte.usuarioAbre),
+                  _nombreUsuarioCorte(
+                      corte.usuarioCierraNombre, corte.usuarioCierra)
+                ],
+              ],
+              numerica: false)
+        else
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text('Apertura: ${_formatoFechaHora(corte.fechaApertura)}',
+                style: const TextStyle(color: _textoSecundario)),
+          ),
+        _tabla('Saldos y movimientos', [
+          'Concepto',
+          'Efectivo',
+          'Electrónico'
+        ], [
+          [
+            'Saldo inicial',
+            moneda(corte.efectivoInicial),
+            moneda(corte.electronicoInicial)
+          ],
+          [
+            'Ventas',
+            moneda(corte.ventasEfectivo),
+            moneda(corte.ventasElectronico)
+          ],
+          [
+            'Entradas',
+            moneda(corte.entradasEfectivo),
+            moneda(corte.entradasElectronico)
+          ],
+          [
+            'Salidas',
+            moneda(corte.salidasEfectivo),
+            moneda(corte.salidasElectronico)
+          ],
+          [
+            'Saldo esperado',
+            moneda(corte.efectivoEsperado),
+            moneda(corte.electronicoEsperado)
+          ],
+          if (cerrado) ...[
+            [
+              'Saldo contado',
+              moneda(corte.efectivoContado),
+              moneda(corte.electronicoContado)
+            ],
+            [
+              'Diferencia',
+              moneda(corte.diferenciaEfectivo),
+              moneda(corte.diferenciaElectronico)
+            ],
+          ],
+        ]),
+        _tabla(
+            'Fondo Yastas',
+            ['Inicial', 'Utilizado', 'Disponible'],
+            [
+              [
+                moneda(corte.fondoYastasInicial),
+                moneda(corte.fondoYastasInicial - corte.fondoYastasDisponible),
+                moneda(corte.fondoYastasDisponible)
+              ],
+            ],
+            todoNumerico: true),
+        _tabla(
+            'Totales del corte',
+            ['Otros ingresos', 'Total esperado'],
+            [
+              [moneda(corte.otrosIngresos), moneda(corte.totalEsperado)],
+            ],
+            todoNumerico: true),
+      ],
+    );
+  }
+
+  Widget _tabla(
+      String titulo, List<String> encabezados, List<List<String>> filas,
+      {bool numerica = true, bool todoNumerico = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(titulo,
+              style: const TextStyle(
+                  color: _textoPrincipal,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          LayoutBuilder(builder: (context, constraints) {
+            final minWidth = encabezados.length * 145.0;
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: constraints.maxWidth < minWidth
+                    ? minWidth
+                    : constraints.maxWidth,
+                child: Table(
+                  border: TableBorder.all(color: _bordeSuave),
+                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                  children: [
+                    for (var fila = 0; fila <= filas.length; fila++)
+                      TableRow(
+                        decoration: BoxDecoration(
+                            color: fila == 0
+                                ? const Color(0xFFEDF3E8)
+                                : fila.isEven
+                                    ? const Color(0xFFF8F7F4)
+                                    : Colors.white),
+                        children: [
+                          for (var col = 0; col < encabezados.length; col++)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 11),
+                              child: Text(
+                                fila == 0
+                                    ? encabezados[col]
+                                    : filas[fila - 1][col],
+                                textAlign: numerica && (col > 0 || todoNumerico)
+                                    ? TextAlign.right
+                                    : TextAlign.left,
+                                style: TextStyle(
+                                  color: fila > 0 &&
+                                          filas[fila - 1][0] == 'Diferencia' &&
+                                          col > 0 &&
+                                          (col == 1
+                                                  ? corte.diferenciaEfectivo
+                                                  : corte
+                                                      .diferenciaElectronico) !=
+                                              0
+                                      ? _rojo
+                                      : _textoPrincipal,
+                                  fontSize: 13,
+                                  fontWeight: fila == 0 || todoNumerico
+                                      ? FontWeight.w800
+                                      : FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
     );
   }
 }
@@ -2761,7 +2785,8 @@ class _DialogoAbrirCorteState extends State<_DialogoAbrirCorte> {
     final fondo = _leerMonto(_fondoController);
     final tasa = _leerMonto(_porcentajeFondoController);
     if (fondo == null || fondo < 0 || tasa == null || tasa < 0 || tasa >= 100) {
-      setState(() => _error = 'Ingresa un fondo válido y un porcentaje de 0 a menos de 100.');
+      setState(() => _error =
+          'Ingresa un fondo válido y un porcentaje de 0 a menos de 100.');
       return;
     }
     final efectivo = _leerMonto(_efectivoController);
@@ -2858,13 +2883,17 @@ class _DialogoAbrirCorteState extends State<_DialogoAbrirCorte> {
                   const SizedBox(height: 18),
                   TextField(
                     controller: _porcentajeFondoController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    onTap: () => seleccionarImporteCero(_porcentajeFondoController),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    onTap: () =>
+                        seleccionarImporteCero(_porcentajeFondoController),
                     inputFormatters: const [ImporteInputFormatter()],
-                    decoration: const InputDecoration(labelText: 'Descuento al usar fondo (%)'),
+                    decoration: const InputDecoration(
+                        labelText: 'Descuento al usar fondo (%)'),
                   ),
                   const SizedBox(height: 8),
-                  const Text('El fondo se controla por separado del dinero propio. Si se usan ambos saldos, se elegirá el porcentaje antes de guardar.'),
+                  const Text(
+                      'El fondo se controla por separado del dinero propio. Si se usan ambos saldos, se elegirá el porcentaje antes de guardar.'),
                   const SizedBox(height: 18),
                   _CampoObservacionesApertura(
                     controller: _observacionesController,
@@ -2954,6 +2983,7 @@ class _CampoMontoApertura extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
+  final bool seleccionarTodo;
 
   const _CampoMontoApertura({
     required this.etiqueta,
@@ -2961,6 +2991,7 @@ class _CampoMontoApertura extends StatelessWidget {
     required this.controller,
     this.onChanged,
     this.onSubmitted,
+    this.seleccionarTodo = false,
   });
 
   @override
@@ -2973,7 +3004,16 @@ class _CampoMontoApertura extends StatelessWidget {
         keyboardType: const TextInputType.numberWithOptions(
           decimal: true,
         ),
-        onTap: () => seleccionarImporteCero(controller),
+        onTap: () {
+          if (seleccionarTodo) {
+            controller.selection = TextSelection(
+              baseOffset: 0,
+              extentOffset: controller.text.length,
+            );
+          } else {
+            seleccionarImporteCero(controller);
+          }
+        },
         inputFormatters: const [ImporteInputFormatter()],
         onChanged: onChanged,
         onSubmitted: onSubmitted,
@@ -3679,6 +3719,7 @@ class _DialogoCerrarCorteState extends State<_DialogoCerrarCorte> {
                   const SizedBox(height: 20),
                   _CampoMontoApertura(
                     etiqueta: 'Efectivo Contado en Cajón',
+                    seleccionarTodo: true,
                     icono: Icons.monetization_on_outlined,
                     controller: _efectivoController,
                     onChanged: (_) {
@@ -3689,6 +3730,7 @@ class _DialogoCerrarCorteState extends State<_DialogoCerrarCorte> {
                   const SizedBox(height: 18),
                   _CampoMontoApertura(
                     etiqueta: 'Dinero electrónico propio (sin fondo Yastas)',
+                    seleccionarTodo: true,
                     icono: Icons.credit_card,
                     controller: _electronicoController,
                     onChanged: (_) {
