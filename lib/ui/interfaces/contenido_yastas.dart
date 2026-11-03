@@ -1011,6 +1011,7 @@ class _DialogoTarifaYastasState extends State<_DialogoTarifaYastas> {
                           controller: _descuentoController,
                           keyboardType: const TextInputType.numberWithOptions(
                               decimal: true),
+                          onTap: () => seleccionarImporteCero(_descuentoController),
                           inputFormatters: const [ImporteInputFormatter()],
                           decoration: const InputDecoration(
                               labelText: 'Descuento electrónico (%)',
@@ -1208,6 +1209,7 @@ class _CampoDineroEditarTarifa extends StatelessWidget {
         keyboardType: const TextInputType.numberWithOptions(
           decimal: true,
         ),
+        onTap: () => seleccionarImporteCero(controller),
         inputFormatters: const [ImporteInputFormatter()],
         cursorColor: _verdeOscuro,
         style: const TextStyle(

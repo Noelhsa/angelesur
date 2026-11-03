@@ -2859,6 +2859,7 @@ class _DialogoAbrirCorteState extends State<_DialogoAbrirCorte> {
                   TextField(
                     controller: _porcentajeFondoController,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    onTap: () => seleccionarImporteCero(_porcentajeFondoController),
                     inputFormatters: const [ImporteInputFormatter()],
                     decoration: const InputDecoration(labelText: 'Descuento al usar fondo (%)'),
                   ),
@@ -2972,6 +2973,7 @@ class _CampoMontoApertura extends StatelessWidget {
         keyboardType: const TextInputType.numberWithOptions(
           decimal: true,
         ),
+        onTap: () => seleccionarImporteCero(controller),
         inputFormatters: const [ImporteInputFormatter()],
         onChanged: onChanged,
         onSubmitted: onSubmitted,
@@ -4105,6 +4107,7 @@ class _CampoMonto extends StatelessWidget {
     return TextField(
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      onTap: () => seleccionarImporteCero(controller),
       inputFormatters: const [ImporteInputFormatter()],
       decoration: InputDecoration(
         labelText: label,

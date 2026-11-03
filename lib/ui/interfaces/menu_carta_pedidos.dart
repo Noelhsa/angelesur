@@ -658,6 +658,9 @@ class _CampoTextoPedido extends StatelessWidget {
         controller: controller,
         keyboardType: keyboardType,
         maxLines: maxLines,
+        onTap: prefixText?.trim() == '\$'
+            ? () => seleccionarImporteCero(controller)
+            : null,
         inputFormatters:
             prefixText?.trim() == '\$' ? const [ImporteInputFormatter()] : null,
         style: const TextStyle(
@@ -1023,6 +1026,9 @@ class _MiniCampo extends StatelessWidget {
         controller: controller,
         keyboardType: keyboardType,
         onChanged: (_) => onChanged(),
+        onTap: prefixText?.trim() == '\$'
+            ? () => seleccionarImporteCero(controller)
+            : null,
         inputFormatters:
             prefixText?.trim() == '\$' ? const [ImporteInputFormatter()] : null,
         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),

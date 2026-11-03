@@ -1,4 +1,15 @@
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
+
+/// Permite reemplazar el cero inicial con solo escribir el importe.
+void seleccionarImporteCero(TextEditingController controller) {
+  if (leerImporte(controller.text) == 0) {
+    controller.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: controller.text.length,
+    );
+  }
+}
 
 /// Sin separadores de miles: coma y punto representan centavos.
 double? leerImporte(String texto) {

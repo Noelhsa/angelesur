@@ -315,6 +315,7 @@ class _MenuCartaYastasState extends State<MenuCartaYastas> {
                         controller: _descuentoController,
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true),
+                        onTap: () => seleccionarImporteCero(_descuentoController),
                         inputFormatters: const [ImporteInputFormatter()],
                         decoration: const InputDecoration(
                             labelText: 'Descuento electrónico (%)',
@@ -455,6 +456,7 @@ class _CampoDineroYastas extends StatelessWidget {
         controller: controller,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         readOnly: readOnly,
+        onTap: readOnly ? null : () => seleccionarImporteCero(controller),
         inputFormatters: const [ImporteInputFormatter()],
         cursorColor: _verdeOscuro,
         style: const TextStyle(

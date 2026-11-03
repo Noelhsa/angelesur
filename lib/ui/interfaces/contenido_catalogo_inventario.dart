@@ -2236,6 +2236,7 @@ class _CampoPrecioLoteInventario extends StatelessWidget {
         keyboardType: const TextInputType.numberWithOptions(
           decimal: true,
         ),
+        onTap: () => seleccionarImporteCero(controller),
         inputFormatters: const [ImporteInputFormatter()],
         cursorColor: const Color(0xFF3A7704),
         style: const TextStyle(

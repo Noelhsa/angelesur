@@ -549,6 +549,7 @@ class _CampoCantidadRecibida extends StatelessWidget {
     return TextField(
       controller: controller,
       onChanged: onChanged,
+      onTap: () => seleccionarImporteCero(controller),
       inputFormatters: const [ImporteInputFormatter()],
       keyboardType: const TextInputType.numberWithOptions(
         decimal: true,
@@ -1429,6 +1430,7 @@ class _CampoDescuentoCarritoState extends State<_CampoDescuentoCarrito> {
           height: 28,
           child: TextField(
             controller: _controller,
+            onTap: () => seleccionarImporteCero(_controller),
             inputFormatters: const [ImporteInputFormatter()],
             keyboardType: const TextInputType.numberWithOptions(
               decimal: true,

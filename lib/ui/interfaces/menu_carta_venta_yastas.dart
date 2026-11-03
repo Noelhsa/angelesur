@@ -141,6 +141,7 @@ class _DialogoServicioYastasState extends State<DialogoServicioYastas> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
+              onTap: () => seleccionarImporteCero(_montoController),
               inputFormatters: const [ImporteInputFormatter()],
               decoration: const InputDecoration(
                 labelText: 'Monto del servicio',
